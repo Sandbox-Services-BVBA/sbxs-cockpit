@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["...", "pkg-config", "python3"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "HOSTNAME=0.0.0.0 node .next/standalone/server.js"

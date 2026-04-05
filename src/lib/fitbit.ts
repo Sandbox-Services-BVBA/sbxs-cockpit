@@ -16,6 +16,13 @@ function ensureTable() {
       user_id TEXT,
       updated_at DATETIME DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS health_weight (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      weight_kg REAL NOT NULL,
+      source TEXT DEFAULT 'manual',
+      recorded_at DATETIME NOT NULL,
+      UNIQUE(recorded_at)
+    );
   `);
   return db;
 }
@@ -94,7 +101,6 @@ async function refreshAccessToken(): Promise<string> {
 
   if (!row) throw new Error("No Fitbit tokens stored. Complete OAuth flow first.");
 
-  // Return current token if still valid (with 5 min buffer)
   if (row.expires_at > Date.now() + 300000) {
     return row.access_token;
   }
@@ -123,7 +129,7 @@ async function refreshAccessToken(): Promise<string> {
   return data.access_token;
 }
 
-export async function fetchWeight(startDate: string, endDate: string) {
+async function fetchWeightChunk(startDate: string, endDate: string) {
   const token = await refreshAccessToken();
 
   const res = await fetch(
@@ -132,50 +138,88 @@ export async function fetchWeight(startDate: string, endDate: string) {
   );
 
   if (!res.ok) {
+    if (res.status === 429) {
+      // Rate limited -- wait and skip this chunk
+      console.log(`[Fitbit] Rate limited, skipping ${startDate} to ${endDate}`);
+      return [];
+    }
     const text = await res.text();
     throw new Error(`Fitbit weight fetch failed: ${res.status} ${text}`);
   }
 
-  return await res.json();
+  const data = await res.json();
+  return data.weight || [];
 }
 
-export async function syncWeightData() {
+function upsertWeightEntries(entries: Array<{ date: string; time?: string; weight: number }>) {
   const db = ensureTable();
+  let synced = 0;
 
-  // Get last 30 days of weight data
-  const endDate = new Date().toISOString().split("T")[0];
-  const startDate = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
-
-  const data = await fetchWeight(startDate, endDate);
-
-  if (!data.weight || !Array.isArray(data.weight)) return { synced: 0 };
-
-  // Ensure weight table exists
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS health_weight (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      weight_kg REAL NOT NULL,
-      recorded_at DATETIME DEFAULT (datetime('now'))
-    );
+  const stmt = db.prepare(`
+    INSERT INTO health_weight (weight_kg, source, recorded_at)
+    VALUES (?, 'fitbit', ?)
+    ON CONFLICT(recorded_at) DO UPDATE SET weight_kg = excluded.weight_kg, source = 'fitbit'
   `);
 
-  let synced = 0;
-  for (const entry of data.weight) {
+  for (const entry of entries) {
     const recordedAt = `${entry.date}T${entry.time || "00:00:00"}`;
-    const weightKg = entry.weight; // Fitbit returns in user's unit; assume kg
-
-    // Avoid duplicates (check if we already have a weight for this exact datetime)
-    const existing = db.prepare(
-      "SELECT id FROM health_weight WHERE recorded_at = ?"
-    ).get(recordedAt);
-
-    if (!existing) {
-      db.prepare("INSERT INTO health_weight (weight_kg, recorded_at) VALUES (?, ?)").run(weightKg, recordedAt);
-      synced++;
-    }
+    stmt.run(entry.weight, recordedAt);
+    synced++;
   }
 
-  return { synced, total: data.weight.length };
+  return synced;
+}
+
+/**
+ * Full historical backfill. Fetches weight data in 30-day chunks
+ * going back `years` years. Call once on initial connect.
+ */
+export async function backfillWeight(years = 5) {
+  const now = new Date();
+  const earliest = new Date(now);
+  earliest.setFullYear(earliest.getFullYear() - years);
+
+  let totalSynced = 0;
+  let cursor = new Date(earliest);
+
+  while (cursor < now) {
+    const chunkEnd = new Date(cursor);
+    chunkEnd.setDate(chunkEnd.getDate() + 30);
+    if (chunkEnd > now) chunkEnd.setTime(now.getTime());
+
+    const startStr = cursor.toISOString().split("T")[0];
+    const endStr = chunkEnd.toISOString().split("T")[0];
+
+    try {
+      const entries = await fetchWeightChunk(startStr, endStr);
+      if (entries.length > 0) {
+        totalSynced += upsertWeightEntries(entries);
+      }
+    } catch (e) {
+      console.error(`[Fitbit] Backfill error for ${startStr}-${endStr}:`, e);
+    }
+
+    cursor.setDate(cursor.getDate() + 31);
+
+    // Small delay to avoid rate limiting (150 requests/hour)
+    await new Promise((r) => setTimeout(r, 500));
+  }
+
+  return { synced: totalSynced };
+}
+
+/**
+ * Daily delta sync. Only fetches the last 7 days to catch
+ * late-syncing Fitbit entries. Fast and lightweight.
+ */
+export async function syncWeightDelta() {
+  const endDate = new Date().toISOString().split("T")[0];
+  const startDate = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
+
+  const entries = await fetchWeightChunk(startDate, endDate);
+  const synced = entries.length > 0 ? upsertWeightEntries(entries) : 0;
+
+  return { synced, total: entries.length };
 }
 
 export function isConnected(): boolean {

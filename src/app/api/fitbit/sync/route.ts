@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
-import { syncWeightData, isConnected } from "@/lib/fitbit";
+import { syncWeightDelta, isConnected } from "@/lib/fitbit";
 import { config } from "@/lib/config";
 
-// Called by cron to sync weight data
+// Called by cron daily -- only syncs last 7 days (delta)
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("Authorization");
   if (authHeader !== `Bearer ${config.apiKey}`) {
@@ -14,21 +14,20 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await syncWeightData();
+    const result = await syncWeightDelta();
     return Response.json({ ok: true, ...result });
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : "Sync failed" }, { status: 500 });
   }
 }
 
-// GET for manual trigger
 export async function GET() {
   if (!isConnected()) {
     return Response.json({ connected: false, message: "Visit /api/fitbit/auth to connect" });
   }
 
   try {
-    const result = await syncWeightData();
+    const result = await syncWeightDelta();
     return Response.json({ ok: true, ...result });
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : "Sync failed" }, { status: 500 });

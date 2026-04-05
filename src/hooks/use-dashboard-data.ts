@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import useSWR from "swr";
 import type { ServerHealth, BackupStatus, UptimeCheck, CronJob, Project, IntegrationHealth, Alert } from "@/types";
 
 interface DashboardData {
@@ -16,30 +16,18 @@ interface DashboardData {
   lastUpdated: string;
 }
 
-export function useDashboardData(refreshInterval = 30000) {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-  const fetchData = useCallback(async () => {
-    try {
-      const res = await fetch("/api/dashboard");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      setData(json);
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to fetch");
-    } finally {
-      setLoading(false);
+export function useDashboardData() {
+  const { data, error, isLoading, mutate } = useSWR<DashboardData>(
+    "/api/dashboard",
+    fetcher,
+    {
+      refreshInterval: 30000,
+      revalidateOnFocus: true,
+      dedupingInterval: 10000,
     }
-  }, []);
+  );
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, refreshInterval);
-    return () => clearInterval(interval);
-  }, [fetchData, refreshInterval]);
-
-  return { data, loading, error, refresh: fetchData };
+  return { data: data ?? null, loading: isLoading, error: error?.message ?? null, refresh: mutate };
 }

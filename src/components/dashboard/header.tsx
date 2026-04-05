@@ -18,39 +18,39 @@ export function DashboardHeader({
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-      <div className="flex items-center justify-between px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-sm font-bold text-primary-foreground">S</span>
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <div className="h-7 w-7 rounded-lg bg-[#fe644d] flex items-center justify-center">
+            <span className="text-xs font-bold text-white">S</span>
           </div>
           <div>
-            <h1 className="text-lg font-semibold tracking-tight">SBXS Cockpit</h1>
+            <h1 className="text-sm font-bold tracking-tight">SBXS Cockpit</h1>
             {lastUpdated && (
-              <p className="text-xs text-muted-foreground">
-                Updated {new Date(lastUpdated).toLocaleTimeString()}
+              <p className="text-[10px] text-muted-foreground">
+                {new Date(lastUpdated).toLocaleTimeString()}
               </p>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
             onClick={onRefresh}
             disabled={loading}
-            className="h-8 w-8"
+            className="h-7 w-7"
           >
-            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+            <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
           </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="h-8 w-8"
+            className="h-7 w-7"
           >
-            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <Sun className="h-3.5 w-3.5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-3.5 w-3.5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           </Button>
         </div>
       </div>

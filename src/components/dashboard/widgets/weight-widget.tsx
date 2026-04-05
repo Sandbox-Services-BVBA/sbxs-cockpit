@@ -15,7 +15,9 @@ export function WeightWidget() {
     return (
       <WidgetTile title="Weight" size="sm">
         <p className="text-xs text-muted-foreground">
-          {data === undefined ? "Loading..." : "No data yet"}
+          {data === undefined ? "Loading..." : (
+            <a href="/api/fitbit/auth" className="text-primary hover:underline">Connect Fitbit</a>
+          )}
         </p>
       </WidgetTile>
     );

@@ -2,7 +2,11 @@ import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 
-const DB_PATH = path.join(process.cwd(), "data", "cockpit.db");
+// Use /app/data for persistent volume in production (Coolify mounts here)
+// Falls back to cwd/data for local development
+const DB_PATH = process.env.NODE_ENV === "production"
+  ? "/app/data/cockpit.db"
+  : path.join(process.cwd(), "data", "cockpit.db");
 
 // Ensure data directory exists
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });

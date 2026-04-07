@@ -15,17 +15,17 @@ interface Milestone {
 
 function buildMilestones(): Milestone[] {
   const m: Milestone[] = [];
-  // First 3 days: every hour
-  for (let h = 1; h <= 72; h++) {
-    m.push({ label: `${h}h`, hours: h });
+  // First 2 months: every day
+  for (let d = 1; d <= 60; d++) {
+    m.push({ label: `${d} day${d > 1 ? "s" : ""}`, hours: d * 24 });
   }
-  // Days 4-60: every day
-  for (let d = 4; d <= 60; d++) {
-    m.push({ label: `${d} days`, hours: d * 24 });
-  }
-  // After 60 days: every week
-  for (let w = 9; w <= 104; w++) {
+  // 2-6 months: every week
+  for (let w = 9; w <= 26; w++) {
     m.push({ label: `${w} weeks`, hours: w * 7 * 24 });
+  }
+  // 6+ months: every month
+  for (let mo = 7; mo <= 24; mo++) {
+    m.push({ label: `${mo} months`, hours: mo * 30 * 24 });
   }
   return m;
 }

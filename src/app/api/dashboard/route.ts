@@ -75,6 +75,14 @@ export async function GET() {
     ORDER BY server_name, checked_at
   `).all() as ServerHealth[];
 
+  // Extra data from kv_store
+  const getKv = (key: string) => {
+    try {
+      const row = db.prepare("SELECT value FROM kv_store WHERE key = ?").get(key) as { value: string } | undefined;
+      return row ? JSON.parse(row.value) : null;
+    } catch { return null; }
+  };
+
   return Response.json({
     servers,
     backups,
@@ -85,6 +93,10 @@ export async function GET() {
     integrations,
     alerts,
     serverHistory,
+    inboxes: getKv("inboxes"),
+    domains: getKv("domains"),
+    cityscreens: getKv("cityscreens"),
+    mailroom: getKv("mailroom"),
     lastUpdated: new Date().toISOString(),
   });
 }

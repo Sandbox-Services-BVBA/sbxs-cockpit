@@ -13,10 +13,14 @@ import { IntegrationsWidget } from "./widgets/integrations-widget";
 import { UmamiWidget } from "./widgets/umami-widget";
 import { SobrietyWidget } from "./widgets/sobriety-widget";
 import { WeightWidget } from "./widgets/weight-widget";
+import { DomainsWidget } from "./widgets/domains-widget";
+import { InboxWidget } from "./widgets/inbox-widget";
+import { CityScreensWidget } from "./widgets/cityscreens-widget";
+import { MailroomWidget } from "./widgets/mailroom-widget";
 import { CATEGORY_LABELS, type WidgetCategory } from "@/lib/widget-registry";
 import { cn } from "@/lib/utils";
 
-const ALL_CATEGORIES: WidgetCategory[] = ["alerts", "infrastructure", "uptime", "analytics", "projects", "health"];
+const ALL_CATEGORIES: WidgetCategory[] = ["alerts", "infrastructure", "uptime", "business", "analytics", "projects", "health"];
 
 function CategoryFilter({
   enabled,
@@ -74,16 +78,14 @@ export function Dashboard() {
       />
 
       {error && (
-        <div className="mx-4 mt-3 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-xs text-red-400">
+        <div className="mx-2 mt-2 border-2 border-[#ff4444] bg-[#ff4444]/10 px-2 py-1.5 text-[11px]">
           Failed to load: {error}
         </div>
       )}
 
       <main className="p-2 space-y-2 max-w-[1800px] mx-auto">
-        {/* Category filter */}
         <CategoryFilter enabled={enabledCategories} onToggle={toggleCategory} />
 
-        {/* Widget grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-2">
           {/* Alerts */}
           {show("alerts") && data && (
@@ -96,12 +98,24 @@ export function Dashboard() {
               <ServersWidget servers={data.servers} />
               <BackupsWidget backups={data.backups} />
               <CronsWidget crons={data.crons} />
+              <DomainsWidget domains={data.domains} />
             </>
           )}
 
           {/* Uptime */}
           {show("uptime") && data && (
-            <UptimeGridWidget uptime={data.uptime} />
+            <>
+              <UptimeGridWidget uptime={data.uptime} />
+              <CityScreensWidget displays={data.cityscreens} />
+            </>
+          )}
+
+          {/* Business */}
+          {show("business") && data && (
+            <>
+              <InboxWidget inboxes={data.inboxes} />
+              <MailroomWidget mailroom={data.mailroom} />
+            </>
           )}
 
           {/* Analytics */}
@@ -129,11 +143,10 @@ export function Dashboard() {
           )}
         </div>
 
-        {/* Loading state */}
         {loading && !data && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-2">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-32 rounded-xl bg-card/50 animate-pulse col-span-1 lg:col-span-2" />
+              <div key={i} className="h-24 bg-card border-2 border-border animate-pulse col-span-1 lg:col-span-2" />
             ))}
           </div>
         )}

@@ -3,6 +3,7 @@ export type WidgetCategory =
   | "uptime"
   | "projects"
   | "analytics"
+  | "business"
   | "health"
   | "alerts";
 
@@ -20,6 +21,7 @@ export interface WidgetConfig {
 export const CATEGORY_LABELS: Record<WidgetCategory, string> = {
   infrastructure: "Infrastructure",
   uptime: "Uptime",
+  business: "Business",
   projects: "Projects",
   analytics: "Analytics",
   health: "Health",
@@ -29,6 +31,7 @@ export const CATEGORY_LABELS: Record<WidgetCategory, string> = {
 export const CATEGORY_COLORS: Record<WidgetCategory, string> = {
   infrastructure: "#517FA4",
   uptime: "#10b981",
+  business: "#f59e0b",
   projects: "#8b5cf6",
   analytics: "#f59e0b",
   health: "#ec4899",

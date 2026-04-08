@@ -122,5 +122,20 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Store extra JSON payloads (inboxes, domains, cityscreens, mailroom)
+  db.exec(`CREATE TABLE IF NOT EXISTS kv_store (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at DATETIME DEFAULT (datetime('now'))
+  )`);
+
+  const kvStmt = db.prepare("INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)");
+  const body = payload as unknown as Record<string, unknown>;
+  for (const key of ["inboxes", "domains", "cityscreens", "mailroom"]) {
+    if (body[key]) {
+      kvStmt.run(key, JSON.stringify(body[key]));
+    }
+  }
+
   return Response.json({ ok: true, timestamp: new Date().toISOString() });
 }

@@ -22,7 +22,7 @@ export function ProjectsWidget({ projects }: { projects: Project[] }) {
 
   if (sorted.length === 0) {
     return (
-      <WidgetTile title="Recent Projects" size="md">
+      <WidgetTile title="Recent Projects" size="sm">
         <p className="text-xs text-muted-foreground">No active sessions</p>
       </WidgetTile>
     );
@@ -33,7 +33,7 @@ export function ProjectsWidget({ projects }: { projects: Project[] }) {
   return (
     <WidgetTile
       title="Recent Projects"
-      size="md"
+      size="sm"
       headerRight={<span className="text-[10px] text-muted-foreground">{activeCount} active</span>}
     >
       <div className="space-y-1.5">

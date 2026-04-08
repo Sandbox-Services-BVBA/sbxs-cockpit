@@ -2,27 +2,19 @@
 
 import useSWR from "swr";
 import { WidgetTile } from "../widget-tile";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-function TrendIcon({ current, previous }: { current: number; previous: number }) {
-  if (current > previous) return <TrendingUp className="h-3 w-3 text-emerald-400" />;
-  if (current < previous) return <TrendingDown className="h-3 w-3 text-red-400" />;
-  return <Minus className="h-3 w-3 text-muted-foreground" />;
-}
-
-function StatRow({ label, value, prev }: { label: string; value?: number; prev?: number }) {
-  if (value === undefined) return null;
+function Trend({ current, previous }: { current: number; previous: number }) {
+  if (current === previous) return null;
+  const up = current > previous;
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-[10px] text-muted-foreground">{label}</span>
-      <div className="flex items-center gap-1">
-        <span className="text-xs font-semibold">{value.toLocaleString()}</span>
-        {prev !== undefined && <TrendIcon current={value} previous={prev} />}
-      </div>
-    </div>
+    <span className={cn("text-[9px] font-mono flex items-center gap-0.5", up ? "text-[#33aa55]" : "text-[#ff4444]")}>
+      {up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
+      {up ? "+" : ""}{current - previous}
+    </span>
   );
 }
 
@@ -36,15 +28,30 @@ export function UmamiWidget({ site, title }: { site: "plaqstudio" | "bookyourbox
   return (
     <WidgetTile title={title} size="sm">
       {!today ? (
-        <p className="text-xs text-muted-foreground">{data === undefined ? "Loading..." : "Not configured"}</p>
+        <p className="text-[11px] text-muted-foreground">{data === undefined ? "Loading..." : "No data"}</p>
       ) : (
         <div className="space-y-1.5">
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold tracking-tight">{today.visitors.value}</span>
-            <span className="text-[10px] text-muted-foreground">today</span>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-2xl font-black tabular-nums">{today.visitors}</span>
+            <span className="text-[9px] text-muted-foreground font-mono">TODAY</span>
+            <Trend current={today.visitors} previous={today.comparison?.visitors ?? today.visitors} />
           </div>
-          <StatRow label="Pageviews" value={today.pageviews.value} prev={today.pageviews.prev} />
-          <StatRow label="This week" value={week?.visitors?.value} prev={week?.visitors?.prev} />
+          <div className="space-y-0.5">
+            <div className="flex justify-between text-[9px] font-mono">
+              <span className="text-muted-foreground">VIEWS</span>
+              <span>{today.pageviews}</span>
+            </div>
+            <div className="flex justify-between text-[9px] font-mono">
+              <span className="text-muted-foreground">BOUNCES</span>
+              <span>{today.bounces}</span>
+            </div>
+            {week && (
+              <div className="flex justify-between text-[9px] font-mono">
+                <span className="text-muted-foreground">WEEK</span>
+                <span>{week.visitors} visitors</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </WidgetTile>

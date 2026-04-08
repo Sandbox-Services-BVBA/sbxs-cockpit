@@ -60,7 +60,7 @@ export const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "analytics-byb", title: "BookYourBox Visitors", category: "analytics", size: "sm", component: "UmamiWidget", refreshInterval: 900000 },
 
   // Projects
-  { id: "projects-recent", title: "Recent Projects", category: "projects", size: "md", component: "ProjectsWidget", refreshInterval: 1800000 },
+  { id: "projects-recent", title: "Recent Projects", category: "projects", size: "sm", component: "ProjectsWidget", refreshInterval: 1800000 },
   { id: "integrations", title: "Integrations", category: "projects", size: "md", component: "IntegrationsWidget", refreshInterval: 300000 },
 
   // Health

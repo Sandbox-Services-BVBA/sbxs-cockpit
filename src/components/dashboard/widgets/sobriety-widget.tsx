@@ -107,18 +107,20 @@ export function SobrietyWidget() {
         <LiveCounter startDate={sobriety.start_date} />
 
         {next && (
-          <div className="space-y-1">
-            <div className="flex justify-between text-[10px] text-muted-foreground">
+          <div className="space-y-0.5">
+            <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
               <span>{current?.label ?? "Start"}</span>
               <span>{next.label}</span>
             </div>
-            <Progress value={progress} className="h-1.5 [&>div]:bg-emerald-500" />
+            <div className="h-2 bg-muted border border-border">
+              <div className="h-full bg-[#33aa55]" style={{ width: `${progress}%` }} />
+            </div>
           </div>
         )}
 
         {current && (
-          <p className="text-[10px] text-emerald-400 font-medium">
-            Last milestone: {current.label}
+          <p className="text-[9px] text-[#33aa55] font-bold font-mono uppercase">
+            Milestone: {current.label}
           </p>
         )}
       </div>

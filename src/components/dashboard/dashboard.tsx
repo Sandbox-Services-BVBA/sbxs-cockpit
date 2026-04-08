@@ -26,16 +26,16 @@ function CategoryFilter({
   onToggle: (cat: WidgetCategory) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap gap-1">
       {ALL_CATEGORIES.map((cat) => (
         <button
           key={cat}
           onClick={() => onToggle(cat)}
           className={cn(
-            "px-2.5 py-1 rounded-full text-[11px] font-medium transition-all border",
+            "px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide border-2 transition-colors",
             enabled.has(cat)
-              ? "bg-primary/10 text-primary border-primary/20"
-              : "bg-muted/50 text-muted-foreground border-transparent hover:border-border"
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-muted text-muted-foreground border-border hover:border-muted-foreground"
           )}
         >
           {CATEGORY_LABELS[cat]}

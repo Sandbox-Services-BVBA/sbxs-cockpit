@@ -30,7 +30,7 @@ export function IntegrationsWidget({ integrations }: { integrations: Integration
       <div className="grid grid-cols-2 gap-2">
         {integrations.map((i) => (
           <div key={i.integration_name} className="flex items-center gap-1.5">
-            <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", statusDot[i.status])} />
+            <span className={cn("h-1.5 w-1.5  shrink-0", statusDot[i.status])} />
             <span className="text-xs truncate">{i.integration_name}</span>
           </div>
         ))}

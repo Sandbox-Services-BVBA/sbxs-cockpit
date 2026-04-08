@@ -23,20 +23,20 @@ export function WidgetTile({
   return (
     <div
       className={cn(
-        "rounded-lg border border-border/50 bg-card/80 backdrop-blur",
-        onClick && "cursor-pointer hover:border-primary/30",
+        "border-2 border-border bg-card",
+        onClick && "cursor-pointer hover:border-primary",
         SIZE_SPANS[size],
         className
       )}
       onClick={onClick}
     >
       {title && (
-        <div className="flex items-center justify-between px-2.5 pt-2 pb-0">
-          <h3 className="text-[10px] font-semibold text-muted-foreground tracking-wide uppercase">{title}</h3>
+        <div className="flex items-center justify-between px-2 pt-1.5 pb-0">
+          <h3 className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">{title}</h3>
           {headerRight}
         </div>
       )}
-      <div className="px-2.5 py-2">
+      <div className="px-2 py-1.5">
         {children}
       </div>
     </div>

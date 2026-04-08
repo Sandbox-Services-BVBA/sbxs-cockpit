@@ -32,7 +32,7 @@ export function CronsWidget({ crons }: { crons: CronJob[] }) {
       <div className="space-y-2">
         {crons.map((c) => (
           <div key={`${c.server_name}-${c.cron_name}`} className="flex items-center gap-2">
-            <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", statusDot[c.status])} />
+            <span className={cn("h-1.5 w-1.5  shrink-0", statusDot[c.status])} />
             <span className="text-xs truncate flex-1">{c.cron_name}</span>
             <span className="text-[10px] text-muted-foreground whitespace-nowrap">
               {c.last_run_at ? formatDistanceToNow(new Date(c.last_run_at), { addSuffix: true }) : "never"}

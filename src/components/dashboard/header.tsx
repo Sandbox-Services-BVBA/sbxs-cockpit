@@ -1,7 +1,6 @@
 "use client";
 
 import { RefreshCw, Moon, Sun } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 
@@ -17,16 +16,16 @@ export function DashboardHeader({
   const { theme, setTheme } = useTheme();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-      <div className="flex items-center justify-between px-2.5 py-2">
-        <div className="flex items-center gap-2.5">
-          <div className="h-7 w-7 rounded-lg bg-[#fe644d] flex items-center justify-center">
-            <span className="text-xs font-bold text-white">S</span>
+    <header className="border-b-2 border-border bg-card">
+      <div className="flex items-center justify-between px-2 py-1.5">
+        <div className="flex items-center gap-2">
+          <div className="h-6 w-6 bg-[#fe644d] flex items-center justify-center border-2 border-[#cc4433]">
+            <span className="text-[10px] font-black text-white">S</span>
           </div>
           <div>
-            <h1 className="text-sm font-bold tracking-tight">SBXS Cockpit</h1>
+            <h1 className="text-xs font-black tracking-wide uppercase">SBXS Cockpit</h1>
             {lastUpdated && (
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-[9px] text-muted-foreground font-mono">
                 {new Date(lastUpdated).toLocaleTimeString()}
               </p>
             )}
@@ -34,24 +33,20 @@ export function DashboardHeader({
         </div>
 
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
             onClick={onRefresh}
             disabled={loading}
-            className="h-7 w-7"
+            className="h-6 w-6 flex items-center justify-center border-2 border-border bg-muted hover:bg-accent disabled:opacity-50"
           >
-            <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
+            <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} />
+          </button>
+          <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="h-7 w-7"
+            className="h-6 w-6 flex items-center justify-center border-2 border-border bg-muted hover:bg-accent"
           >
-            <Sun className="h-3.5 w-3.5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-3.5 w-3.5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          </Button>
+            <Sun className="h-3 w-3 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-3 w-3 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          </button>
         </div>
       </div>
     </header>

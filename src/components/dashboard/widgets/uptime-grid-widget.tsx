@@ -7,7 +7,7 @@ import type { UptimeCheck } from "@/types";
 function UptimeDot({ check }: { check: UptimeCheck }) {
   return (
     <div className="flex items-center gap-2 py-1">
-      <span className={cn("h-2 w-2 rounded-full shrink-0", check.is_up ? "bg-emerald-500" : "bg-red-500 animate-pulse")} />
+      <span className={cn("h-2 w-2  shrink-0", check.is_up ? "bg-emerald-500" : "bg-red-500 animate-pulse")} />
       <span className="text-xs truncate flex-1">{check.site_name}</span>
       <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
         {check.response_time_ms !== null && <span>{check.response_time_ms}ms</span>}

@@ -45,7 +45,7 @@ export function ProjectsWidget({ projects }: { projects: Project[] }) {
           return (
             <div key={p.name} className="flex items-center gap-2">
               <span className={cn(
-                "h-1.5 w-1.5 rounded-full shrink-0",
+                "h-1.5 w-1.5  shrink-0",
                 p.session_active ? "bg-emerald-500" : "bg-zinc-600"
               )} />
               <span className="text-xs truncate flex-1">{p.name}</span>

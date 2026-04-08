@@ -3,19 +3,26 @@ import path from "path";
 import fs from "fs";
 
 // Use /app/data for persistent volume in production (Coolify mounts here)
-// Falls back to cwd/data for local development
-const DB_PATH = process.env.NODE_ENV === "production"
-  ? "/app/data/cockpit.db"
-  : path.join(process.cwd(), "data", "cockpit.db");
-
-// Ensure data directory exists
-fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+// Falls back to cwd/data for local development and build
+function getDbPath() {
+  if (process.env.NODE_ENV === "production") {
+    try {
+      fs.mkdirSync("/app/data", { recursive: true });
+      return "/app/data/cockpit.db";
+    } catch {
+      // During build, /app/data may not be writable
+    }
+  }
+  const fallback = path.join(process.cwd(), "data", "cockpit.db");
+  fs.mkdirSync(path.dirname(fallback), { recursive: true });
+  return fallback;
+}
 
 let db: Database.Database | null = null;
 
 export function getDb(): Database.Database {
   if (!db) {
-    db = new Database(DB_PATH);
+    db = new Database(getDbPath());
     db.pragma("journal_mode = WAL");
     db.pragma("foreign_keys = ON");
     initSchema(db);
@@ -88,6 +95,8 @@ function initSchema(db: Database.Database) {
       last_commit_at DATETIME,
       last_commit_message TEXT,
       memory_files_count INTEGER DEFAULT 0,
+      session_active BOOLEAN DEFAULT 0,
+      last_activity_at DATETIME,
       checked_at DATETIME DEFAULT (datetime('now'))
     );
 

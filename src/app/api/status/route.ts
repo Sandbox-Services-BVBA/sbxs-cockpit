@@ -89,14 +89,17 @@ export async function POST(request: NextRequest) {
     db.prepare("DELETE FROM projects").run();
     const stmt = db.prepare(`
       INSERT INTO projects (name, path, project_type, client_name, github_url,
-        ddev_running, last_commit_at, last_commit_message, memory_files_count)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ddev_running, last_commit_at, last_commit_message, memory_files_count,
+        session_active, last_activity_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     for (const p of payload.projects) {
       stmt.run(
         p.name, p.path, p.project_type, p.client_name, p.github_url,
-        p.ddev_running ? 1 : 0, p.last_commit_at, p.last_commit_message, p.memory_files_count
+        p.ddev_running ? 1 : 0, p.last_commit_at, p.last_commit_message, p.memory_files_count,
+        (p as Record<string, unknown>).session_active ? 1 : 0,
+        (p as Record<string, unknown>).last_activity_at || null
       );
     }
   }

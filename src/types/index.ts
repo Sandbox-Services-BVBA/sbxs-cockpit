@@ -61,6 +61,8 @@ export interface Project {
   last_commit_at: string | null;
   last_commit_message: string | null;
   memory_files_count: number;
+  session_active: boolean;
+  last_activity_at: string | null;
   checked_at: string;
 }
 

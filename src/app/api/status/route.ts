@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
 
   const kvStmt = db.prepare("INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)");
   const body = payload as unknown as Record<string, unknown>;
-  for (const key of ["inboxes", "domains", "cityscreens", "mailroom"]) {
+  for (const key of ["inboxes", "domains", "cityscreens", "mailroom", "unbilled"]) {
     if (body[key]) {
       kvStmt.run(key, JSON.stringify(body[key]));
     }

@@ -97,6 +97,7 @@ export async function GET() {
     domains: getKv("domains"),
     cityscreens: getKv("cityscreens"),
     mailroom: getKv("mailroom"),
+    unbilled: getKv("unbilled"),
     lastUpdated: new Date().toISOString(),
   });
 }

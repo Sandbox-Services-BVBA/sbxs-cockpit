@@ -17,6 +17,7 @@ interface DashboardData {
   domains: { name: string; renewal_date: string; days_left: number; status: string }[] | null;
   cityscreens: { player_id: string; name: string; location: string; mode: string; last_seen: string; active: boolean }[] | null;
   mailroom: { total: number; today: number; week: number; by_priority: Record<string, number>; recent_by_priority: Record<string, number> } | null;
+  unbilled: { total_hours: number; total_amount: number; entry_count: number; by_client: Record<string, number> } | null;
   lastUpdated: string;
 }
 

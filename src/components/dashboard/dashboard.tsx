@@ -17,6 +17,7 @@ import { DomainsWidget } from "./widgets/domains-widget";
 import { InboxWidget } from "./widgets/inbox-widget";
 import { CityScreensWidget } from "./widgets/cityscreens-widget";
 import { MailroomWidget } from "./widgets/mailroom-widget";
+import { UnbilledWidget } from "./widgets/unbilled-widget";
 import { CATEGORY_LABELS, type WidgetCategory } from "@/lib/widget-registry";
 import { cn } from "@/lib/utils";
 
@@ -113,6 +114,7 @@ export function Dashboard() {
           {/* Business */}
           {show("business") && data && (
             <>
+              <UnbilledWidget unbilled={data.unbilled} />
               <InboxWidget inboxes={data.inboxes} />
               <MailroomWidget mailroom={data.mailroom} />
             </>

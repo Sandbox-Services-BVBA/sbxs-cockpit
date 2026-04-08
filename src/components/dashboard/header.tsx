@@ -18,7 +18,7 @@ export function DashboardHeader({
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center justify-between px-2.5 py-2">
         <div className="flex items-center gap-2.5">
           <div className="h-7 w-7 rounded-lg bg-[#fe644d] flex items-center justify-center">
             <span className="text-xs font-bold text-white">S</span>

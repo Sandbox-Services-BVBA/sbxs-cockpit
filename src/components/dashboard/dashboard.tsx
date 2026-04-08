@@ -79,12 +79,12 @@ export function Dashboard() {
         </div>
       )}
 
-      <main className="p-4 space-y-4 max-w-[1800px] mx-auto">
+      <main className="p-2 space-y-2 max-w-[1800px] mx-auto">
         {/* Category filter */}
         <CategoryFilter enabled={enabledCategories} onToggle={toggleCategory} />
 
         {/* Widget grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-2">
           {/* Alerts */}
           {show("alerts") && data && (
             <AlertsSummaryWidget alerts={data.alerts} />

@@ -26,8 +26,22 @@ export function getDb(): Database.Database {
     db.pragma("journal_mode = WAL");
     db.pragma("foreign_keys = ON");
     initSchema(db);
+    runMigrations(db);
   }
   return db;
+}
+
+function runMigrations(db: Database.Database) {
+  // Add columns if they don't exist (safe to re-run)
+  const cols = db.prepare("PRAGMA table_info(projects)").all() as { name: string }[];
+  const colNames = new Set(cols.map((c) => c.name));
+
+  if (!colNames.has("session_active")) {
+    db.exec("ALTER TABLE projects ADD COLUMN session_active BOOLEAN DEFAULT 0");
+  }
+  if (!colNames.has("last_activity_at")) {
+    db.exec("ALTER TABLE projects ADD COLUMN last_activity_at DATETIME");
+  }
 }
 
 function initSchema(db: Database.Database) {

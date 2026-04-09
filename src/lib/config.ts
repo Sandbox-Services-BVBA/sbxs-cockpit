@@ -18,6 +18,8 @@ export const config = {
     { url: "https://login.cityscreens.be", name: "CityScreens", check_interval_seconds: 300 },
     { url: "https://sandboxservices.be", name: "Sandbox Services", check_interval_seconds: 300 },
     { url: "https://cockpit.sbxs.io", name: "SBXS Cockpit", check_interval_seconds: 300 },
+    { url: "https://studiostockmans.com", name: "Studio Stockmans", check_interval_seconds: 300 },
+    { url: "https://impulscommunicatie.be", name: "Impuls Communicatie", check_interval_seconds: 300 },
   ],
 
   // Alert thresholds

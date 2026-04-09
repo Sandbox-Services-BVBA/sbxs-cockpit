@@ -26,7 +26,10 @@ function UptimeRow({ check, history }: { check: UptimeCheck; history: UptimeChec
     <div className="space-y-0.5">
       <div className="flex items-center gap-1.5">
         <span className={cn("h-1.5 w-1.5 shrink-0", check.is_up ? "bg-[#33aa55]" : "bg-[#ff4444] animate-pulse")} />
-        <span className="text-[11px] font-bold truncate flex-1">{check.site_name}</span>
+        <div className="truncate flex-1">
+          <span className="text-[11px] font-bold">{check.site_name}</span>
+          <span className="text-[8px] font-mono text-muted-foreground ml-1">{new URL(check.site_url).hostname}</span>
+        </div>
         <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground">
           {check.response_time_ms !== null && <span>{check.response_time_ms}ms</span>}
           {check.ssl_days_remaining !== null && (

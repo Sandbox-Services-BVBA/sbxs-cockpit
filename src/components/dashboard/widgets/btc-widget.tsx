@@ -54,11 +54,11 @@ export function BtcWidget() {
             {current ? (
               <>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-[9px] text-muted-foreground font-mono">EUR</span>
-                  <span className="text-xl font-black tabular-nums">{current.eur.toLocaleString()}</span>
+                  <span className="text-[9px] text-muted-foreground font-mono">USD</span>
+                  <span className="text-xl font-black tabular-nums">{current.usd.toLocaleString()}</span>
                 </div>
                 <div className="text-[9px] font-mono text-muted-foreground">
-                  USD {current.usd.toLocaleString()}
+                  EUR {current.eur.toLocaleString()}
                 </div>
               </>
             ) : (

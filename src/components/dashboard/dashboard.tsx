@@ -106,7 +106,7 @@ export function Dashboard() {
           {/* Uptime */}
           {show("uptime") && data && (
             <>
-              <UptimeGridWidget uptime={data.uptime} />
+              <UptimeGridWidget uptime={data.uptime} uptimeHistory={data.uptimeHistory} />
               <CityScreensWidget displays={data.cityscreens} />
             </>
           )}

@@ -46,7 +46,7 @@ export function BtcWidget() {
   const maxEur = allEur.length > 0 ? Math.max(...allEur) + 500 : 100000;
 
   return (
-    <WidgetTile title="Bitcoin" size="md">
+    <WidgetTile title="Bitcoin" size="md" headerRight={<span className="text-[9px] font-mono text-muted-foreground">{new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}>
       <div className="space-y-2">
         {/* Price + portfolio */}
         <div className="flex items-start justify-between">

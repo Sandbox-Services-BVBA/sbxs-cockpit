@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 const BTC_HOLDINGS = 0.75;
 
 // In-memory cache (survives across requests, cleared on deploy)
-let cache: { data: unknown; expires: number } | null = null;
+const cache: Record<string, { data: unknown; expires: number }> = {};
 
 async function fetchPrices(days: number) {
   const [eurRes, usdRes] = await Promise.all([
@@ -23,10 +23,10 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const days = parseInt(url.searchParams.get("days") || "30");
 
-  // Cache for 10 minutes
+  // Cache for 10 minutes per period
   const cacheKey = `btc-${days}`;
-  if (cache && cache.expires > Date.now()) {
-    return Response.json(cache.data);
+  if (cache[cacheKey] && cache[cacheKey].expires > Date.now()) {
+    return Response.json(cache[cacheKey].data);
   }
 
   try {
@@ -72,7 +72,7 @@ export async function GET(request: Request) {
       days,
     };
 
-    cache = { data: result, expires: Date.now() + 600000 };
+    cache[cacheKey] = { data: result, expires: Date.now() + 600000 };
     return Response.json(result);
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : "Failed" }, { status: 500 });

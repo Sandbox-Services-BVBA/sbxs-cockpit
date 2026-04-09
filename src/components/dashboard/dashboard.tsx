@@ -20,6 +20,7 @@ import { MailroomWidget } from "./widgets/mailroom-widget";
 import { UnbilledWidget } from "./widgets/unbilled-widget";
 import { TimeEntriesWidget } from "./widgets/timeentries-widget";
 import { BtcWidget } from "./widgets/btc-widget";
+import { BankWidget } from "./widgets/bank-widget";
 import { CATEGORY_LABELS, type WidgetCategory } from "@/lib/widget-registry";
 import { cn } from "@/lib/utils";
 
@@ -117,6 +118,7 @@ export function Dashboard() {
           {show("business") && data && (
             <>
               <UnbilledWidget unbilled={data.unbilled} />
+              <BankWidget />
               <BtcWidget />
               <TimeEntriesWidget entries={data.timeentries} />
               <InboxWidget inboxes={data.inboxes} />

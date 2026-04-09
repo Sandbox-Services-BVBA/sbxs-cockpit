@@ -98,6 +98,7 @@ export async function GET() {
     cityscreens: getKv("cityscreens"),
     mailroom: getKv("mailroom"),
     unbilled: getKv("unbilled"),
+    timeentries: getKv("timeentries"),
     lastUpdated: new Date().toISOString(),
   });
 }

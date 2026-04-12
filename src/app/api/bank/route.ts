@@ -3,12 +3,23 @@ export const dynamic = "force-dynamic";
 const OFFICE_URL = "https://office.sbxs.io";
 const OFFICE_API_KEY = process.env.OFFICE_API_KEY || "";
 
-let cache: { data: unknown; expires: number } | null = null;
+const periodLimits: Record<string, number> = {
+  "1w": 30,
+  "1m": 120,
+  "3m": 400,
+  "1y": 1500,
+};
 
-export async function GET() {
-  // Cache for 15 minutes
-  if (cache && cache.expires > Date.now()) {
-    return Response.json(cache.data);
+const cache: Record<string, { data: unknown; expires: number }> = {};
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const period = url.searchParams.get("period") || "1m";
+  const limit = periodLimits[period] || 120;
+
+  const cacheKey = `bank-${period}`;
+  if (cache[cacheKey] && cache[cacheKey].expires > Date.now()) {
+    return Response.json(cache[cacheKey].data);
   }
 
   if (!OFFICE_API_KEY) {
@@ -20,13 +31,12 @@ export async function GET() {
   try {
     const [balanceRes, transactionsRes] = await Promise.all([
       fetch(`${OFFICE_URL}/api/bank/balance`, { headers }),
-      fetch(`${OFFICE_URL}/api/bank/transactions?limit=90`, { headers }),
+      fetch(`${OFFICE_URL}/api/bank/transactions?limit=${limit}`, { headers }),
     ]);
 
     if (!balanceRes.ok) throw new Error(`Balance API: ${balanceRes.status}`);
     const balance = await balanceRes.json();
 
-    // Build a running balance chart from transactions
     let chart: { date: string; balance: number }[] = [];
 
     if (transactionsRes.ok) {
@@ -34,18 +44,12 @@ export async function GET() {
       const txList = Array.isArray(transactions) ? transactions : transactions.data || [];
 
       if (txList.length > 0) {
-        // Transactions are newest first, reverse to chronological
-        const sorted = [...txList].reverse();
-
-        // Work backwards from current balance to compute historical balances
         let runningBalance = balance.currentBalance;
         const dailyBalances: Record<string, number> = {};
 
-        // Current day
         const today = new Date().toISOString().split("T")[0];
         dailyBalances[today] = runningBalance;
 
-        // Subtract each transaction going backward to reconstruct daily balances
         for (const tx of txList) {
           const amount = parseFloat(tx.amount);
           runningBalance -= amount;
@@ -53,15 +57,14 @@ export async function GET() {
           dailyBalances[date] = runningBalance;
         }
 
-        // Convert to sorted chart array
         chart = Object.entries(dailyBalances)
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([date, bal]) => ({ date, balance: Math.round(bal * 100) / 100 }));
       }
     }
 
-    const result = { balance, chart };
-    cache = { data: result, expires: Date.now() + 900000 };
+    const result = { balance, chart, period };
+    cache[cacheKey] = { data: result, expires: Date.now() + 900000 };
     return Response.json(result);
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : "Failed" }, { status: 500 });

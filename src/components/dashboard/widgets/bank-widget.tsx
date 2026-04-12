@@ -1,9 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import useSWR from "swr";
 import { WidgetTile } from "../widget-tile";
 import { ResponsiveContainer, AreaChart, Area, YAxis, Tooltip } from "recharts";
 import { cn } from "@/lib/utils";
+
+const PERIODS = [
+  { key: "1w", label: "1W" },
+  { key: "1m", label: "1M" },
+  { key: "3m", label: "3M" },
+  { key: "1y", label: "1Y" },
+] as const;
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -19,22 +27,23 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
 }
 
 export function BankWidget() {
-  const { data } = useSWR("/api/bank", fetcher, {
+  const [period, setPeriod] = useState("1m");
+  const { data } = useSWR(`/api/bank?period=${period}`, fetcher, {
     refreshInterval: 300000,
     dedupingInterval: 60000,
+    keepPreviousData: true,
   });
 
   const balance = data?.balance;
   const chart = data?.chart || [];
 
   const allBal = chart.map((d: { balance: number }) => d.balance);
-  const minBal = allBal.length > 0 ? Math.min(...allBal) - 1000 : 0;
-  const maxBal = allBal.length > 0 ? Math.max(...allBal) + 1000 : 30000;
+  const minBal = allBal.length > 0 ? Math.min(...allBal) - 500 : 0;
+  const maxBal = allBal.length > 0 ? Math.max(...allBal) + 500 : 30000;
 
   return (
     <WidgetTile title="Bank Account" size="md">
       <div className="space-y-2">
-        {/* Balance */}
         <div className="flex items-start justify-between">
           <div>
             {balance ? (
@@ -67,9 +76,27 @@ export function BankWidget() {
           )}
         </div>
 
+        {/* Period toggles */}
+        <div className="flex gap-0.5">
+          {PERIODS.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => setPeriod(p.key)}
+              className={cn(
+                "flex-1 py-0.5 text-[9px] font-bold font-mono border-2 transition-colors",
+                period === p.key
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-muted text-muted-foreground border-border hover:border-muted-foreground"
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
         {/* Chart */}
         {chart.length > 1 ? (
-          <div className="h-28 -mx-0.5">
+          <div className="h-40 -mx-0.5">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chart} margin={{ top: 2, right: 2, bottom: 0, left: -24 }}>
                 <YAxis
@@ -93,7 +120,7 @@ export function BankWidget() {
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="h-28 flex items-center justify-center text-[9px] text-muted-foreground">Loading chart...</div>
+          <div className="h-40 flex items-center justify-center text-[9px] text-muted-foreground">Loading chart...</div>
         )}
       </div>
     </WidgetTile>

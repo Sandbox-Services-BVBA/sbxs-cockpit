@@ -108,7 +108,7 @@ export function BtcWidget() {
 
         {/* Chart */}
         {chart.length > 1 ? (
-          <div className="h-20 -mx-0.5">
+          <div className="h-40 -mx-0.5">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chart} margin={{ top: 2, right: 2, bottom: 0, left: -24 }}>
                 <YAxis
@@ -132,7 +132,7 @@ export function BtcWidget() {
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="h-20 flex items-center justify-center text-[9px] text-muted-foreground">Loading chart...</div>
+          <div className="h-40 flex items-center justify-center text-[9px] text-muted-foreground">Loading chart...</div>
         )}
       </div>
     </WidgetTile>

@@ -48,17 +48,25 @@ async function buildBriefing(): Promise<string> {
     parts.push("");
   }
 
-  // Uptime summary
-  const downSites = db.prepare(`
+  // Uptime summary (check all paths, not just root)
+  const downChecks = db.prepare(`
     SELECT * FROM uptime_checks
-    WHERE id IN (SELECT MAX(id) FROM uptime_checks GROUP BY site_url)
+    WHERE id IN (SELECT MAX(id) FROM uptime_checks GROUP BY site_url, checked_path)
     AND is_up = 0
   `).all() as UptimeCheck[];
 
-  if (downSites.length > 0) {
+  if (downChecks.length > 0) {
+    // Group by site for cleaner output
+    const bySite = new Map<string, string[]>();
+    for (const c of downChecks) {
+      const paths = bySite.get(c.site_name) || [];
+      paths.push(c.checked_path);
+      bySite.set(c.site_name, paths);
+    }
     parts.push("<b>Sites down</b>");
-    for (const s of downSites) {
-      parts.push(`- ${s.site_name} (${s.site_url})`);
+    for (const [name, paths] of bySite) {
+      const detail = paths.includes("/") ? "(full outage)" : `(${paths.join(", ")})`;
+      parts.push(`- ${name} ${detail}`);
     }
     parts.push("");
   } else {

@@ -5,7 +5,20 @@ import { cn } from "@/lib/utils";
 import type { UptimeCheck } from "@/types";
 
 function UptimeTracker({ checks }: { checks: UptimeCheck[] }) {
-  const display = checks.slice(0, 24).reverse();
+  // Aggregate multiple paths per check round: site is up only if ALL paths were up at that time
+  const byTime = new Map<string, { is_up: boolean; response_time_ms: number | null }>();
+  for (const c of checks) {
+    const existing = byTime.get(c.checked_at);
+    if (!existing) {
+      byTime.set(c.checked_at, { is_up: !!c.is_up, response_time_ms: c.response_time_ms });
+    } else {
+      if (!c.is_up) existing.is_up = false;
+    }
+  }
+  const display = Array.from(byTime.entries())
+    .map(([time, data]) => ({ checked_at: time, ...data }))
+    .slice(0, 24)
+    .reverse();
   if (display.length === 0) return null;
 
   return (
@@ -21,7 +34,8 @@ function UptimeTracker({ checks }: { checks: UptimeCheck[] }) {
   );
 }
 
-function UptimeRow({ check, history }: { check: UptimeCheck; history: UptimeCheck[] }) {
+function UptimeRow({ check, history }: { check: UptimeCheck & { failing_paths?: string[] }; history: UptimeCheck[] }) {
+  const failingPaths = check.failing_paths || [];
   return (
     <div className="space-y-0.5">
       <div className="flex items-center gap-1.5">
@@ -39,12 +53,19 @@ function UptimeRow({ check, history }: { check: UptimeCheck; history: UptimeChec
           )}
         </div>
       </div>
+      {!check.is_up && failingPaths.length > 0 && (
+        <div className="text-[8px] font-mono text-[#ff4444] pl-3">
+          {failingPaths.map((p) => (
+            <span key={p} className="mr-2">{p === "/" ? "/ (root)" : p}</span>
+          ))}
+        </div>
+      )}
       <UptimeTracker checks={history} />
     </div>
   );
 }
 
-export function UptimeGridWidget({ uptime, uptimeHistory }: { uptime: UptimeCheck[]; uptimeHistory?: UptimeCheck[] }) {
+export function UptimeGridWidget({ uptime, uptimeHistory }: { uptime: (UptimeCheck & { failing_paths?: string[] })[]; uptimeHistory?: UptimeCheck[] }) {
   if (uptime.length === 0) {
     return (
       <WidgetTile title="Uptime Monitor" size="lg">

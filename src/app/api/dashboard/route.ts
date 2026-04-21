@@ -24,18 +24,47 @@ export async function GET() {
     ORDER BY backup_name
   `).all() as BackupStatus[];
 
-  // Latest uptime check per site
-  const uptime = db.prepare(`
+  // Latest uptime check per site+path
+  const uptimeAll = db.prepare(`
     SELECT * FROM uptime_checks
     WHERE id IN (
-      SELECT MAX(id) FROM uptime_checks GROUP BY site_url
+      SELECT MAX(id) FROM uptime_checks GROUP BY site_url, checked_path
     )
-    ORDER BY site_name
+    ORDER BY site_name, checked_path
   `).all() as UptimeCheck[];
 
-  // Uptime history (last 48 checks per site for sparkline)
+  // Aggregate to one entry per site for the grid (worst-case across paths)
+  // but include failing paths detail
+  const uptimeBySite = new Map<string, UptimeCheck & { failing_paths?: string[] }>();
+  for (const check of uptimeAll) {
+    const existing = uptimeBySite.get(check.site_url);
+    if (!existing) {
+      uptimeBySite.set(check.site_url, { ...check, failing_paths: check.is_up ? [] : [check.checked_path] });
+    } else {
+      // Site is down if ANY path is down
+      if (!check.is_up) {
+        existing.is_up = false;
+        existing.failing_paths = existing.failing_paths || [];
+        existing.failing_paths.push(check.checked_path);
+      }
+      // Use root path's SSL info
+      if (check.checked_path === "/" && check.ssl_expiry_date) {
+        existing.ssl_expiry_date = check.ssl_expiry_date;
+        existing.ssl_days_remaining = check.ssl_days_remaining;
+      }
+      // Use root path's response time for the main display
+      if (check.checked_path === "/") {
+        existing.response_time_ms = check.response_time_ms;
+        existing.status_code = check.status_code;
+      }
+    }
+  }
+  const uptime = Array.from(uptimeBySite.values());
+
+  // Uptime history: aggregate per site per check round (group by site_url + checked_at)
+  // For the sparkline, a site is "up" at a given time only if ALL paths were up
   const uptimeHistory = db.prepare(`
-    SELECT site_url, site_name, is_up, response_time_ms, checked_at
+    SELECT site_url, site_name, checked_path, is_up, response_time_ms, checked_at
     FROM uptime_checks
     WHERE checked_at > datetime('now', '-24 hours')
     ORDER BY site_url, checked_at DESC

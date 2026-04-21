@@ -42,6 +42,22 @@ function runMigrations(db: Database.Database) {
   if (!colNames.has("last_activity_at")) {
     db.exec("ALTER TABLE projects ADD COLUMN last_activity_at DATETIME");
   }
+
+  // Add checked_path to uptime_checks for subpage monitoring
+  const uptimeCols = db.prepare("PRAGMA table_info(uptime_checks)").all() as { name: string }[];
+  const uptimeColNames = new Set(uptimeCols.map((c) => c.name));
+
+  if (!uptimeColNames.has("checked_path")) {
+    db.exec("ALTER TABLE uptime_checks ADD COLUMN checked_path TEXT NOT NULL DEFAULT '/'");
+  }
+
+  // Add last_notified_at to alerts for escalation tracking
+  const alertCols = db.prepare("PRAGMA table_info(alerts)").all() as { name: string }[];
+  const alertColNames = new Set(alertCols.map((c) => c.name));
+
+  if (!alertColNames.has("last_notified_at")) {
+    db.exec("ALTER TABLE alerts ADD COLUMN last_notified_at DATETIME");
+  }
 }
 
 function initSchema(db: Database.Database) {
@@ -76,6 +92,7 @@ function initSchema(db: Database.Database) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       site_url TEXT NOT NULL,
       site_name TEXT NOT NULL,
+      checked_path TEXT NOT NULL DEFAULT '/',
       status_code INTEGER,
       response_time_ms INTEGER,
       is_up BOOLEAN DEFAULT 0,
@@ -132,6 +149,7 @@ function initSchema(db: Database.Database) {
       message TEXT NOT NULL,
       resolved BOOLEAN DEFAULT 0,
       notified BOOLEAN DEFAULT 0,
+      last_notified_at DATETIME,
       created_at DATETIME DEFAULT (datetime('now')),
       resolved_at DATETIME
     );

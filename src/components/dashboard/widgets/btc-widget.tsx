@@ -57,8 +57,9 @@ export function BtcWidget() {
                   <span className="text-[9px] text-muted-foreground font-mono">USD</span>
                   <span className="text-xl font-black tabular-nums">{current.usd.toLocaleString()}</span>
                 </div>
-                <div className="text-[9px] font-mono text-muted-foreground">
-                  EUR {current.eur.toLocaleString()}
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  <span className="text-[9px] text-muted-foreground font-mono">EUR</span>
+                  <span className="text-base font-black tabular-nums text-muted-foreground">{current.eur.toLocaleString()}</span>
                 </div>
               </>
             ) : (
@@ -70,6 +71,9 @@ export function BtcWidget() {
             {current && (
               <>
                 <div className="text-[11px] font-bold">
+                  USD {current.portfolioUsd.toLocaleString()}
+                </div>
+                <div className="text-[11px] font-bold text-muted-foreground">
                   EUR {current.portfolioEur.toLocaleString()}
                 </div>
                 <div className="text-[9px] font-mono text-muted-foreground">

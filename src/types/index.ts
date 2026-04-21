@@ -28,6 +28,7 @@ export interface UptimeCheck {
   id: number;
   site_url: string;
   site_name: string;
+  checked_path: string;
   status_code: number | null;
   response_time_ms: number | null;
   is_up: boolean;
@@ -84,6 +85,7 @@ export interface Alert {
   message: string;
   resolved: boolean;
   notified: boolean;
+  last_notified_at: string | null;
   created_at: string;
   resolved_at: string | null;
 }
@@ -92,6 +94,7 @@ export interface UptimeSite {
   url: string;
   name: string;
   check_interval_seconds: number;
+  paths?: string[];
 }
 
 export interface StatusPayload {

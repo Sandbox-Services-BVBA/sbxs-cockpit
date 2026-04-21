@@ -38,7 +38,8 @@ export function BankWidget() {
   const chart = data?.chart || [];
 
   const allBal = chart.map((d: { balance: number }) => d.balance);
-  const minBal = allBal.length > 0 ? Math.min(...allBal) - 500 : 0;
+  const dataMin = allBal.length > 0 ? Math.min(...allBal) : 0;
+  const minBal = dataMin < 0 ? dataMin - 500 : 0;
   const maxBal = allBal.length > 0 ? Math.max(...allBal) + 500 : 30000;
 
   return (

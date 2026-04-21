@@ -10,7 +10,10 @@ const PERIODS = [
   { key: "1w", label: "1W" },
   { key: "1m", label: "1M" },
   { key: "3m", label: "3M" },
+  { key: "6m", label: "6M" },
   { key: "1y", label: "1Y" },
+  { key: "2y", label: "2Y" },
+  { key: "all", label: "ALL" },
 ] as const;
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -43,7 +46,21 @@ export function BankWidget() {
   const maxBal = allBal.length > 0 ? Math.max(...allBal) + 500 : 30000;
 
   return (
-    <WidgetTile title="Bank Account" size="md">
+    <WidgetTile
+      title="Bank Account"
+      size="md"
+      headerRight={
+        <select
+          value={period}
+          onChange={(e) => setPeriod(e.target.value)}
+          className="bg-transparent text-[9px] font-mono text-muted-foreground border border-border px-1 py-0.5 cursor-pointer focus:outline-none"
+        >
+          {PERIODS.map((p) => (
+            <option key={p.key} value={p.key}>{p.label}</option>
+          ))}
+        </select>
+      }
+    >
       <div className="space-y-2">
         <div className="flex items-start justify-between">
           <div>
@@ -75,24 +92,6 @@ export function BankWidget() {
               </div>
             </div>
           )}
-        </div>
-
-        {/* Period toggles */}
-        <div className="flex gap-0.5">
-          {PERIODS.map((p) => (
-            <button
-              key={p.key}
-              onClick={() => setPeriod(p.key)}
-              className={cn(
-                "flex-1 py-0.5 text-[9px] font-bold font-mono border-2 transition-colors",
-                period === p.key
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-muted text-muted-foreground border-border hover:border-muted-foreground"
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
         </div>
 
         {/* Chart */}

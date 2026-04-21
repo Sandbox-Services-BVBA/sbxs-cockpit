@@ -12,6 +12,8 @@ const PERIODS = [
   { key: "30", label: "1M" },
   { key: "90", label: "3M" },
   { key: "365", label: "1Y" },
+  { key: "730", label: "2Y" },
+  { key: "1825", label: "5Y" },
 ] as const;
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -46,7 +48,21 @@ export function BtcWidget() {
   const maxEur = allEur.length > 0 ? Math.max(...allEur) + 500 : 100000;
 
   return (
-    <WidgetTile title="Bitcoin" size="md" headerRight={<span className="text-[9px] font-mono text-muted-foreground">{new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>}>
+    <WidgetTile
+      title="Bitcoin"
+      size="md"
+      headerRight={
+        <select
+          value={days}
+          onChange={(e) => setDays(e.target.value)}
+          className="bg-transparent text-[9px] font-mono text-muted-foreground border border-border px-1 py-0.5 cursor-pointer focus:outline-none"
+        >
+          {PERIODS.map((p) => (
+            <option key={p.key} value={p.key}>{p.label}</option>
+          ))}
+        </select>
+      }
+    >
       <div className="space-y-2">
         {/* Price + portfolio */}
         <div className="flex items-start justify-between">
@@ -90,24 +106,6 @@ export function BtcWidget() {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Period toggles */}
-        <div className="flex gap-0.5">
-          {PERIODS.map((p) => (
-            <button
-              key={p.key}
-              onClick={() => setDays(p.key)}
-              className={cn(
-                "flex-1 py-0.5 text-[9px] font-bold font-mono border-2 transition-colors",
-                days === p.key
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-muted text-muted-foreground border-border hover:border-muted-foreground"
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
         </div>
 
         {/* Chart */}

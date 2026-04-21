@@ -7,7 +7,10 @@ const periodLimits: Record<string, number> = {
   "1w": 30,
   "1m": 120,
   "3m": 400,
+  "6m": 800,
   "1y": 1500,
+  "2y": 3000,
+  "all": 10000,
 };
 
 const cache: Record<string, { data: unknown; expires: number }> = {};

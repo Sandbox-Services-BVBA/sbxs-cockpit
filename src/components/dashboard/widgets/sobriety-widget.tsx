@@ -93,13 +93,18 @@ function LiveRing({ startDate }: { startDate: string }) {
   }, []);
 
   const elapsed = now - new Date(startDate).getTime();
-  const days = Math.floor(elapsed / 86400000);
-  const hours = Math.floor((elapsed % 86400000) / 3600000);
-  const mins = Math.floor((elapsed % 3600000) / 60000);
-  const secs = Math.floor((elapsed % 60000) / 1000);
+  const totalDays = elapsed / 86400000;
+  const completedDays = Math.floor(totalDays);
 
-  // Ring fills up over 24h, resets each day
-  const dayProgress = (elapsed % 86400000) / 86400000;
+  // Ring fills up over 24h for the day you're working on
+  // Number ticks up only when the ring completes
+  const dayProgress = totalDays - completedDays;
+
+  // Time remaining until the ring completes (next full day)
+  const remainingMs = (1 - dayProgress) * 86400000;
+  const remHours = Math.floor(remainingMs / 3600000);
+  const remMins = Math.floor((remainingMs % 3600000) / 60000);
+  const remSecs = Math.floor((remainingMs % 60000) / 1000);
 
   const { current, next } = getStreakInfo(startDate);
 
@@ -109,20 +114,21 @@ function LiveRing({ startDate }: { startDate: string }) {
       <div className="relative" style={{ width: RING_SIZE, height: RING_SIZE }}>
         <ProgressRing progress={dayProgress} />
         <div className="absolute inset-0 flex flex-col items-center justify-center rotate-0">
-          <span className="text-3xl font-black tabular-nums leading-none">{days}</span>
+          <span className="text-3xl font-black tabular-nums leading-none">{completedDays}</span>
           <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider">
-            {days === 1 ? "day" : "days"}
+            {completedDays === 1 ? "day" : "days"}
           </span>
         </div>
       </div>
 
-      {/* Time counter below the ring */}
+      {/* Time until next full day */}
       <div className="font-mono text-xs text-muted-foreground tabular-nums">
-        <span>{String(hours).padStart(2, "0")}</span>
+        <span>{String(remHours).padStart(2, "0")}</span>
         <span className="opacity-50">:</span>
-        <span>{String(mins).padStart(2, "0")}</span>
+        <span>{String(remMins).padStart(2, "0")}</span>
         <span className="opacity-50">:</span>
-        <span>{String(secs).padStart(2, "0")}</span>
+        <span>{String(remSecs).padStart(2, "0")}</span>
+        <span className="text-[9px] ml-1 opacity-50">to day {completedDays + 1}</span>
       </div>
 
       {/* Next milestone */}

@@ -24,6 +24,10 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "SBXS Cockpit",
   },
+  icons: {
+    icon: "/icon.svg",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {

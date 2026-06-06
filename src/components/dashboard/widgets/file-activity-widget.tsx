@@ -5,6 +5,11 @@ import { WidgetTile } from "../widget-tile";
 import { cn } from "@/lib/utils";
 import type { FileChange } from "@/types";
 
+// Projects that churn constantly in the background (session logs, mail polling)
+// and drown out the files you're actually editing. Hidden by default.
+const NOISE_PROJECTS = new Set([".claude", "mailroom"]);
+const NOISE_STORAGE_KEY = "cockpit:fileActivityShowNoise";
+
 const ACTION_COLOR: Record<string, string> = {
   create: "text-emerald-400",
   modify: "text-cyan-400",
@@ -19,10 +24,13 @@ const ACTION_GLYPH: Record<string, string> = {
   move: "→",
 };
 
+function tsOf(iso: string): number {
+  return new Date(iso.includes("T") || iso.endsWith("Z") ? iso : iso.replace(" ", "T") + "Z").getTime();
+}
+
 // Compact "3s / 4m / 2h ago" formatter.
 function ago(iso: string, nowMs: number): string {
-  const then = new Date(iso.includes("T") || iso.endsWith("Z") ? iso : iso.replace(" ", "T") + "Z").getTime();
-  const secs = Math.max(0, Math.round((nowMs - then) / 1000));
+  const secs = Math.max(0, Math.round((nowMs - tsOf(iso)) / 1000));
   if (secs < 60) return `${secs}s`;
   if (secs < 3600) return `${Math.floor(secs / 60)}m`;
   return `${Math.floor(secs / 3600)}h`;
@@ -70,10 +78,29 @@ function merge(prev: Row[], incoming: FileChange[]): Row[] {
 
 export function FileActivityWidget() {
   const [rows, setRows] = useState<Row[]>([]);
-  const [active, setActive] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [failed, setFailed] = useState(false);
+  const [showNoise, setShowNoise] = useState(false);
+  const [noiseReady, setNoiseReady] = useState(false);
   const lastId = useRef(0);
+
+  // Restore the noise toggle, then persist changes (skip the initial restore).
+  useEffect(() => {
+    try {
+      setShowNoise(localStorage.getItem(NOISE_STORAGE_KEY) === "1");
+    } catch {
+      /* ignore */
+    }
+    setNoiseReady(true);
+  }, []);
+  useEffect(() => {
+    if (!noiseReady) return;
+    try {
+      localStorage.setItem(NOISE_STORAGE_KEY, showNoise ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [showNoise, noiseReady]);
 
   // Incremental real-time poll (~1s): only ever fetches rows newer than the cursor.
   useEffect(() => {
@@ -85,7 +112,6 @@ export function FileActivityWidget() {
         const data = await res.json();
         if (!alive) return;
         setFailed(false);
-        setActive(data.activeLastMinute ?? 0);
         if (typeof data.lastId === "number") lastId.current = Math.max(lastId.current, data.lastId);
         if (data.changes?.length) setRows((prev) => merge(prev, data.changes));
       } catch {
@@ -106,7 +132,11 @@ export function FileActivityWidget() {
     return () => clearInterval(t);
   }, []);
 
-  const live = active > 0;
+  const visible = showNoise ? rows : rows.filter((r) => !NOISE_PROJECTS.has(r.project ?? ""));
+  const liveCount = new Set(
+    visible.filter((r) => now - tsOf(r.changed_at) < 60000).map((r) => r.path)
+  ).size;
+  const allNoise = rows.length > 0 && visible.length === 0;
 
   return (
     <WidgetTile
@@ -114,15 +144,35 @@ export function FileActivityWidget() {
       size="sm"
       className="sm:col-span-2 lg:col-span-3 xl:col-span-5"
       headerRight={
-        <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <span className={cn("h-1.5 w-1.5 rounded-full", live ? "bg-emerald-500 animate-pulse" : "bg-zinc-600")} />
-          {live ? `${active} live` : "idle"}
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowNoise((v) => !v)}
+            title="Show/hide .claude and mailroom background activity"
+            className={cn(
+              "px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide border transition-colors",
+              showNoise
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-muted text-muted-foreground border-border hover:border-muted-foreground"
+            )}
+          >
+            noise
+          </button>
+          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <span
+              className={cn("h-1.5 w-1.5 rounded-full", liveCount > 0 ? "bg-emerald-500 animate-pulse" : "bg-zinc-600")}
+            />
+            {liveCount > 0 ? `${liveCount} live` : "idle"}
+          </span>
+        </div>
       }
     >
       {failed && rows.length === 0 ? (
         <p className="text-xs text-muted-foreground">Feed unavailable</p>
-      ) : rows.length === 0 ? (
+      ) : allNoise ? (
+        <p className="text-xs text-muted-foreground">
+          Only .claude/mailroom activity — toggle <span className="font-bold">noise</span> to show.
+        </p>
+      ) : visible.length === 0 ? (
         <p className="text-xs text-muted-foreground">No file changes in the last 30 min</p>
       ) : (
         <div className="max-h-80 overflow-y-auto scroll-smooth">
@@ -135,7 +185,7 @@ export function FileActivityWidget() {
               <col className="w-9" />
             </colgroup>
             <tbody>
-              {rows.map((r) => (
+              {visible.map((r) => (
                 <tr
                   key={r.key}
                   className={cn(r.fresh && "animate-in fade-in slide-in-from-top-1 duration-200")}

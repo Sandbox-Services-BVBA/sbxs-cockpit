@@ -1,11 +1,9 @@
 "use client";
 
-import useSWR from "swr";
+import { useEffect, useRef, useState } from "react";
 import { WidgetTile } from "../widget-tile";
 import { cn } from "@/lib/utils";
 import type { FileChange } from "@/types";
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 const ACTION_COLOR: Record<string, string> = {
   create: "text-emerald-400",
@@ -21,11 +19,10 @@ const ACTION_GLYPH: Record<string, string> = {
   move: "→",
 };
 
-// Compact "3s / 4m / 2h ago" formatter — date-fns rounds everything under a
-// minute to "less than a minute", too coarse for a live feed.
-function ago(iso: string): string {
+// Compact "3s / 4m / 2h ago" formatter.
+function ago(iso: string, nowMs: number): string {
   const then = new Date(iso.includes("T") || iso.endsWith("Z") ? iso : iso.replace(" ", "T") + "Z").getTime();
-  const secs = Math.max(0, Math.round((Date.now() - then) / 1000));
+  const secs = Math.max(0, Math.round((nowMs - then) / 1000));
   if (secs < 60) return `${secs}s`;
   if (secs < 3600) return `${Math.floor(secs / 60)}m`;
   return `${Math.floor(secs / 3600)}h`;
@@ -36,88 +33,130 @@ function shortPath(p: string): string {
   return p.replace(/^\/home\/dev-server\//, "~/").replace(/^\/home\/[^/]+\//, "~/");
 }
 
-interface Grouped {
+interface Row {
+  key: number; // stable react key = id of the event that created the row
   path: string;
   action: string;
   project: string | null;
   changed_at: string;
   count: number;
+  fresh: boolean; // animate on first mount only
+}
+
+// Append incoming events (newest-first) onto the existing list without
+// reordering existing rows — repeated saves of the file at the top just bump
+// its count in place, so the feed updates smoothly instead of flashing.
+function merge(prev: Row[], incoming: FileChange[]): Row[] {
+  const list = prev.map((r) => ({ ...r, fresh: false }));
+  for (let i = incoming.length - 1; i >= 0; i--) {
+    const ev = incoming[i];
+    const top = list[0];
+    if (top && top.path === ev.path) {
+      list[0] = { ...top, action: ev.action, changed_at: ev.changed_at, count: top.count + 1 };
+    } else {
+      list.unshift({
+        key: ev.id,
+        path: ev.path,
+        action: ev.action,
+        project: ev.project,
+        changed_at: ev.changed_at,
+        count: 1,
+        fresh: true,
+      });
+    }
+  }
+  return list.slice(0, 200);
 }
 
 export function FileActivityWidget() {
-  const { data, error } = useSWR<{ changes: FileChange[]; activeLastMinute: number }>(
-    "/api/files?minutes=30&limit=300",
-    fetcher,
-    { refreshInterval: 2000, dedupingInterval: 1000, keepPreviousData: true }
-  );
+  const [rows, setRows] = useState<Row[]>([]);
+  const [active, setActive] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const [failed, setFailed] = useState(false);
+  const lastId = useRef(0);
 
-  const changes = data?.changes ?? [];
-
-  // Collapse repeated events on the same file into one row (latest wins + count).
-  const byPath = new Map<string, Grouped>();
-  for (const c of changes) {
-    const existing = byPath.get(c.path);
-    if (existing) {
-      existing.count += 1;
-    } else {
-      byPath.set(c.path, { path: c.path, action: c.action, project: c.project, changed_at: c.changed_at, count: 1 });
+  // Incremental real-time poll (~1s): only ever fetches rows newer than the cursor.
+  useEffect(() => {
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    async function poll() {
+      try {
+        const res = await fetch(`/api/files?since=${lastId.current}&limit=200`, { cache: "no-store" });
+        const data = await res.json();
+        if (!alive) return;
+        setFailed(false);
+        setActive(data.activeLastMinute ?? 0);
+        if (typeof data.lastId === "number") lastId.current = Math.max(lastId.current, data.lastId);
+        if (data.changes?.length) setRows((prev) => merge(prev, data.changes));
+      } catch {
+        if (alive) setFailed(true);
+      }
+      if (alive) timer = setTimeout(poll, 1000);
     }
-  }
-  const files = Array.from(byPath.values()).slice(0, 50);
-  const live = (data?.activeLastMinute ?? 0) > 0;
+    poll();
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, []);
+
+  // Tick the relative timestamps every second (text-only update, no reflow flash).
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const live = active > 0;
 
   return (
     <WidgetTile
       title="File Activity"
-      size="lg"
+      size="sm"
+      className="sm:col-span-2 lg:col-span-3 xl:col-span-5"
       headerRight={
         <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <span
-            className={cn(
-              "h-1.5 w-1.5 rounded-full",
-              live ? "bg-emerald-500 animate-pulse" : "bg-zinc-600"
-            )}
-          />
-          {live ? `${data?.activeLastMinute} live` : "idle"}
+          <span className={cn("h-1.5 w-1.5 rounded-full", live ? "bg-emerald-500 animate-pulse" : "bg-zinc-600")} />
+          {live ? `${active} live` : "idle"}
         </span>
       }
     >
-      {error ? (
+      {failed && rows.length === 0 ? (
         <p className="text-xs text-muted-foreground">Feed unavailable</p>
-      ) : files.length === 0 ? (
+      ) : rows.length === 0 ? (
         <p className="text-xs text-muted-foreground">No file changes in the last 30 min</p>
       ) : (
-        <div className="max-h-72 overflow-y-auto space-y-0.5 font-mono">
-          {files.map((f) => {
-            const recent = ago(f.changed_at).endsWith("s");
-            return (
-              <div
-                key={f.path}
-                className={cn(
-                  "flex items-center gap-2 text-[10px] leading-tight",
-                  recent && "bg-cyan-500/5"
-                )}
-              >
-                <span className={cn("w-2 shrink-0 text-center font-bold", ACTION_COLOR[f.action] ?? "text-zinc-400")}>
-                  {ACTION_GLYPH[f.action] ?? "~"}
-                </span>
-                {f.project && (
-                  <span className="shrink-0 px-1 bg-muted text-muted-foreground rounded-sm max-w-[80px] truncate">
-                    {f.project}
-                  </span>
-                )}
-                <span className="flex-1 truncate text-foreground/90" title={f.path}>
-                  {shortPath(f.path)}
-                </span>
-                {f.count > 1 && (
-                  <span className="shrink-0 text-muted-foreground/60">×{f.count}</span>
-                )}
-                <span className="shrink-0 w-7 text-right text-muted-foreground tabular-nums">
-                  {ago(f.changed_at)}
-                </span>
-              </div>
-            );
-          })}
+        <div className="max-h-80 overflow-y-auto scroll-smooth">
+          <table className="w-full table-fixed font-mono text-[10px] leading-snug">
+            <colgroup>
+              <col className="w-3" />
+              <col className="w-28" />
+              <col />
+              <col className="w-8" />
+              <col className="w-9" />
+            </colgroup>
+            <tbody>
+              {rows.map((r) => (
+                <tr
+                  key={r.key}
+                  className={cn(r.fresh && "animate-in fade-in slide-in-from-top-1 duration-200")}
+                >
+                  <td className={cn("text-center font-bold align-top", ACTION_COLOR[r.action] ?? "text-zinc-400")}>
+                    {ACTION_GLYPH[r.action] ?? "~"}
+                  </td>
+                  <td className="truncate pl-1.5 pr-2 text-muted-foreground" title={r.project ?? ""}>
+                    {r.project ?? ""}
+                  </td>
+                  <td className="truncate text-foreground/90" title={r.path}>
+                    {shortPath(r.path)}
+                  </td>
+                  <td className="text-right text-muted-foreground/60 tabular-nums">
+                    {r.count > 1 ? `×${r.count}` : ""}
+                  </td>
+                  <td className="text-right text-muted-foreground tabular-nums">{ago(r.changed_at, now)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </WidgetTile>

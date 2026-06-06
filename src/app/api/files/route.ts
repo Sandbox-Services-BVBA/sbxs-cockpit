@@ -45,22 +45,35 @@ export async function POST(request: NextRequest) {
 }
 
 // Dashboard widget polls this for the live feed.
+// Pass ?since=<id> to fetch only newer rows (incremental, no flashing).
 export async function GET(request: NextRequest) {
   const db = getDb();
   const url = new URL(request.url);
+  const since = Number(url.searchParams.get("since")) || 0;
   const minutes = Math.min(Number(url.searchParams.get("minutes")) || 30, 120);
   const limit = Math.min(Number(url.searchParams.get("limit")) || 200, 500);
 
-  const changes = db
-    .prepare(
-      `SELECT * FROM file_changes
-       WHERE changed_at > datetime('now', ?)
-       ORDER BY changed_at DESC, id DESC
-       LIMIT ?`
-    )
-    .all(`-${minutes} minutes`, limit) as FileChange[];
+  const changes = (
+    since > 0
+      ? db
+          .prepare(
+            `SELECT * FROM file_changes WHERE id > ?
+             ORDER BY id DESC LIMIT ?`
+          )
+          .all(since, limit)
+      : db
+          .prepare(
+            `SELECT * FROM file_changes
+             WHERE changed_at > datetime('now', ?)
+             ORDER BY id DESC LIMIT ?`
+          )
+          .all(`-${minutes} minutes`, limit)
+  ) as FileChange[];
 
-  const lastMinute = db
+  const { maxId } = db.prepare("SELECT MAX(id) AS maxId FROM file_changes").get() as {
+    maxId: number | null;
+  };
+  const { n: activeLastMinute } = db
     .prepare(
       "SELECT COUNT(DISTINCT path) AS n FROM file_changes WHERE changed_at > datetime('now', '-60 seconds')"
     )
@@ -68,7 +81,8 @@ export async function GET(request: NextRequest) {
 
   return Response.json({
     changes,
-    activeLastMinute: lastMinute.n,
+    lastId: maxId ?? 0,
+    activeLastMinute,
     lastUpdated: new Date().toISOString(),
   });
 }

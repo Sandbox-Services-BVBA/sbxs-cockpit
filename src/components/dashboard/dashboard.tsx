@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useDashboardData } from "@/hooks/use-dashboard-data";
 import { DashboardHeader } from "./header";
 import { AlertsSummaryWidget } from "./widgets/alerts-summary-widget";
@@ -26,6 +26,8 @@ import { CATEGORY_LABELS, type WidgetCategory } from "@/lib/widget-registry";
 import { cn } from "@/lib/utils";
 
 const ALL_CATEGORIES: WidgetCategory[] = ["alerts", "infrastructure", "uptime", "business", "analytics", "projects", "devserver", "health"];
+
+const CATEGORY_STORAGE_KEY = "cockpit:disabledCategories";
 
 function CategoryFilter({
   enabled,
@@ -59,6 +61,33 @@ export function Dashboard() {
   const [enabledCategories, setEnabledCategories] = useState<Set<WidgetCategory>>(
     new Set(ALL_CATEGORIES)
   );
+  const [hydrated, setHydrated] = useState(false);
+
+  // Restore which tabs were active. We persist the *disabled* set so any
+  // category added in a later release still shows up by default.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CATEGORY_STORAGE_KEY);
+      if (raw) {
+        const disabled = new Set(JSON.parse(raw) as string[]);
+        setEnabledCategories(new Set(ALL_CATEGORIES.filter((c) => !disabled.has(c))));
+      }
+    } catch {
+      /* ignore malformed storage */
+    }
+    setHydrated(true);
+  }, []);
+
+  // Persist on change (but not before the initial restore has run).
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      const disabled = ALL_CATEGORIES.filter((c) => !enabledCategories.has(c));
+      localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(disabled));
+    } catch {
+      /* storage unavailable */
+    }
+  }, [enabledCategories, hydrated]);
 
   const toggleCategory = useCallback((cat: WidgetCategory) => {
     setEnabledCategories((prev) => {

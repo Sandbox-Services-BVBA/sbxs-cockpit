@@ -90,6 +90,14 @@ export interface Alert {
   resolved_at: string | null;
 }
 
+export interface FileChange {
+  id: number;
+  path: string;
+  action: "create" | "modify" | "delete" | "move";
+  project: string | null;
+  changed_at: string;
+}
+
 export interface UptimeSite {
   url: string;
   name: string;

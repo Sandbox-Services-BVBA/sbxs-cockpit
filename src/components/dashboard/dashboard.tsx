@@ -21,10 +21,11 @@ import { UnbilledWidget } from "./widgets/unbilled-widget";
 import { TimeEntriesWidget } from "./widgets/timeentries-widget";
 import { BtcWidget } from "./widgets/btc-widget";
 import { BankWidget } from "./widgets/bank-widget";
+import { FileActivityWidget } from "./widgets/file-activity-widget";
 import { CATEGORY_LABELS, type WidgetCategory } from "@/lib/widget-registry";
 import { cn } from "@/lib/utils";
 
-const ALL_CATEGORIES: WidgetCategory[] = ["alerts", "infrastructure", "uptime", "business", "analytics", "projects", "health"];
+const ALL_CATEGORIES: WidgetCategory[] = ["alerts", "infrastructure", "uptime", "business", "analytics", "projects", "devserver", "health"];
 
 function CategoryFilter({
   enabled,
@@ -140,6 +141,11 @@ export function Dashboard() {
               <ProjectsWidget projects={data.projects} />
               <IntegrationsWidget integrations={data.integrations} />
             </>
+          )}
+
+          {/* Dev Server */}
+          {show("devserver") && (
+            <FileActivityWidget />
           )}
 
           {/* Health */}

@@ -154,6 +154,17 @@ function initSchema(db: Database.Database) {
       resolved_at DATETIME
     );
 
+    CREATE TABLE IF NOT EXISTS file_changes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      path TEXT NOT NULL,
+      action TEXT NOT NULL DEFAULT 'modify',
+      project TEXT,
+      changed_at DATETIME DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_file_changes_time
+      ON file_changes(changed_at DESC);
+
     CREATE INDEX IF NOT EXISTS idx_server_health_checked
       ON server_health(server_name, checked_at DESC);
     CREATE INDEX IF NOT EXISTS idx_uptime_checked

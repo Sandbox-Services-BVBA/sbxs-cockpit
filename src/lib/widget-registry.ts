@@ -2,6 +2,7 @@ export type WidgetCategory =
   | "infrastructure"
   | "uptime"
   | "projects"
+  | "devserver"
   | "analytics"
   | "business"
   | "health"
@@ -23,6 +24,7 @@ export const CATEGORY_LABELS: Record<WidgetCategory, string> = {
   uptime: "Uptime",
   business: "Business",
   projects: "Projects",
+  devserver: "Dev Server",
   analytics: "Analytics",
   health: "Health",
   alerts: "Alerts",
@@ -33,6 +35,7 @@ export const CATEGORY_COLORS: Record<WidgetCategory, string> = {
   uptime: "#10b981",
   business: "#f59e0b",
   projects: "#8b5cf6",
+  devserver: "#06b6d4",
   analytics: "#f59e0b",
   health: "#ec4899",
   alerts: "#ef4444",
@@ -65,6 +68,9 @@ export const DEFAULT_WIDGETS: WidgetConfig[] = [
   // Projects
   { id: "projects-recent", title: "Recent Projects", category: "projects", size: "sm", component: "ProjectsWidget", refreshInterval: 1800000 },
   { id: "integrations", title: "Integrations", category: "projects", size: "md", component: "IntegrationsWidget", refreshInterval: 300000 },
+
+  // Dev Server
+  { id: "file-activity", title: "File Activity", category: "devserver", size: "lg", component: "FileActivityWidget", refreshInterval: 2000 },
 
   // Health
   { id: "sobriety-streak", title: "Sobriety Streak", category: "health", size: "sm", component: "SobrietyWidget" },

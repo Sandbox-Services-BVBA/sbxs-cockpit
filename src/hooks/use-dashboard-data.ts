@@ -1,10 +1,11 @@
 "use client";
 
 import useSWR from "swr";
-import type { ServerHealth, BackupStatus, UptimeCheck, CronJob, Project, IntegrationHealth, Alert } from "@/types";
+import type { ServerHealth, BackupStatus, UptimeCheck, CronJob, Project, IntegrationHealth, Alert, Service } from "@/types";
 
 interface DashboardData {
   servers: ServerHealth[];
+  services: Service[] | null;
   backups: BackupStatus[];
   uptime: UptimeCheck[];
   uptimeHistory: UptimeCheck[];

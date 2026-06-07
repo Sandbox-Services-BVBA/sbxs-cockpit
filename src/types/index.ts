@@ -90,6 +90,15 @@ export interface Alert {
   resolved_at: string | null;
 }
 
+export interface Service {
+  name: string;
+  running: number; // 0 | 1 from the agent
+  uptime_seconds: number;
+  detail: string | null;
+  checked_at: string;
+  last_beat: string | null; // from file_changes, enriched server-side
+}
+
 export interface FileChange {
   id: number;
   path: string;

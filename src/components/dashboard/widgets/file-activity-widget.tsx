@@ -5,10 +5,17 @@ import { WidgetTile } from "../widget-tile";
 import { cn } from "@/lib/utils";
 import type { FileChange } from "@/types";
 
-// Projects that churn constantly in the background (session logs, mail polling)
-// and drown out the files you're actually editing. Hidden by default.
+// Background churn that drowns out the files you're actually editing — session
+// logs, mail polling, and service heartbeat/state writes (e.g. peppol-watcher's
+// data/state.json). Service liveness lives in the Services widget instead.
+// Hidden by default; the "noise" toggle shows everything.
 const NOISE_PROJECTS = new Set([".claude", "mailroom"]);
+const NOISE_PATH = /\/data\/|\/state\.json$|\.(db|db-wal|db-shm|sqlite|jsonl)$/;
 const NOISE_STORAGE_KEY = "cockpit:fileActivityShowNoise";
+
+function isNoise(r: { project: string | null; path: string }): boolean {
+  return NOISE_PROJECTS.has(r.project ?? "") || NOISE_PATH.test(r.path);
+}
 
 const ACTION_COLOR: Record<string, string> = {
   create: "text-emerald-400",
@@ -132,7 +139,7 @@ export function FileActivityWidget() {
     return () => clearInterval(t);
   }, []);
 
-  const visible = showNoise ? rows : rows.filter((r) => !NOISE_PROJECTS.has(r.project ?? ""));
+  const visible = showNoise ? rows : rows.filter((r) => !isNoise(r));
   const liveCount = new Set(
     visible.filter((r) => now - tsOf(r.changed_at) < 60000).map((r) => r.path)
   ).size;

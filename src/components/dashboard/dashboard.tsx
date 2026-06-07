@@ -22,6 +22,7 @@ import { TimeEntriesWidget } from "./widgets/timeentries-widget";
 import { BtcWidget } from "./widgets/btc-widget";
 import { BankWidget } from "./widgets/bank-widget";
 import { FileActivityWidget } from "./widgets/file-activity-widget";
+import { ServicesWidget } from "./widgets/services-status-widget";
 import { CATEGORY_LABELS, type WidgetCategory } from "@/lib/widget-registry";
 import { cn } from "@/lib/utils";
 
@@ -173,8 +174,11 @@ export function Dashboard() {
           )}
 
           {/* Dev Server */}
-          {show("devserver") && (
-            <FileActivityWidget />
+          {show("devserver") && data && (
+            <>
+              <ServicesWidget services={data.services} />
+              <FileActivityWidget />
+            </>
           )}
 
           {/* Health */}

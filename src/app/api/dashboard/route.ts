@@ -112,8 +112,23 @@ export async function GET() {
     } catch { return null; }
   };
 
+  // Services: agent-reported running-state, enriched with the real-time "last
+  // heartbeat" derived from the file-watcher's file_changes (hybrid liveness).
+  const beats = db
+    .prepare(
+      `SELECT project AS name, MAX(changed_at) AS last_beat
+       FROM file_changes WHERE project IS NOT NULL GROUP BY project`
+    )
+    .all() as { name: string; last_beat: string }[];
+  const beatMap = new Map(beats.map((b) => [b.name, b.last_beat]));
+  const servicesRaw = getKv("services") as Array<Record<string, unknown>> | null;
+  const services = servicesRaw
+    ? servicesRaw.map((s) => ({ ...s, last_beat: beatMap.get(s.name as string) ?? null }))
+    : null;
+
   return Response.json({
     servers,
+    services,
     backups,
     uptime,
     uptimeHistory,

@@ -3,6 +3,7 @@ export type WidgetCategory =
   | "uptime"
   | "projects"
   | "devserver"
+  | "files"
   | "analytics"
   | "business"
   | "health"
@@ -25,6 +26,7 @@ export const CATEGORY_LABELS: Record<WidgetCategory, string> = {
   business: "Business",
   projects: "Projects",
   devserver: "Dev Server",
+  files: "Files",
   analytics: "Analytics",
   health: "Health",
   alerts: "Alerts",
@@ -36,6 +38,7 @@ export const CATEGORY_COLORS: Record<WidgetCategory, string> = {
   business: "#f59e0b",
   projects: "#8b5cf6",
   devserver: "#06b6d4",
+  files: "#14b8a6",
   analytics: "#f59e0b",
   health: "#ec4899",
   alerts: "#ef4444",

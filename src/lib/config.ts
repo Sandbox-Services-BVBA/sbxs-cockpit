@@ -2,6 +2,12 @@ export const config = {
   // API key for cockpit-agent to authenticate status pushes
   apiKey: process.env.COCKPIT_API_KEY || "dev-key-change-me",
 
+  // Read-only file explorer: the cockpit backend proxies to the dev-server
+  // file-watcher's fs endpoint (over Tailscale, server-to-server with apiKey).
+  // fsAccessKey gates the browser; empty => file access disabled (fail-closed).
+  devserverFsUrl: (process.env.DEVSERVER_FS_URL || "http://100.96.197.107:8765").replace(/\/$/, ""),
+  fsAccessKey: process.env.FS_ACCESS_KEY || "",
+
   // Telegram bot
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || "",
   telegramChatId: process.env.TELEGRAM_CHAT_ID || "",

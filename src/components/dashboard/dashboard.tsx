@@ -23,10 +23,12 @@ import { BtcWidget } from "./widgets/btc-widget";
 import { BankWidget } from "./widgets/bank-widget";
 import { FileActivityWidget } from "./widgets/file-activity-widget";
 import { ServicesWidget } from "./widgets/services-status-widget";
+import { FileExplorer } from "./widgets/file-explorer-widget";
+import { useFileViewer } from "@/lib/file-viewer-store";
 import { CATEGORY_LABELS, type WidgetCategory } from "@/lib/widget-registry";
 import { cn } from "@/lib/utils";
 
-const ALL_CATEGORIES: WidgetCategory[] = ["alerts", "infrastructure", "uptime", "business", "analytics", "projects", "devserver", "health"];
+const ALL_CATEGORIES: WidgetCategory[] = ["alerts", "infrastructure", "uptime", "business", "analytics", "projects", "devserver", "files", "health"];
 
 const CATEGORY_STORAGE_KEY = "cockpit:disabledCategories";
 
@@ -101,6 +103,13 @@ export function Dashboard() {
       return next;
     });
   }, []);
+
+  // Clicking a path in File Activity opens the Files tab so the explorer shows.
+  const requestedFile = useFileViewer();
+  useEffect(() => {
+    if (!requestedFile.path) return;
+    setEnabledCategories((prev) => (prev.has("files") ? prev : new Set(prev).add("files")));
+  }, [requestedFile]);
 
   const show = (cat: WidgetCategory) => enabledCategories.has(cat);
 
@@ -180,6 +189,9 @@ export function Dashboard() {
               <FileActivityWidget />
             </>
           )}
+
+          {/* Files */}
+          {show("files") && <FileExplorer />}
 
           {/* Health */}
           {show("health") && (

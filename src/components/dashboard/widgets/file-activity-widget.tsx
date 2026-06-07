@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { WidgetTile } from "../widget-tile";
 import { cn } from "@/lib/utils";
+import { openFile } from "@/lib/file-viewer-store";
 import type { FileChange } from "@/types";
 
 // Background churn that drowns out the files you're actually editing — session
@@ -203,8 +204,13 @@ export function FileActivityWidget() {
                   <td className="truncate pl-1.5 pr-2 text-muted-foreground" title={r.project ?? ""}>
                     {r.project ?? ""}
                   </td>
-                  <td className="truncate text-foreground/90" title={r.path}>
-                    {shortPath(r.path)}
+                  <td className="truncate" title={`Open ${r.path}`}>
+                    <button
+                      onClick={() => openFile(r.path)}
+                      className="max-w-full truncate text-foreground/90 hover:text-cyan-300 hover:underline"
+                    >
+                      {shortPath(r.path)}
+                    </button>
                   </td>
                   <td className="text-right text-muted-foreground/60 tabular-nums">
                     {r.count > 1 ? `×${r.count}` : ""}

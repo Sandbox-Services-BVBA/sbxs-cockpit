@@ -150,7 +150,7 @@ export function FileActivityWidget() {
     <WidgetTile
       title="File Activity"
       size="sm"
-      className="sm:col-span-2 lg:col-span-3 xl:col-span-5"
+      className="sm:col-span-2 lg:col-span-4 xl:col-span-6"
       headerRight={
         <div className="flex items-center gap-2">
           <button
@@ -183,7 +183,7 @@ export function FileActivityWidget() {
       ) : visible.length === 0 ? (
         <p className="text-xs text-muted-foreground">No file changes in the last 30 min</p>
       ) : (
-        <div className="max-h-80 overflow-y-auto scroll-smooth">
+        <div className="h-[60vh] overflow-y-auto scroll-smooth">
           <table className="w-full table-fixed font-mono text-[10px] leading-snug">
             <colgroup>
               <col className="w-3" />

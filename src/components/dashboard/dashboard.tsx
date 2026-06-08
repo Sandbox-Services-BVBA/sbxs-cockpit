@@ -31,6 +31,36 @@ import { cn } from "@/lib/utils";
 const ALL_CATEGORIES: WidgetCategory[] = ["alerts", "infrastructure", "uptime", "business", "analytics", "projects", "devserver", "files", "health"];
 
 const CATEGORY_STORAGE_KEY = "cockpit:disabledCategories";
+const LAYOUT_STORAGE_KEY = "cockpit:layout";
+
+type LayoutMode = "grid" | "columns";
+
+// Vertical: responsive grid that wraps into rows (good for phones).
+const GRID_CLS = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-2";
+// Horizontal: widgets fill a column top-to-bottom then wrap rightward; the
+// page scrolls sideways. Fixed viewport height drives the column wrapping.
+const COLS_CLS =
+  "flex flex-col flex-wrap content-start gap-2 overflow-x-auto h-[calc(100vh-128px)] pb-2 [&>*]:w-[400px] [&>*]:shrink-0";
+
+function LayoutToggle({ layout, onChange }: { layout: LayoutMode; onChange: (m: LayoutMode) => void }) {
+  return (
+    <div className="flex shrink-0 border-2 border-border">
+      {(["grid", "columns"] as const).map((m) => (
+        <button
+          key={m}
+          onClick={() => onChange(m)}
+          title={m === "grid" ? "Vertical (stack & scroll down)" : "Horizontal (columns, scroll right)"}
+          className={cn(
+            "px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors",
+            layout === m ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {m === "grid" ? "Vertical" : "Horizontal"}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function CategoryFilter({
   enabled,
@@ -65,6 +95,7 @@ export function Dashboard() {
     new Set(ALL_CATEGORIES)
   );
   const [hydrated, setHydrated] = useState(false);
+  const [layout, setLayout] = useState<LayoutMode>("grid");
 
   // Restore which tabs were active. We persist the *disabled* set so any
   // category added in a later release still shows up by default.
@@ -75,6 +106,8 @@ export function Dashboard() {
         const disabled = new Set(JSON.parse(raw) as string[]);
         setEnabledCategories(new Set(ALL_CATEGORIES.filter((c) => !disabled.has(c))));
       }
+      const l = localStorage.getItem(LAYOUT_STORAGE_KEY);
+      if (l === "columns" || l === "grid") setLayout(l);
     } catch {
       /* ignore malformed storage */
     }
@@ -87,10 +120,11 @@ export function Dashboard() {
     try {
       const disabled = ALL_CATEGORIES.filter((c) => !enabledCategories.has(c));
       localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(disabled));
+      localStorage.setItem(LAYOUT_STORAGE_KEY, layout);
     } catch {
       /* storage unavailable */
     }
-  }, [enabledCategories, hydrated]);
+  }, [enabledCategories, layout, hydrated]);
 
   const toggleCategory = useCallback((cat: WidgetCategory) => {
     setEnabledCategories((prev) => {
@@ -127,10 +161,13 @@ export function Dashboard() {
         </div>
       )}
 
-      <main className="p-2 space-y-2 max-w-[1800px] mx-auto">
-        <CategoryFilter enabled={enabledCategories} onToggle={toggleCategory} />
+      <main className={cn("p-2 space-y-2 mx-auto", layout === "columns" ? "max-w-none" : "max-w-[1800px]")}>
+        <div className="flex items-start justify-between gap-2">
+          <CategoryFilter enabled={enabledCategories} onToggle={toggleCategory} />
+          <LayoutToggle layout={layout} onChange={setLayout} />
+        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-2">
+        <div className={layout === "columns" ? COLS_CLS : GRID_CLS}>
           {/* Alerts */}
           {show("alerts") && data && (
             <AlertsSummaryWidget alerts={data.alerts} />

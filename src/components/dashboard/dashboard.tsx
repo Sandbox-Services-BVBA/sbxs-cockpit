@@ -40,7 +40,7 @@ const GRID_CLS = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 
 // Horizontal: widgets fill a column top-to-bottom then wrap rightward; the
 // page scrolls sideways. Fixed viewport height drives the column wrapping.
 const COLS_CLS =
-  "flex flex-col flex-wrap content-start gap-2 overflow-x-auto h-[calc(100vh-128px)] pb-2 [&>*]:w-[400px] [&>*]:shrink-0";
+  "flex flex-col flex-wrap content-start gap-2 overflow-x-auto h-[calc(100vh-128px)] pb-2 [&>*]:w-[400px] [&>*]:shrink-0 [&>.fa-wide]:w-[820px]";
 
 function LayoutToggle({ layout, onChange }: { layout: LayoutMode; onChange: (m: LayoutMode) => void }) {
   return (
@@ -223,7 +223,7 @@ export function Dashboard() {
           {show("devserver") && data && (
             <>
               <ServicesWidget services={data.services} />
-              <FileActivityWidget />
+              <FileActivityWidget layout={layout} />
             </>
           )}
 

@@ -84,7 +84,7 @@ function merge(prev: Row[], incoming: FileChange[]): Row[] {
   return list.slice(0, 200);
 }
 
-export function FileActivityWidget() {
+export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "columns" }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const [failed, setFailed] = useState(false);
@@ -150,7 +150,7 @@ export function FileActivityWidget() {
     <WidgetTile
       title="File Activity"
       size="sm"
-      className="sm:col-span-2 lg:col-span-4 xl:col-span-6"
+      className="fa-wide sm:col-span-2 lg:col-span-4 xl:col-span-6"
       headerRight={
         <div className="flex items-center gap-2">
           <button
@@ -183,7 +183,7 @@ export function FileActivityWidget() {
       ) : visible.length === 0 ? (
         <p className="text-xs text-muted-foreground">No file changes in the last 30 min</p>
       ) : (
-        <div className="h-[60vh] overflow-y-auto scroll-smooth">
+        <div className={cn("overflow-y-auto scroll-smooth", layout === "columns" ? "h-[calc(100vh-168px)]" : "h-[60vh]")}>
           <table className="w-full table-fixed font-mono text-[10px] leading-snug">
             <colgroup>
               <col className="w-3" />

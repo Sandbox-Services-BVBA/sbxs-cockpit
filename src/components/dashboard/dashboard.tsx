@@ -23,8 +23,7 @@ import { BtcWidget } from "./widgets/btc-widget";
 import { BankWidget } from "./widgets/bank-widget";
 import { FileActivityWidget } from "./widgets/file-activity-widget";
 import { ServicesWidget } from "./widgets/services-status-widget";
-import { FileExplorer } from "./widgets/file-explorer-widget";
-import { useFileViewer } from "@/lib/file-viewer-store";
+import { FileTreeWidget, FileModal } from "./widgets/file-explorer-widget";
 import { CATEGORY_LABELS, type WidgetCategory } from "@/lib/widget-registry";
 import { cn } from "@/lib/utils";
 
@@ -138,13 +137,6 @@ export function Dashboard() {
     });
   }, []);
 
-  // Clicking a path in File Activity opens the Files tab so the explorer shows.
-  const requestedFile = useFileViewer();
-  useEffect(() => {
-    if (!requestedFile.path) return;
-    setEnabledCategories((prev) => (prev.has("files") ? prev : new Set(prev).add("files")));
-  }, [requestedFile]);
-
   const show = (cat: WidgetCategory) => enabledCategories.has(cat);
 
   return (
@@ -168,6 +160,9 @@ export function Dashboard() {
         </div>
 
         <div className={layout === "columns" ? COLS_CLS : GRID_CLS}>
+          {/* File Activity — first / focus widget */}
+          {show("devserver") && data && <FileActivityWidget layout={layout} />}
+
           {/* Alerts */}
           {show("alerts") && data && (
             <AlertsSummaryWidget alerts={data.alerts} />
@@ -219,16 +214,11 @@ export function Dashboard() {
             </>
           )}
 
-          {/* Dev Server */}
-          {show("devserver") && data && (
-            <>
-              <ServicesWidget services={data.services} />
-              <FileActivityWidget layout={layout} />
-            </>
-          )}
+          {/* Dev Server (Services; File Activity is rendered first above) */}
+          {show("devserver") && data && <ServicesWidget services={data.services} />}
 
-          {/* Files */}
-          {show("files") && <FileExplorer />}
+          {/* Files — lightweight tree; clicking a file opens the full explorer modal */}
+          {show("files") && <FileTreeWidget layout={layout} />}
 
           {/* Health */}
           {show("health") && (
@@ -247,6 +237,7 @@ export function Dashboard() {
           </div>
         )}
       </main>
+      <FileModal />
     </div>
   );
 }

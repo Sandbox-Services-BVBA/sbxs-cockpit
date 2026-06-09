@@ -1,8 +1,11 @@
 "use client";
 
-import { RefreshCw, Moon, Sun } from "lucide-react";
+import { RefreshCw, Moon, Sun, Monitor } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+
+const THEME_ORDER = ["system", "light", "dark"] as const;
 
 export function DashboardHeader({
   lastUpdated,
@@ -14,6 +17,12 @@ export function DashboardHeader({
   loading: boolean;
 }) {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const current = mounted ? theme ?? "system" : "system";
+  const cycleTheme = () => setTheme(THEME_ORDER[(THEME_ORDER.indexOf(current as (typeof THEME_ORDER)[number]) + 1) % 3]);
+  const ThemeIcon = current === "light" ? Sun : current === "dark" ? Moon : Monitor;
 
   return (
     <header className="border-b-2 border-border bg-card">
@@ -41,11 +50,11 @@ export function DashboardHeader({
             <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} />
           </button>
           <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            onClick={cycleTheme}
+            title={`Theme: ${current} (click to cycle system / light / dark)`}
             className="h-6 w-6 flex items-center justify-center border-2 border-border bg-muted hover:bg-accent"
           >
-            <Sun className="h-3 w-3 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-3 w-3 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <ThemeIcon className="h-3 w-3" />
           </button>
         </div>
       </div>

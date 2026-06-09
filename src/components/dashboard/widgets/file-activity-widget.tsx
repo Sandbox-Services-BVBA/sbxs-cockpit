@@ -9,13 +9,23 @@ import type { FileChange } from "@/types";
 // Background churn that drowns out the files you're actually editing — session
 // logs, mail polling, and service heartbeat/state writes (e.g. peppol-watcher's
 // data/state.json). Service liveness lives in the Services widget instead.
-// Hidden by default; the "noise" toggle shows everything.
 const NOISE_PROJECTS = new Set([".claude", "mailroom"]);
 const NOISE_PATH = /\/data\/|\/state\.json$|\.(db|db-wal|db-shm|sqlite|jsonl)$/;
 const NOISE_STORAGE_KEY = "cockpit:fileActivityShowNoise";
 
 function isNoise(r: { project: string | null; path: string }): boolean {
   return NOISE_PROJECTS.has(r.project ?? "") || NOISE_PATH.test(r.path);
+}
+
+// Atomic-write temp/duplicate artifacts: editors and tools write a sibling like
+// "name.tmp.<pid>.<hash>" (or sed/backup/swap files) then rename — so every real
+// save spawns a duplicate event for a file that never really existed.
+const TEMP_PATH =
+  /\.tmp\.\d+\.[0-9a-f]+$|\.\d+\.tmp$|(^|\/)sed[A-Za-z0-9]{6}$|\.goutputstream-|\.backup\.\d+$|(^|\/)4913$|\.(swp|swx|swo|bak|orig|old|part|crdownload)$|~$|(^|\/)#.*#$|(^|\/)\.#/i;
+const TEMP_STORAGE_KEY = "cockpit:fileActivityShowTemp";
+
+function isTemp(path: string): boolean {
+  return TEMP_PATH.test(path);
 }
 
 const ACTION_COLOR: Record<string, string> = {
@@ -50,28 +60,30 @@ function shortPath(p: string): string {
 }
 
 interface Row {
-  key: number; // stable react key = id of the event that created the row
   path: string;
   action: string;
   project: string | null;
   changed_at: string;
   count: number;
-  fresh: boolean; // animate on first mount only
+  fresh: boolean; // animate on first appearance only
 }
 
-// Append incoming events (newest-first) onto the existing list without
-// reordering existing rows — repeated saves of the file at the top just bump
-// its count in place, so the feed updates smoothly instead of flashing.
+// One row per file: re-touching a file moves it to the front and bumps its
+// count, instead of adding a duplicate row. Keeps the list short and readable.
 function merge(prev: Row[], incoming: FileChange[]): Row[] {
-  const list = prev.map((r) => ({ ...r, fresh: false }));
+  const map = new Map<string, Row>();
+  // Seed oldest-first so Map insertion order runs oldest..newest.
+  for (let i = prev.length - 1; i >= 0; i--) {
+    map.set(prev[i].path, { ...prev[i], fresh: false });
+  }
   for (let i = incoming.length - 1; i >= 0; i--) {
     const ev = incoming[i];
-    const top = list[0];
-    if (top && top.path === ev.path) {
-      list[0] = { ...top, action: ev.action, changed_at: ev.changed_at, count: top.count + 1 };
+    const ex = map.get(ev.path);
+    if (ex) {
+      map.delete(ev.path);
+      map.set(ev.path, { ...ex, action: ev.action, changed_at: ev.changed_at, count: ex.count + 1, fresh: false });
     } else {
-      list.unshift({
-        key: ev.id,
+      map.set(ev.path, {
         path: ev.path,
         action: ev.action,
         project: ev.project,
@@ -81,7 +93,24 @@ function merge(prev: Row[], incoming: FileChange[]): Row[] {
       });
     }
   }
-  return list.slice(0, 3500);
+  return Array.from(map.values()).reverse().slice(0, 2000); // newest-first
+}
+
+function Toggle({ on, onClick, label, title }: { on: boolean; onClick: () => void; label: string; title: string }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={cn(
+        "px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide border transition-colors",
+        on
+          ? "bg-primary text-primary-foreground border-primary"
+          : "bg-muted text-muted-foreground border-border hover:border-muted-foreground"
+      )}
+    >
+      {label}
+    </button>
+  );
 }
 
 export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "columns" }) {
@@ -89,26 +118,29 @@ export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "col
   const [now, setNow] = useState(() => Date.now());
   const [failed, setFailed] = useState(false);
   const [showNoise, setShowNoise] = useState(false);
-  const [noiseReady, setNoiseReady] = useState(false);
+  const [showTemp, setShowTemp] = useState(false);
+  const [prefsReady, setPrefsReady] = useState(false);
   const lastId = useRef(0);
 
-  // Restore the noise toggle, then persist changes (skip the initial restore).
+  // Restore filter toggles, then persist changes (skip the initial restore).
   useEffect(() => {
     try {
       setShowNoise(localStorage.getItem(NOISE_STORAGE_KEY) === "1");
+      setShowTemp(localStorage.getItem(TEMP_STORAGE_KEY) === "1");
     } catch {
       /* ignore */
     }
-    setNoiseReady(true);
+    setPrefsReady(true);
   }, []);
   useEffect(() => {
-    if (!noiseReady) return;
+    if (!prefsReady) return;
     try {
       localStorage.setItem(NOISE_STORAGE_KEY, showNoise ? "1" : "0");
+      localStorage.setItem(TEMP_STORAGE_KEY, showTemp ? "1" : "0");
     } catch {
       /* ignore */
     }
-  }, [showNoise, noiseReady]);
+  }, [showNoise, showTemp, prefsReady]);
 
   // Incremental real-time poll (~1s): only ever fetches rows newer than the cursor.
   useEffect(() => {
@@ -134,19 +166,15 @@ export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "col
     };
   }, []);
 
-  // Tick the relative timestamps every second (text-only update, no reflow flash).
+  // Tick the relative timestamps every second (text-only update).
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  const visible = showNoise ? rows : rows.filter((r) => !isNoise(r));
-  const liveCount = new Set(
-    visible.filter((r) => now - tsOf(r.changed_at) < 60000).map((r) => r.path)
-  ).size;
-  const allNoise = rows.length > 0 && visible.length === 0;
-  // Bound the DOM: keep up to 3h of data, but only render the most recent rows.
-  const shownRows = visible.slice(0, 1500);
+  const visible = rows.filter((r) => (showNoise || !isNoise(r)) && (showTemp || !isTemp(r.path)));
+  const liveCount = visible.filter((r) => now - tsOf(r.changed_at) < 60000).length;
+  const allFiltered = rows.length > 0 && visible.length === 0;
 
   return (
     <WidgetTile
@@ -155,22 +183,12 @@ export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "col
       className="fa-wide sm:col-span-2 lg:col-span-4 xl:col-span-6"
       headerRight={
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowNoise((v) => !v)}
-            title="Show/hide .claude and mailroom background activity"
-            className={cn(
-              "px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide border transition-colors",
-              showNoise
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-muted text-muted-foreground border-border hover:border-muted-foreground"
-            )}
-          >
-            noise
-          </button>
+          <Toggle on={showTemp} onClick={() => setShowTemp((v) => !v)} label="temp"
+            title="Show/hide temporary/duplicate write artifacts (name.tmp.*, backups, swap files)" />
+          <Toggle on={showNoise} onClick={() => setShowNoise((v) => !v)} label="noise"
+            title="Show/hide .claude, mailroom and service state churn" />
           <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <span
-              className={cn("h-1.5 w-1.5 rounded-full", liveCount > 0 ? "bg-emerald-500 animate-pulse" : "bg-zinc-600")}
-            />
+            <span className={cn("h-1.5 w-1.5 rounded-full", liveCount > 0 ? "bg-emerald-500 animate-pulse" : "bg-zinc-600")} />
             {liveCount > 0 ? `${liveCount} live` : "idle"}
           </span>
         </div>
@@ -178,9 +196,9 @@ export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "col
     >
       {failed && rows.length === 0 ? (
         <p className="text-xs text-muted-foreground">Feed unavailable</p>
-      ) : allNoise ? (
+      ) : allFiltered ? (
         <p className="text-xs text-muted-foreground">
-          Only .claude/mailroom activity — toggle <span className="font-bold">noise</span> to show.
+          Everything is filtered — toggle <span className="font-bold">noise</span> / <span className="font-bold">temp</span> to show.
         </p>
       ) : visible.length === 0 ? (
         <p className="text-xs text-muted-foreground">No file changes in the last 3 hours</p>
@@ -195,9 +213,9 @@ export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "col
               <col className="w-9" />
             </colgroup>
             <tbody>
-              {shownRows.map((r) => (
+              {visible.map((r) => (
                 <tr
-                  key={r.key}
+                  key={r.path}
                   className={cn(r.fresh && "animate-in fade-in slide-in-from-top-1 duration-200")}
                 >
                   <td className={cn("text-center font-bold align-top", ACTION_COLOR[r.action] ?? "text-zinc-400")}>

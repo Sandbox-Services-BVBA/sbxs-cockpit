@@ -23,6 +23,7 @@ import { BtcWidget } from "./widgets/btc-widget";
 import { BankWidget } from "./widgets/bank-widget";
 import { FileActivityWidget } from "./widgets/file-activity-widget";
 import { ServicesWidget } from "./widgets/services-status-widget";
+import { AgentsWidget } from "./widgets/agents-widget";
 import { FileTreeWidget, FileModal } from "./widgets/file-explorer-widget";
 import { CATEGORY_LABELS, type WidgetCategory } from "@/lib/widget-registry";
 import { cn } from "@/lib/utils";
@@ -214,8 +215,9 @@ export function Dashboard() {
             </>
           )}
 
-          {/* Dev Server (Services; File Activity is rendered first above) */}
+          {/* Dev Server (File Activity is rendered first above) */}
           {show("devserver") && data && <ServicesWidget services={data.services} />}
+          {show("devserver") && <AgentsWidget />}
 
           {/* Files — lightweight tree; clicking a file opens the full explorer modal */}
           {show("files") && <FileTreeWidget layout={layout} />}

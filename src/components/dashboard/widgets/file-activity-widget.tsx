@@ -81,7 +81,7 @@ function merge(prev: Row[], incoming: FileChange[]): Row[] {
       });
     }
   }
-  return list.slice(0, 200);
+  return list.slice(0, 500);
 }
 
 export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "columns" }) {
@@ -116,7 +116,7 @@ export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "col
     let timer: ReturnType<typeof setTimeout>;
     async function poll() {
       try {
-        const res = await fetch(`/api/files?since=${lastId.current}&limit=200`, { cache: "no-store" });
+        const res = await fetch(`/api/files?since=${lastId.current}&minutes=180&limit=500`, { cache: "no-store" });
         const data = await res.json();
         if (!alive) return;
         setFailed(false);
@@ -181,7 +181,7 @@ export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "col
           Only .claude/mailroom activity — toggle <span className="font-bold">noise</span> to show.
         </p>
       ) : visible.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No file changes in the last 30 min</p>
+        <p className="text-xs text-muted-foreground">No file changes in the last 3 hours</p>
       ) : (
         <div className={cn("overflow-y-auto scroll-smooth", layout === "columns" ? "h-[calc(100vh-168px)]" : "h-[60vh]")}>
           <table className="w-full table-fixed font-mono text-[10px] leading-snug">

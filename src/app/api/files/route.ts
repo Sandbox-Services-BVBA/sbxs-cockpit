@@ -37,8 +37,8 @@ export async function POST(request: NextRequest) {
     });
     insertMany(events);
 
-    // Keep the feed lean: drop anything older than 2 hours.
-    db.prepare("DELETE FROM file_changes WHERE changed_at < datetime('now', '-2 hours')").run();
+    // Retain ~3h of history (prune at 4h for margin).
+    db.prepare("DELETE FROM file_changes WHERE changed_at < datetime('now', '-4 hours')").run();
   }
 
   return Response.json({ ok: true, ingested: events.length });
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
   const db = getDb();
   const url = new URL(request.url);
   const since = Number(url.searchParams.get("since")) || 0;
-  const minutes = Math.min(Number(url.searchParams.get("minutes")) || 30, 120);
+  const minutes = Math.min(Number(url.searchParams.get("minutes")) || 30, 240);
   const limit = Math.min(Number(url.searchParams.get("limit")) || 200, 500);
 
   const changes = (

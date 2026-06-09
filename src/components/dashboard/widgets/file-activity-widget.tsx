@@ -81,7 +81,7 @@ function merge(prev: Row[], incoming: FileChange[]): Row[] {
       });
     }
   }
-  return list.slice(0, 2000);
+  return list.slice(0, 3500);
 }
 
 export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "columns" }) {
@@ -116,7 +116,7 @@ export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "col
     let timer: ReturnType<typeof setTimeout>;
     async function poll() {
       try {
-        const res = await fetch(`/api/files?since=${lastId.current}&minutes=180&limit=2000`, { cache: "no-store" });
+        const res = await fetch(`/api/files?since=${lastId.current}&minutes=180&limit=3500`, { cache: "no-store" });
         const data = await res.json();
         if (!alive) return;
         setFailed(false);
@@ -145,6 +145,8 @@ export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "col
     visible.filter((r) => now - tsOf(r.changed_at) < 60000).map((r) => r.path)
   ).size;
   const allNoise = rows.length > 0 && visible.length === 0;
+  // Bound the DOM: keep up to 3h of data, but only render the most recent rows.
+  const shownRows = visible.slice(0, 1500);
 
   return (
     <WidgetTile
@@ -193,7 +195,7 @@ export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "col
               <col className="w-9" />
             </colgroup>
             <tbody>
-              {visible.map((r) => (
+              {shownRows.map((r) => (
                 <tr
                   key={r.key}
                   className={cn(r.fresh && "animate-in fade-in slide-in-from-top-1 duration-200")}

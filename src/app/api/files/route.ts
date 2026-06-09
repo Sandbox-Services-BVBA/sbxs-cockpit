@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const since = Number(url.searchParams.get("since")) || 0;
   const minutes = Math.min(Number(url.searchParams.get("minutes")) || 30, 240);
-  const limit = Math.min(Number(url.searchParams.get("limit")) || 200, 2500);
+  const limit = Math.min(Number(url.searchParams.get("limit")) || 200, 4000);
 
   const changes = (
     since > 0

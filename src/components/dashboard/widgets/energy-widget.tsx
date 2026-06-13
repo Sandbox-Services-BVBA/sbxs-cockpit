@@ -186,10 +186,9 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
   );
 }
 
-const LIVE_WINDOW = 1800; // seconds shown in the flowing live view (30 min)
-
 export function EnergyWidget() {
   const [view, setView] = useState<"day" | "live">("day");
+  const [liveWin, setLiveWin] = useState<number>(1800); // live window seconds: 300 (5m) or 1800 (30m)
   const [dayOffset, setDayOffset] = useState<number>(0);
   const [show, setShow] = useState<Record<MetricKey, boolean>>({ solar: true, usage: true, bat: true, house: true });
   const [tick, setTick] = useState(0); // bumps on each live refresh → heartbeat + live window
@@ -211,9 +210,9 @@ export function EnergyWidget() {
     onSuccess: () => setTick((t) => t + 1),
   });
 
-  // Fetch window: per refresh tick (3s). Live fetches a bit >30min for buffer.
+  // Fetch window: per refresh tick (3s). Live fetches a little beyond the window.
   const fetchEnd = useMemo(() => Math.floor(Date.now() / 1000), [tick]);
-  const winStart = isLive ? fetchEnd - LIVE_WINDOW - 120 : dayStart;
+  const winStart = isLive ? fetchEnd - liveWin - 60 : dayStart;
   const winEnd = isLive ? fetchEnd : dayEnd;
   const { data: hist } = useSWR<{ points: HistPoint[] }>(
     `/api/energy?start=${winStart}&end=${winEnd}`,
@@ -221,11 +220,13 @@ export function EnergyWidget() {
     { refreshInterval: isLive ? REFRESH_MS : dayOffset === 0 ? 10000 : 0, keepPreviousData: true }
   );
 
-  // Display domain + ticks: sliding 30-min window (live) or full day.
-  const domStart = isLive ? clock - LIVE_WINDOW : dayStart;
+  // Display domain + ticks: sliding live window (5m / 30m) or full day.
+  const domStart = isLive ? clock - liveWin : dayStart;
   const domEnd = isLive ? clock : dayEnd;
+  const liveStep = liveWin <= 600 ? 60 : 300; // 1-min ticks for 5m, 5-min for 30m
+  const liveN = Math.round(liveWin / liveStep);
   const xTicks = isLive
-    ? Array.from({ length: 7 }, (_, i) => domEnd - (6 - i) * 300) // every 5 min
+    ? Array.from({ length: liveN + 1 }, (_, i) => domEnd - (liveN - i) * liveStep)
     : Array.from({ length: 9 }, (_, i) => dayStart + i * 3 * 3600); // every 3h
 
   if (live?.error) {
@@ -322,7 +323,7 @@ export function EnergyWidget() {
         <div className="flex items-center justify-between gap-2 border-t border-border pt-1.5">
           <span className="flex items-baseline gap-2">
             <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {isLive ? "Grid (30 min)" : "Grid vandaag"}
+              {isLive ? `Grid (${Math.round(liveWin / 60)} min)` : "Grid vandaag"}
             </span>
             <span className="text-[11px] font-bold tabular-nums" style={{ color: gridColor(dayNet * 1000) }}>
               {dayNet >= 0 ? "+" : "−"}
@@ -367,7 +368,23 @@ export function EnergyWidget() {
                 </button>
               </div>
             )}
-            {isLive && <span className="text-[10px] font-mono text-muted-foreground">flowing · laatste 30 min</span>}
+            {isLive && (
+              <div className="flex">
+                {([300, 1800] as const).map((w, i) => (
+                  <button
+                    key={w}
+                    onClick={() => setLiveWin(w)}
+                    className={cn(
+                      "border-2 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors",
+                      i === 1 ? "border-l-0" : "",
+                      liveWin === w ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {w === 300 ? "5m" : "30m"}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -403,6 +420,10 @@ export function EnergyWidget() {
                     <stop offset={goff(0)} stopColor={C.usage} />
                     <stop offset={goff(0)} stopColor={C.gridPink} />
                   </linearGradient>
+                  <linearGradient id="houseFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={C.house} stopOpacity={0.22} />
+                    <stop offset="100%" stopColor={C.house} stopOpacity={0.02} />
+                  </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />
                 <XAxis
@@ -427,11 +448,12 @@ export function EnergyWidget() {
                 />
                 <Tooltip content={<ChartTooltip />} />
                 <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.7} />
+                {/* Verbruik first = filled grey backdrop (house load, always >= 0) */}
+                {show.house && (
+                  <Area type="linear" dataKey="house_w" stroke={C.house} fill="url(#houseFill)" strokeWidth={1.4} baseValue={0} dot={false} isAnimationActive={false} connectNulls />
+                )}
                 {show.solar && (
                   <Area type="linear" dataKey="solar_w" stroke={C.solar} fill="url(#solarFill)" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />
-                )}
-                {show.house && (
-                  <Line type="linear" dataKey="house_w" stroke={C.house} strokeWidth={1.4} dot={false} isAnimationActive={false} connectNulls />
                 )}
                 {show.usage && (
                   <Line type="linear" dataKey="usage" stroke="url(#gridGrad)" strokeWidth={2.2} dot={false} isAnimationActive={false} connectNulls />

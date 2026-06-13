@@ -65,14 +65,15 @@ function dayLabel(offset: number, start: number) {
   return new Date(start * 1000).toLocaleDateString("nl-BE", { weekday: "short", day: "numeric", month: "short" });
 }
 
-// HomeWizard-style colors: grid import = purple, grid export = green.
+// One fixed color per metric — matches the top stat boxes, never flips.
+// Sign convention on the chart: ABOVE zero = producing/storing/selling
+// (solar, battery charging, grid injection); BELOW zero = drawing down
+// (grid import, battery discharging).
 const C = {
-  solar: "#f59e0b",
-  gridIn: "#a855f7", // drawing from grid (above 0)
-  gridOut: "#22c55e", // returning to grid / surplus (below 0)
-  battery: "#a855f7", // SOC bars
-  batLine: "#6366f1", // battery on the chart (indigo, distinct from grid purple)
-  house: "#64748b",
+  solar: "#f59e0b", // amber
+  net: "#06b6d4", // cyan — grid (injection up / afname down)
+  battery: "#a855f7", // purple — battery (charging up / discharging down)
+  house: "#64748b", // slate — consumption
 };
 
 function fmtW(w: number | null | undefined) {
@@ -123,11 +124,9 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
   return (
     <div className="border border-border bg-popover px-2 py-1 text-[11px] shadow-lg space-y-0.5">
       <div className="font-bold text-muted-foreground">{time}</div>
-      <div style={{ color: d.grid_w >= 0 ? C.gridIn : C.gridOut }}>
-        Net {d.grid_w >= 0 ? "import " : "export "}{fmtW(Math.abs(d.grid_w))}
-      </div>
       <div style={{ color: C.solar }}>Zon {fmtW(d.solar_w)}</div>
-      <div style={{ color: C.batLine }}>Batterij {d.bat_w >= 0 ? "ontladen " : "laden "}{fmtW(Math.abs(d.bat_w))}</div>
+      <div style={{ color: C.net }}>Net {d.grid_w >= 0 ? "afname " : "injectie "}{fmtW(Math.abs(d.grid_w))}</div>
+      <div style={{ color: C.battery }}>Batterij {d.bat_w >= 0 ? "ontladen " : "laden "}{fmtW(Math.abs(d.bat_w))}</div>
       <div style={{ color: C.house }}>Verbruik {fmtW(d.house_w)}</div>
     </div>
   );
@@ -148,14 +147,14 @@ export function EnergyWidget() {
 
   if (live?.error) {
     return (
-      <WidgetTile title="Energie" size="xl" className="fa-wide lg:col-span-4 xl:col-span-6">
+      <WidgetTile title="Energie" size="xl" className="energy-wide lg:col-span-4 xl:col-span-6">
         <p className="text-[11px] text-[#ff4444]">Monitor: {live.error}</p>
       </WidgetTile>
     );
   }
   if (!live) {
     return (
-      <WidgetTile title="Energie" size="xl" className="fa-wide lg:col-span-4 xl:col-span-6">
+      <WidgetTile title="Energie" size="xl" className="energy-wide lg:col-span-4 xl:col-span-6">
         <p className="text-[11px] text-muted-foreground">Verbinden met energy-monitor...</p>
       </WidgetTile>
     );
@@ -168,12 +167,14 @@ export function EnergyWidget() {
   const storedKwh = (live.stored_wh / 1000).toFixed(1);
   const ratedKwh = (live.rated_wh / 1000).toFixed(1);
 
-  // Gradient split point for the net-grid area: above 0 = import (purple),
-  // below 0 = export (green) — the HomeWizard look.
-  const gridVals = points.map((p) => p.grid_w ?? 0);
-  const gMax = Math.max(0, ...gridVals);
-  const gMin = Math.min(0, ...gridVals);
-  const gridOffset = gMax + Math.abs(gMin) === 0 ? 1 : gMax / (gMax - gMin);
+  // Chart signs: ABOVE zero = producing/storing/selling, BELOW = drawing down.
+  //   net = -grid_w  -> injection (export) up, afname (import) down
+  //   bat = -bat_w   -> charging up (follows the sun), discharging down
+  const chartData = points.map((p) => ({
+    ...p,
+    net: p.grid_w == null ? null : -p.grid_w,
+    bat: p.bat_w == null ? null : -p.bat_w,
+  }));
   const dayNet = netKwh(points); // + = imported, - = exported over the day
 
   return (
@@ -199,9 +200,9 @@ export function EnergyWidget() {
           />
           <Stat
             icon={importing ? ArrowDownToLine : ArrowUpFromLine}
-            label={importing ? "Net import" : "Net export"}
+            label={importing ? "Net afname" : "Net injectie"}
             value={fmtW(Math.abs(live.grid_w))}
-            color={importing ? C.gridIn : C.gridOut}
+            color={C.net}
             sub={`tarief T${live.grid?.tariff ?? "?"}`}
           />
           <Stat
@@ -237,7 +238,7 @@ export function EnergyWidget() {
         <div className="flex items-center justify-between border-t border-border pt-1.5">
           <span className="flex items-baseline gap-2">
             <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Net</span>
-            <span className="text-[11px] font-bold tabular-nums" style={{ color: dayNet >= 0 ? C.gridIn : C.gridOut }}>
+            <span className="text-[11px] font-bold tabular-nums" style={{ color: C.net }}>
               {dayNet >= 0 ? "↓ " : "↑ "}
               {Math.abs(dayNet).toFixed(1)} kWh {dayNet >= 0 ? "afname" : "injectie"}
             </span>
@@ -262,19 +263,14 @@ export function EnergyWidget() {
           </div>
         </div>
 
-        {points.length > 0 ? (
+        {chartData.length > 0 ? (
           <div className="h-72 -mx-1">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={points} margin={{ top: 4, right: 0, bottom: 0, left: 4 }}>
+              <ComposedChart data={chartData} margin={{ top: 4, right: 0, bottom: 0, left: 4 }}>
                 <defs>
-                  {/* Split fill/stroke at the zero line: purple above (import), green below (export) */}
-                  <linearGradient id="gridFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset={gridOffset} stopColor={C.gridIn} stopOpacity={0.55} />
-                    <stop offset={gridOffset} stopColor={C.gridOut} stopOpacity={0.55} />
-                  </linearGradient>
-                  <linearGradient id="gridStroke" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset={gridOffset} stopColor={C.gridIn} />
-                    <stop offset={gridOffset} stopColor={C.gridOut} />
+                  <linearGradient id="solarFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={C.solar} stopOpacity={0.35} />
+                    <stop offset="100%" stopColor={C.solar} stopOpacity={0.04} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />
@@ -299,22 +295,13 @@ export function EnergyWidget() {
                   tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${v / 1000}k` : `${v}`)}
                 />
                 <Tooltip content={<ChartTooltip />} />
-                <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.6} />
-                {/* Hero: net grid power, purple above 0 / green below 0 (HomeWizard style) */}
-                <Area
-                  type="monotone"
-                  dataKey="grid_w"
-                  baseValue={0}
-                  stroke="url(#gridStroke)"
-                  fill="url(#gridFill)"
-                  strokeWidth={1.8}
-                  dot={false}
-                  isAnimationActive={false}
-                  connectNulls
-                />
-                {/* Solar production (amber) and battery (indigo) as clean lines on top */}
-                <Line type="monotone" dataKey="solar_w" stroke={C.solar} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
-                <Line type="monotone" dataKey="bat_w" stroke={C.batLine} strokeWidth={1.4} dot={false} isAnimationActive={false} connectNulls />
+                <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.7} />
+                {/* Solar = filled amber envelope (production). Others as fixed-color lines. */}
+                <Area type="monotone" dataKey="solar_w" stroke={C.solar} fill="url(#solarFill)" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />
+                <Line type="monotone" dataKey="house_w" stroke={C.house} strokeWidth={1.4} dot={false} isAnimationActive={false} connectNulls />
+                {/* net: injection up / afname down. bat: charging up / discharging down */}
+                <Line type="monotone" dataKey="net" stroke={C.net} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
+                <Line type="monotone" dataKey="bat" stroke={C.battery} strokeWidth={1.6} dot={false} isAnimationActive={false} connectNulls />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -325,11 +312,12 @@ export function EnergyWidget() {
         )}
 
         {/* Legend */}
-        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
-          <LegendDot color={C.gridIn} label="Net afname" />
-          <LegendDot color={C.gridOut} label="Net injectie" />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
           <LegendDot color={C.solar} label="Zon" />
-          <LegendDot color={C.batLine} label="Batterij" />
+          <LegendDot color={C.net} label="Net" />
+          <LegendDot color={C.battery} label="Batterij" />
+          <LegendDot color={C.house} label="Verbruik" />
+          <span className="ml-auto text-[9px] italic">boven 0 = opwekken/opslaan/injecteren · onder 0 = afnemen/ontladen</span>
         </div>
       </div>
     </WidgetTile>

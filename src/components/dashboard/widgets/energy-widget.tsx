@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import useSWR from "swr";
 import { WidgetTile } from "../widget-tile";
 import { cn } from "@/lib/utils";
@@ -186,21 +186,47 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
   );
 }
 
+const LIVE_WINDOW = 1800; // seconds shown in the flowing live view (30 min)
+
 export function EnergyWidget() {
+  const [view, setView] = useState<"day" | "live">("day");
   const [dayOffset, setDayOffset] = useState<number>(0);
   const [show, setShow] = useState<Record<MetricKey, boolean>>({ solar: true, usage: true, bat: true, house: true });
-  const [tick, setTick] = useState(0); // bumps on each live refresh → restarts countdown
+  const [tick, setTick] = useState(0); // bumps on each live refresh → heartbeat + live window
+  const [clock, setClock] = useState(() => Math.floor(Date.now() / 1000));
   const { start: dayStart, end: dayEnd } = dayWindow(dayOffset);
+  const isLive = view === "live";
+
+  // In live mode, slide the display window every second for a flowing graph.
+  useEffect(() => {
+    if (!isLive) return;
+    setClock(Math.floor(Date.now() / 1000));
+    const id = setInterval(() => setClock(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [isLive]);
+
   const { data: live } = useSWR<Live>("/api/energy", fetcher, {
     refreshInterval: REFRESH_MS,
     keepPreviousData: true,
     onSuccess: () => setTick((t) => t + 1),
   });
+
+  // Fetch window: per refresh tick (3s). Live fetches a bit >30min for buffer.
+  const fetchEnd = useMemo(() => Math.floor(Date.now() / 1000), [tick]);
+  const winStart = isLive ? fetchEnd - LIVE_WINDOW - 120 : dayStart;
+  const winEnd = isLive ? fetchEnd : dayEnd;
   const { data: hist } = useSWR<{ points: HistPoint[] }>(
-    `/api/energy?start=${dayStart}&end=${dayEnd}`,
+    `/api/energy?start=${winStart}&end=${winEnd}`,
     fetcher,
-    { refreshInterval: dayOffset === 0 ? 10000 : 0, keepPreviousData: true }
+    { refreshInterval: isLive ? REFRESH_MS : dayOffset === 0 ? 10000 : 0, keepPreviousData: true }
   );
+
+  // Display domain + ticks: sliding 30-min window (live) or full day.
+  const domStart = isLive ? clock - LIVE_WINDOW : dayStart;
+  const domEnd = isLive ? clock : dayEnd;
+  const xTicks = isLive
+    ? Array.from({ length: 7 }, (_, i) => domEnd - (6 - i) * 300) // every 5 min
+    : Array.from({ length: 9 }, (_, i) => dayStart + i * 3 * 3600); // every 3h
 
   if (live?.error) {
     return (
@@ -292,32 +318,56 @@ export function EnergyWidget() {
           </span>
         </div>
 
-        {/* Chart header: day net + day navigation */}
-        <div className="flex items-center justify-between border-t border-border pt-1.5">
+        {/* Chart header: net total · view toggle · day navigation */}
+        <div className="flex items-center justify-between gap-2 border-t border-border pt-1.5">
           <span className="flex items-baseline gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Grid vandaag</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              {isLive ? "Grid (30 min)" : "Grid vandaag"}
+            </span>
             <span className="text-[11px] font-bold tabular-nums" style={{ color: gridColor(dayNet * 1000) }}>
               {dayNet >= 0 ? "+" : "−"}
               {Math.abs(dayNet).toFixed(1)} kWh
             </span>
           </span>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setDayOffset((o) => o - 1)}
-              className="border-2 border-border p-1 text-muted-foreground transition-colors hover:text-foreground"
-              aria-label="Vorige dag"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
-            <span className="min-w-[92px] text-center text-[11px] font-bold tabular-nums">{dayLabel(dayOffset, dayStart)}</span>
-            <button
-              onClick={() => setDayOffset((o) => Math.min(0, o + 1))}
-              disabled={dayOffset >= 0}
-              className="border-2 border-border p-1 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
-              aria-label="Volgende dag"
-            >
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
+          <div className="flex items-center gap-2">
+            {/* Live / Day view toggle */}
+            <div className="flex">
+              {(["live", "day"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setView(v)}
+                  className={cn(
+                    "border-2 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors",
+                    v === "day" ? "border-l-0" : "",
+                    view === v ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {v === "live" ? "Live" : "Dag"}
+                </button>
+              ))}
+            </div>
+            {/* Day navigation (day view only) */}
+            {!isLive && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setDayOffset((o) => o - 1)}
+                  className="border-2 border-border p-1 text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label="Vorige dag"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+                <span className="min-w-[92px] text-center text-[11px] font-bold tabular-nums">{dayLabel(dayOffset, dayStart)}</span>
+                <button
+                  onClick={() => setDayOffset((o) => Math.min(0, o + 1))}
+                  disabled={dayOffset >= 0}
+                  className="border-2 border-border p-1 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+                  aria-label="Volgende dag"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+            {isLive && <span className="text-[10px] font-mono text-muted-foreground">flowing · laatste 30 min</span>}
           </div>
         </div>
 
@@ -359,8 +409,8 @@ export function EnergyWidget() {
                   dataKey="t"
                   type="number"
                   scale="linear"
-                  domain={[dayStart, dayEnd]}
-                  ticks={Array.from({ length: 9 }, (_, i) => dayStart + i * 3 * 3600)}
+                  domain={[domStart, domEnd]}
+                  ticks={xTicks}
                   tickFormatter={(t) => new Date(t * 1000).toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" })}
                   tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
                   tickLine={false}

@@ -58,15 +58,29 @@ interface HistPoint {
 //   Battery: + = charging (filling), - = discharging.
 const C = {
   solar: "#f59e0b", // amber
-  usage: "#ef4444", // red — grid usage / afname
+  usage: "#ef4444", // red — grid afname (drawing from grid, costs money)
+  gridOrange: "#f97316", // light injection (0 .. -1 kW)
+  gridPink: "#ec4899", // strong injection (below -1 kW)
   battery: "#06b6d4", // blue — battery
   house: "#64748b", // slate — house consumption
 };
 
+// Grid color by power. Drawing from the grid (afname, > 0) = red, redder the
+// more we draw (it costs money). Giving back (injection, < 0) is NOT really red:
+// it warms to orange for light injection and shifts to pink below -1 kW.
+function gridColor(w: number) {
+  if (w >= 1000) return "#dc2626"; // redder — drawing a lot from the grid
+  if (w >= -50) return C.usage; // red — drawing / ~neutral
+  if (w >= -1000) return C.gridOrange; // orange — light injection
+  return C.gridPink; // pink — strong injection
+}
+
+const REFRESH_MS = 3000; // live refresh cadence (matches the 3s service poll)
+
 type MetricKey = "solar" | "usage" | "bat" | "house";
 const METRICS: { key: MetricKey; label: string; color: string }[] = [
   { key: "solar", label: "Zon", color: C.solar },
-  { key: "usage", label: "Usage", color: C.usage },
+  { key: "usage", label: "Grid", color: C.usage },
   { key: "bat", label: "Batterij", color: C.battery },
   { key: "house", label: "Verbruik", color: C.house },
 ];
@@ -170,7 +184,7 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
     <div className="border border-border bg-popover px-2 py-1 text-[11px] shadow-lg space-y-0.5">
       <div className="font-bold text-muted-foreground">{time}</div>
       <div style={{ color: C.solar }}>Zon {fmtW(d.solar_w)}</div>
-      <div style={{ color: C.usage }}>Usage {fmtSigned(d.grid_w)}</div>
+      <div style={{ color: C.usage }}>Grid {fmtSigned(d.grid_w)}</div>
       <div style={{ color: C.battery }}>Batterij {fmtSigned(d.bat_w == null ? null : -d.bat_w)}</div>
       <div style={{ color: C.house }}>Verbruik {fmtW(d.house_w)}</div>
     </div>
@@ -180,8 +194,13 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
 export function EnergyWidget() {
   const [dayOffset, setDayOffset] = useState<number>(0);
   const [show, setShow] = useState<Record<MetricKey, boolean>>({ solar: true, usage: true, bat: true, house: true });
+  const [tick, setTick] = useState(0); // bumps on each live refresh → restarts countdown
   const { start: dayStart, end: dayEnd } = dayWindow(dayOffset);
-  const { data: live } = useSWR<Live>("/api/energy", fetcher, { refreshInterval: 2000, keepPreviousData: true });
+  const { data: live } = useSWR<Live>("/api/energy", fetcher, {
+    refreshInterval: REFRESH_MS,
+    keepPreviousData: true,
+    onSuccess: () => setTick((t) => t + 1),
+  });
   const { data: hist } = useSWR<{ points: HistPoint[] }>(
     `/api/energy?start=${dayStart}&end=${dayEnd}`,
     fetcher,
@@ -217,6 +236,14 @@ export function EnergyWidget() {
   }));
   const dayNet = netKwh(points); // + = net afname over the day
 
+  // Vertical gradient for the Grid line: red (afname, top) -> orange (light
+  // injection) -> pink (deep injection, below -1 kW). Offsets map to the y-domain.
+  const gVals = chartData.map((p) => p.usage).filter((v): v is number => v != null);
+  const gMax = Math.max(0, ...gVals, 10);
+  const gMin = Math.min(0, ...gVals, -10);
+  const gRange = gMax - gMin;
+  const goff = (v: number) => Math.min(1, Math.max(0, (gMax - v) / gRange));
+
   const toggle = (k: MetricKey) => setShow((s) => ({ ...s, [k]: !s[k] }));
 
   return (
@@ -231,6 +258,14 @@ export function EnergyWidget() {
         </span>
       }
     >
+      {/* Refresh countdown: depletes over one interval, resets each live tick */}
+      <div className="-mt-1 mb-2 h-0.5 w-full bg-muted/40">
+        <div
+          key={tick}
+          className="h-full origin-left bg-emerald-500"
+          style={{ animation: `refresh-countdown ${REFRESH_MS}ms linear forwards` }}
+        />
+      </div>
       <div className="space-y-3">
         {/* Live stats */}
         <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
@@ -243,9 +278,9 @@ export function EnergyWidget() {
           />
           <Stat
             icon={Zap}
-            label="Usage"
+            label="Grid"
             value={fmtSigned(live.grid_w)}
-            color={C.usage}
+            color={gridColor(live.grid_w)}
             sub={`+ = afname · − = injectie · T${live.grid?.tariff ?? "?"}`}
           />
           <Stat icon={Home} label="Verbruik" value={fmtW(live.house_w)} color={C.house} />
@@ -269,8 +304,8 @@ export function EnergyWidget() {
         {/* Chart header: day net + day navigation */}
         <div className="flex items-center justify-between border-t border-border pt-1.5">
           <span className="flex items-baseline gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Usage vandaag</span>
-            <span className="text-[11px] font-bold tabular-nums" style={{ color: C.usage }}>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Grid vandaag</span>
+            <span className="text-[11px] font-bold tabular-nums" style={{ color: gridColor(dayNet * 1000) }}>
               {dayNet >= 0 ? "+" : "−"}
               {Math.abs(dayNet).toFixed(1)} kWh
             </span>
@@ -314,13 +349,19 @@ export function EnergyWidget() {
         </div>
 
         {chartData.length > 0 ? (
-          <div className="h-72 -mx-1">
+          <div className="h-96 -mx-1">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData} margin={{ top: 4, right: 0, bottom: 0, left: 4 }}>
                 <defs>
                   <linearGradient id="solarFill" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={C.solar} stopOpacity={0.32} />
                     <stop offset="100%" stopColor={C.solar} stopOpacity={0.03} />
+                  </linearGradient>
+                  <linearGradient id="gridGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#dc2626" />
+                    <stop offset={goff(0)} stopColor={C.usage} />
+                    <stop offset={goff(-1000)} stopColor={C.gridOrange} />
+                    <stop offset="100%" stopColor={C.gridPink} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />
@@ -347,22 +388,22 @@ export function EnergyWidget() {
                 <Tooltip content={<ChartTooltip />} />
                 <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.7} />
                 {show.solar && (
-                  <Area type="monotone" dataKey="solar_w" stroke={C.solar} fill="url(#solarFill)" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />
+                  <Area type="linear" dataKey="solar_w" stroke={C.solar} fill="url(#solarFill)" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />
                 )}
                 {show.house && (
-                  <Line type="monotone" dataKey="house_w" stroke={C.house} strokeWidth={1.4} dot={false} isAnimationActive={false} connectNulls />
+                  <Line type="linear" dataKey="house_w" stroke={C.house} strokeWidth={1.4} dot={false} isAnimationActive={false} connectNulls />
                 )}
                 {show.usage && (
-                  <Line type="monotone" dataKey="usage" stroke={C.usage} strokeWidth={2.2} dot={false} isAnimationActive={false} connectNulls />
+                  <Line type="linear" dataKey="usage" stroke="url(#gridGrad)" strokeWidth={2.2} dot={false} isAnimationActive={false} connectNulls />
                 )}
                 {show.bat && (
-                  <Line type="monotone" dataKey="bat" stroke={C.battery} strokeWidth={1.6} dot={false} isAnimationActive={false} connectNulls />
+                  <Line type="linear" dataKey="bat" stroke={C.battery} strokeWidth={1.6} dot={false} isAnimationActive={false} connectNulls />
                 )}
               </ComposedChart>
             </ResponsiveContainer>
           </div>
         ) : (
-          <p className="flex h-72 items-center justify-center text-[11px] text-muted-foreground">Geen data voor deze dag.</p>
+          <p className="flex h-96 items-center justify-center text-[11px] text-muted-foreground">Geen data voor deze dag.</p>
         )}
       </div>
     </WidgetTile>

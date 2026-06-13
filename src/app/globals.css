@@ -159,3 +159,6 @@
 /* Energy widget — live pulse dot */
 @keyframes live-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
 .live-dot { animation: live-pulse 1.4s ease-in-out infinite; }
+
+/* Energy widget — refresh countdown bar (depletes over one refresh interval) */
+@keyframes refresh-countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }

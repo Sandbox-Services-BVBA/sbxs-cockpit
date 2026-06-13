@@ -8,6 +8,18 @@ export const config = {
   devserverFsUrl: (process.env.DEVSERVER_FS_URL || "http://100.96.197.107:8765").replace(/\/$/, ""),
   fsAccessKey: process.env.FS_ACCESS_KEY || "",
 
+  // Home control: the cockpit proxies to home-bridge on the dev server (over
+  // Tailscale), which holds the HA token + scene defs and talks to Home
+  // Assistant on the LAN. homeBridgeKey gates writes; empty => disabled.
+  homeBridgeUrl: (process.env.HOME_BRIDGE_URL || "http://100.96.197.107:3092").replace(/\/$/, ""),
+  homeBridgeKey: process.env.HOME_BRIDGE_KEY || "",
+
+  // Energy monitor: the cockpit proxies to energy-monitor on the dev server
+  // (over Tailscale), which polls grid (P1) + solar (SMA) + Marstek batteries
+  // on the LAN. energyKey gates reads; empty => disabled (fail-closed).
+  energyBridgeUrl: (process.env.ENERGY_BRIDGE_URL || "http://100.96.197.107:3093").replace(/\/$/, ""),
+  energyBridgeKey: process.env.ENERGY_BRIDGE_KEY || "",
+
   // Telegram bot
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || "",
   telegramChatId: process.env.TELEGRAM_CHAT_ID || "",

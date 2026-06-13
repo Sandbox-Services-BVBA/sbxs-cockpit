@@ -7,6 +7,8 @@ export type WidgetCategory =
   | "analytics"
   | "business"
   | "health"
+  | "home"
+  | "energy"
   | "alerts";
 
 export type WidgetSize = "sm" | "md" | "lg" | "xl";
@@ -29,6 +31,8 @@ export const CATEGORY_LABELS: Record<WidgetCategory, string> = {
   files: "Files",
   analytics: "Analytics",
   health: "Health",
+  home: "Home",
+  energy: "Energy",
   alerts: "Alerts",
 };
 
@@ -41,6 +45,8 @@ export const CATEGORY_COLORS: Record<WidgetCategory, string> = {
   files: "#14b8a6",
   analytics: "#f59e0b",
   health: "#ec4899",
+  home: "#a855f7",
+  energy: "#f59e0b",
   alerts: "#ef4444",
 };
 

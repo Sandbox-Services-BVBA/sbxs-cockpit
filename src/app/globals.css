@@ -137,3 +137,21 @@
     @apply font-sans;
   }
 }
+
+/* Energy widget — vertical battery animations (square "energy packets") */
+@keyframes batt-rise {
+  0%   { transform: translateY(0) scale(0.7); opacity: 0; }
+  20%  { opacity: 0.95; }
+  100% { transform: translateY(-64px) scale(1); opacity: 0; }
+}
+@keyframes batt-fall {
+  0%   { transform: translateY(-64px) scale(1); opacity: 0; }
+  20%  { opacity: 0.9; }
+  100% { transform: translateY(0) scale(0.7); opacity: 0; }
+}
+@keyframes batt-glow {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.3); }
+}
+.batt-glow { animation: batt-glow 1.8s ease-in-out infinite; }
+.batt-packet { animation-timing-function: linear; animation-iteration-count: infinite; }

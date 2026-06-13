@@ -181,11 +181,11 @@ export function EnergyWidget() {
   const [dayOffset, setDayOffset] = useState<number>(0);
   const [show, setShow] = useState<Record<MetricKey, boolean>>({ solar: true, usage: true, bat: true, house: true });
   const { start: dayStart, end: dayEnd } = dayWindow(dayOffset);
-  const { data: live } = useSWR<Live>("/api/energy", fetcher, { refreshInterval: 5000, keepPreviousData: true });
+  const { data: live } = useSWR<Live>("/api/energy", fetcher, { refreshInterval: 2000, keepPreviousData: true });
   const { data: hist } = useSWR<{ points: HistPoint[] }>(
     `/api/energy?start=${dayStart}&end=${dayEnd}`,
     fetcher,
-    { refreshInterval: dayOffset === 0 ? 30000 : 0, keepPreviousData: true }
+    { refreshInterval: dayOffset === 0 ? 10000 : 0, keepPreviousData: true }
   );
 
   if (live?.error) {
@@ -225,8 +225,9 @@ export function EnergyWidget() {
       size="xl"
       className="energy-wide lg:col-span-4 xl:col-span-6"
       headerRight={
-        <span className="text-[10px] font-mono text-muted-foreground">
-          {live.batteries?.[0]?.mode ?? ""} · piek {fmtW(live.grid?.monthly_peak_w)}
+        <span className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
+          <span className="live-dot inline-block h-2 w-2" style={{ background: "#22c55e" }} />
+          live · {live.batteries?.[0]?.mode ?? ""} · piek {fmtW(live.grid?.monthly_peak_w)}
         </span>
       }
     >

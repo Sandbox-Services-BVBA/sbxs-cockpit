@@ -155,3 +155,7 @@
 }
 .batt-glow { animation: batt-glow 1.8s ease-in-out infinite; }
 .batt-packet { animation-timing-function: linear; animation-iteration-count: infinite; }
+
+/* Energy widget — live pulse dot */
+@keyframes live-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+.live-dot { animation: live-pulse 1.4s ease-in-out infinite; }

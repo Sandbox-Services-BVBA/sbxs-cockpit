@@ -162,3 +162,7 @@
 
 /* Energy widget — refresh countdown bar (depletes over one refresh interval) */
 @keyframes refresh-countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* Energy widget — "blip" the live dot once per refresh tick */
+@keyframes energy-blip { 0% { transform: scale(1); opacity: 1; } 35% { transform: scale(2); opacity: 0.4; } 100% { transform: scale(1); opacity: 1; } }
+.energy-blip { animation: energy-blip 0.5s ease-out; }

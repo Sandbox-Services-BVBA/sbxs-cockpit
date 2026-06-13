@@ -253,19 +253,11 @@ export function EnergyWidget() {
       className="energy-wide lg:col-span-4 xl:col-span-6"
       headerRight={
         <span className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
-          <span className="live-dot inline-block h-2 w-2" style={{ background: "#22c55e" }} />
+          <span key={tick} className="energy-blip inline-block h-2 w-2" style={{ background: "#22c55e" }} />
           live · {live.batteries?.[0]?.mode ?? ""} · piek {fmtW(live.grid?.monthly_peak_w)}
         </span>
       }
     >
-      {/* Refresh countdown: depletes over one interval, resets each live tick */}
-      <div className="-mt-1 mb-2 h-0.5 w-full bg-muted/40">
-        <div
-          key={tick}
-          className="h-full origin-left bg-emerald-500"
-          style={{ animation: `refresh-countdown ${REFRESH_MS}ms linear forwards` }}
-        />
-      </div>
       <div className="space-y-3">
         {/* Live stats */}
         <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">

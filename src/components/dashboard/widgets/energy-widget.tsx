@@ -88,15 +88,15 @@ function Stat({
   color: string;
 }) {
   return (
-    <div className="border-2 border-border px-2 py-1.5">
-      <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-        <Icon className="h-3 w-3" style={{ color }} />
+    <div className="border-2 border-border px-3 py-2.5">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+        <Icon className="h-4 w-4" style={{ color }} />
         {label}
       </div>
-      <div className="mt-0.5 text-lg font-bold tabular-nums leading-none" style={{ color }}>
+      <div className="mt-1 text-3xl font-bold tabular-nums leading-none" style={{ color }}>
         {value}
       </div>
-      {sub && <div className="mt-0.5 text-[9px] text-muted-foreground">{sub}</div>}
+      {sub && <div className="mt-1 text-[10px] text-muted-foreground">{sub}</div>}
     </div>
   );
 }
@@ -129,14 +129,14 @@ export function EnergyWidget() {
 
   if (live?.error) {
     return (
-      <WidgetTile title="Energie" size="lg">
+      <WidgetTile title="Energie" size="xl" className="lg:col-span-4 xl:col-span-6">
         <p className="text-[11px] text-[#ff4444]">Monitor: {live.error}</p>
       </WidgetTile>
     );
   }
   if (!live) {
     return (
-      <WidgetTile title="Energie" size="lg">
+      <WidgetTile title="Energie" size="xl" className="lg:col-span-4 xl:col-span-6">
         <p className="text-[11px] text-muted-foreground">Verbinden met energy-monitor...</p>
       </WidgetTile>
     );
@@ -152,14 +152,15 @@ export function EnergyWidget() {
   return (
     <WidgetTile
       title="Energie"
-      size="lg"
+      size="xl"
+      className="lg:col-span-4 xl:col-span-6"
       headerRight={
-        <span className="text-[9px] font-mono text-muted-foreground">
+        <span className="text-[10px] font-mono text-muted-foreground">
           {live.batteries?.[0]?.mode ?? ""} · piek {fmtW(live.grid?.monthly_peak_w)}
         </span>
       }
     >
-      <div className="space-y-2">
+      <div className="space-y-3">
         {/* Live stats */}
         <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
           <Stat
@@ -187,19 +188,19 @@ export function EnergyWidget() {
         </div>
 
         {/* Battery SOC bars */}
-        <div className="space-y-1 border-t border-border pt-1.5">
+        <div className="space-y-1.5 border-t border-border pt-2">
           {live.batteries.map((b, i) => (
-            <div key={b.ip} className="flex items-center gap-2">
-              <span className="w-12 shrink-0 text-[9px] font-mono text-muted-foreground">Bat {i + 1}</span>
-              <div className="relative h-2.5 flex-1 border border-border bg-muted/30">
+            <div key={b.ip} className="flex items-center gap-2.5">
+              <span className="w-14 shrink-0 text-[11px] font-mono text-muted-foreground">Bat {i + 1}</span>
+              <div className="relative h-4 flex-1 border border-border bg-muted/30">
                 <div
-                  className="absolute inset-y-0 left-0"
+                  className="absolute inset-y-0 left-0 transition-all"
                   style={{ width: `${b.soc ?? 0}%`, background: b.online ? C.battery : "#71717a" }}
                 />
               </div>
-              <span className="w-9 shrink-0 text-right text-[10px] font-bold tabular-nums">{b.soc ?? "—"}%</span>
-              <span className="w-14 shrink-0 text-right text-[9px] font-mono text-muted-foreground">
-                {b.online ? (b.power_w < 0 ? "+" : b.power_w > 0 ? "-" : "") + fmtW(Math.abs(b.power_w)) : "offline"}
+              <span className="w-12 shrink-0 text-right text-sm font-bold tabular-nums">{b.soc ?? "—"}%</span>
+              <span className="w-20 shrink-0 text-right text-[11px] font-mono text-muted-foreground">
+                {b.online ? (b.power_w < 0 ? "laden " : b.power_w > 0 ? "ontl. " : "idle ") + (b.power_w !== 0 ? fmtW(Math.abs(b.power_w)) : "") : "offline"}
               </span>
             </div>
           ))}
@@ -207,15 +208,15 @@ export function EnergyWidget() {
 
         {/* Power chart */}
         <div className="flex items-center justify-between border-t border-border pt-1.5">
-          <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Vermogen</span>
-          <div className="flex gap-0.5">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Vermogen</span>
+          <div className="flex gap-1">
             {PERIODS.map((p) => (
               <button
                 key={p.key}
                 onClick={() => setHours(p.key)}
                 className={cn(
-                  "px-1.5 py-0.5 text-[9px] font-bold transition-colors",
-                  hours === p.key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  "border-2 px-2.5 py-1 text-[10px] font-bold transition-colors",
+                  hours === p.key ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:text-foreground"
                 )}
               >
                 {p.label}
@@ -225,7 +226,7 @@ export function EnergyWidget() {
         </div>
 
         {points.length > 1 ? (
-          <div className="h-40 -mx-1">
+          <div className="h-72 -mx-1">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={points} margin={{ top: 4, right: 4, bottom: 0, left: -22 }}>
                 <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />
@@ -248,7 +249,7 @@ export function EnergyWidget() {
             </ResponsiveContainer>
           </div>
         ) : (
-          <p className="flex h-40 items-center justify-center text-[10px] text-muted-foreground">
+          <p className="flex h-72 items-center justify-center text-[11px] text-muted-foreground">
             Grafiek vult zich... (elke 15s een meetpunt)
           </p>
         )}

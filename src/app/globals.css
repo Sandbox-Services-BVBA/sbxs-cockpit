@@ -166,3 +166,10 @@
 /* Energy widget — "blip" the live dot once per refresh tick */
 @keyframes energy-blip { 0% { transform: scale(1); opacity: 1; } 35% { transform: scale(2); opacity: 0.4; } 100% { transform: scale(1); opacity: 1; } }
 .energy-blip { animation: energy-blip 0.5s ease-out; }
+
+/* Energy widget — heartbeat: bright on new data, fades until the next tick */
+@keyframes energy-heartbeat {
+  0%   { opacity: 1; transform: scale(1.9); box-shadow: 0 0 6px 2px rgba(34,197,94,0.8); }
+  12%  { opacity: 1; transform: scale(1); box-shadow: 0 0 4px 1px rgba(34,197,94,0.6); }
+  100% { opacity: 0.18; transform: scale(1); box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+}

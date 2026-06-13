@@ -58,21 +58,16 @@ interface HistPoint {
 //   Battery: + = charging (filling), - = discharging.
 const C = {
   solar: "#f59e0b", // amber
-  usage: "#ef4444", // red — grid afname (drawing from grid, costs money)
-  gridOrange: "#f97316", // light injection (0 .. -1 kW)
-  gridPink: "#ec4899", // strong injection (below -1 kW)
+  usage: "#ef4444", // red — grid afname (drawing from grid, zero or above)
+  gridPink: "#ec4899", // pink — grid injection (below zero)
   battery: "#06b6d4", // blue — battery
   house: "#64748b", // slate — house consumption
 };
 
-// Grid color by power. Drawing from the grid (afname, > 0) = red, redder the
-// more we draw (it costs money). Giving back (injection, < 0) is NOT really red:
-// it warms to orange for light injection and shifts to pink below -1 kW.
+// Grid color: red when drawing from the grid (>= 0, afname), pink when
+// injecting (< 0). Hard split at zero — no gradient, no in-between color.
 function gridColor(w: number) {
-  if (w >= 1000) return "#dc2626"; // redder — drawing a lot from the grid
-  if (w >= -50) return C.usage; // red — drawing / ~neutral
-  if (w >= -1000) return C.gridOrange; // orange — light injection
-  return C.gridPink; // pink — strong injection
+  return w >= 0 ? C.usage : C.gridPink;
 }
 
 const REFRESH_MS = 3000; // live refresh cadence (matches the 3s service poll)
@@ -184,7 +179,7 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
     <div className="border border-border bg-popover px-2 py-1 text-[11px] shadow-lg space-y-0.5">
       <div className="font-bold text-muted-foreground">{time}</div>
       <div style={{ color: C.solar }}>Zon {fmtW(d.solar_w)}</div>
-      <div style={{ color: C.usage }}>Grid {fmtSigned(d.grid_w)}</div>
+      <div style={{ color: gridColor(d.grid_w) }}>Grid {fmtSigned(d.grid_w)}</div>
       <div style={{ color: C.battery }}>Batterij {fmtSigned(d.bat_w == null ? null : -d.bat_w)}</div>
       <div style={{ color: C.house }}>Verbruik {fmtW(d.house_w)}</div>
     </div>
@@ -253,7 +248,11 @@ export function EnergyWidget() {
       className="energy-wide lg:col-span-4 xl:col-span-6"
       headerRight={
         <span className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
-          <span key={tick} className="energy-blip inline-block h-2 w-2" style={{ background: "#22c55e" }} />
+          <span
+            key={tick}
+            className="inline-block h-2 w-2"
+            style={{ background: "#22c55e", animation: `energy-heartbeat ${REFRESH_MS}ms ease-out forwards` }}
+          />
           live · {live.batteries?.[0]?.mode ?? ""} · piek {fmtW(live.grid?.monthly_peak_w)}
         </span>
       }
@@ -350,10 +349,9 @@ export function EnergyWidget() {
                     <stop offset="100%" stopColor={C.solar} stopOpacity={0.03} />
                   </linearGradient>
                   <linearGradient id="gridGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#dc2626" />
+                    {/* hard split at the zero line: red above (afname), pink below (injection) */}
                     <stop offset={goff(0)} stopColor={C.usage} />
-                    <stop offset={goff(-1000)} stopColor={C.gridOrange} />
-                    <stop offset="100%" stopColor={C.gridPink} />
+                    <stop offset={goff(0)} stopColor={C.gridPink} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />

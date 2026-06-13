@@ -4,7 +4,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { WidgetTile } from "../widget-tile";
 import { cn } from "@/lib/utils";
-import { Sun, Zap, BatteryCharging, Home, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { Sun, BatteryCharging, Home, ArrowDownToLine, ArrowUpFromLine, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -52,12 +52,18 @@ interface HistPoint {
   soc_avg: number;
 }
 
-const PERIODS = [
-  { key: 1, label: "1H" },
-  { key: 6, label: "6H" },
-  { key: 24, label: "24H" },
-  { key: 72, label: "3D" },
-] as const;
+// Local (Belgian) midnight for `today + offset`, as a unix-seconds day window.
+function dayWindow(offset: number) {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  const start = Math.floor(d.getTime() / 1000) + offset * 86400;
+  return { start, end: start + 86400 };
+}
+function dayLabel(offset: number, start: number) {
+  if (offset === 0) return "Vandaag";
+  if (offset === -1) return "Gisteren";
+  return new Date(start * 1000).toLocaleDateString("nl-BE", { weekday: "short", day: "numeric", month: "short" });
+}
 
 const C = {
   solar: "#f59e0b",
@@ -117,15 +123,17 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
 }
 
 export function EnergyWidget() {
-  const [hours, setHours] = useState<number>(6);
+  const [dayOffset, setDayOffset] = useState<number>(0);
+  const { start: dayStart, end: dayEnd } = dayWindow(dayOffset);
   const { data: live } = useSWR<Live>("/api/energy", fetcher, {
     refreshInterval: 5000,
     keepPreviousData: true,
   });
-  const { data: hist } = useSWR<{ points: HistPoint[] }>(`/api/energy?hours=${hours}`, fetcher, {
-    refreshInterval: 30000,
-    keepPreviousData: true,
-  });
+  const { data: hist } = useSWR<{ points: HistPoint[] }>(
+    `/api/energy?start=${dayStart}&end=${dayEnd}`,
+    fetcher,
+    { refreshInterval: dayOffset === 0 ? 30000 : 0, keepPreviousData: true }
+  );
 
   if (live?.error) {
     return (
@@ -206,39 +214,47 @@ export function EnergyWidget() {
           ))}
         </div>
 
-        {/* Power chart */}
+        {/* Power chart — per-day view (local midnight to midnight) */}
         <div className="flex items-center justify-between border-t border-border pt-1.5">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Vermogen</span>
-          <div className="flex gap-1">
-            {PERIODS.map((p) => (
-              <button
-                key={p.key}
-                onClick={() => setHours(p.key)}
-                className={cn(
-                  "border-2 px-2.5 py-1 text-[10px] font-bold transition-colors",
-                  hours === p.key ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {p.label}
-              </button>
-            ))}
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Verloop van de dag</span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setDayOffset((o) => o - 1)}
+              className="border-2 border-border p-1 text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Vorige dag"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <span className="min-w-[92px] text-center text-[11px] font-bold tabular-nums">{dayLabel(dayOffset, dayStart)}</span>
+            <button
+              onClick={() => setDayOffset((o) => Math.min(0, o + 1))}
+              disabled={dayOffset >= 0}
+              className="border-2 border-border p-1 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+              aria-label="Volgende dag"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
 
-        {points.length > 1 ? (
+        {points.length > 0 ? (
           <div className="h-72 -mx-1">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={points} margin={{ top: 4, right: 4, bottom: 0, left: -22 }}>
                 <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />
                 <XAxis
                   dataKey="t"
+                  type="number"
+                  scale="linear"
+                  domain={[dayStart, dayEnd]}
+                  ticks={Array.from({ length: 9 }, (_, i) => dayStart + i * 3 * 3600)}
                   tickFormatter={(t) => new Date(t * 1000).toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" })}
-                  tick={{ fontSize: 8, fill: "var(--muted-foreground)" }}
+                  tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
                   tickLine={false}
                   axisLine={false}
-                  minTickGap={40}
+                  allowDataOverflow
                 />
-                <YAxis tick={{ fontSize: 8, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} width={40} tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${v / 1000}k` : `${v}`)} />
+                <YAxis tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} width={42} tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${v / 1000}k` : `${v}`)} />
                 <Tooltip content={<ChartTooltip />} />
                 <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.4} />
                 <Area type="monotone" dataKey="solar_w" stroke={C.solar} fill={C.solar} fillOpacity={0.18} strokeWidth={1.5} dot={false} />
@@ -250,7 +266,7 @@ export function EnergyWidget() {
           </div>
         ) : (
           <p className="flex h-72 items-center justify-center text-[11px] text-muted-foreground">
-            Grafiek vult zich... (elke 15s een meetpunt)
+            Geen data voor deze dag.
           </p>
         )}
 

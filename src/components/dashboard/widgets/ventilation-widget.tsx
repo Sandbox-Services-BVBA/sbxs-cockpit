@@ -31,7 +31,21 @@ interface VentLive {
   filter: "normal" | "dirty";
   fan_control: "wall" | "modbus";
   fan_mode: string; // holiday|low|normal|high when modbus, else "auto"
+  automation?: VentAutomation;
   error?: string;
+}
+
+interface VentAutomation {
+  enabled: boolean;
+  engaged: boolean; // actively pre-cooling now
+  status: string;
+  reason: string;
+  target_c?: number | null;
+  forecast?: {
+    current_outdoor_c: number | null;
+    tomorrow_high_c: number | null;
+    dayafter_high_c?: number | null;
+  } | null;
 }
 
 interface VentPoint {
@@ -122,6 +136,21 @@ export function VentilationWidget() {
     }
   };
 
+  const toggleAuto = async () => {
+    setBusy("auto");
+    setMsg(null);
+    try {
+      await fetch("/api/ventilation/automation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !live?.automation?.enabled }),
+      });
+      await mutate();
+    } finally {
+      setBusy(null);
+    }
+  };
+
   if (live?.error) {
     return (
       <WidgetTile title="Ventilatie" size="xl" className="ventilation-wide lg:col-span-4 xl:col-span-6">
@@ -141,6 +170,8 @@ export function VentilationWidget() {
   const filterDirty = live.filter === "dirty";
   // Which control is active: "wall" -> Auto, else the named modbus preset.
   const activeKey = live.fan_control === "wall" ? "wall" : live.fan_mode;
+  const auto = live.automation;
+  const autoOn = !!auto?.enabled;
 
   return (
     <WidgetTile
@@ -188,8 +219,40 @@ export function VentilationWidget() {
           </ResponsiveContainer>
         </div>
 
+        {/* Smart cooling automation (forecast-driven) */}
+        <div
+          className={cn(
+            "flex items-center justify-between gap-3 border-2 px-3 py-2",
+            auto?.engaged ? "border-[#06b6d4] bg-[#06b6d4]/10" : autoOn ? "border-[#06b6d4]/50" : "border-border"
+          )}
+        >
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <Wind className="h-3.5 w-3.5" style={{ color: "#06b6d4" }} />
+              Slimme koeling · voorspelling
+            </div>
+            <div className="mt-0.5 text-[11px] truncate">{autoOn ? auto?.reason || auto?.status : "uit — handmatige bediening"}</div>
+            {auto?.forecast && (
+              <div className="text-[9px] text-muted-foreground">
+                morgen {auto.forecast.tomorrow_high_c ?? "?"}°C · overmorgen {auto.forecast.dayafter_high_c ?? "?"}°C · buiten nu {auto.forecast.current_outdoor_c ?? "?"}°C
+              </div>
+            )}
+          </div>
+          <button
+            onClick={toggleAuto}
+            disabled={busy !== null}
+            className={cn(
+              "shrink-0 border-2 px-4 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-colors",
+              autoOn ? "border-[#06b6d4] bg-[#06b6d4]/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground",
+              busy === "auto" && "opacity-50"
+            )}
+          >
+            {autoOn ? "Aan" : "Uit"}
+          </button>
+        </div>
+
         {/* Fan control */}
-        <div className="flex items-center gap-2">
+        <div className={cn("flex items-center gap-2", autoOn && "opacity-40")}>
           <span className="w-16 shrink-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Stand</span>
           <div className="grid flex-1 grid-cols-5 gap-1">
             {MODES.map((m) => {
@@ -197,7 +260,7 @@ export function VentilationWidget() {
               return (
                 <button
                   key={m.key}
-                  disabled={busy !== null}
+                  disabled={busy !== null || autoOn}
                   onClick={() => control({ mode: m.key }, key)}
                   className={cn(
                     "border-2 px-1 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors",
@@ -213,7 +276,7 @@ export function VentilationWidget() {
         </div>
 
         {/* Bypass control */}
-        <div className="flex items-center gap-2">
+        <div className={cn("flex items-center gap-2", autoOn && "opacity-40")}>
           <span className="w-16 shrink-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Bypass</span>
           <div className="grid flex-1 grid-cols-3 gap-1">
             {BYPASS.map((bp) => {
@@ -221,7 +284,7 @@ export function VentilationWidget() {
               return (
                 <button
                   key={bp.key}
-                  disabled={busy !== null}
+                  disabled={busy !== null || autoOn}
                   onClick={() => control({ bypass: bp.key }, key)}
                   className={cn(
                     "border-2 px-1 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors",
@@ -237,7 +300,9 @@ export function VentilationWidget() {
         </div>
 
         <p className="text-[9px] text-muted-foreground">
-          Stand-Auto = klokprogramma (wandbediening). Een stand of bypass open/dicht kiezen neemt Modbus-controle over (de bypass staat normaal op Auto = vrije koeling op temperatuur); zetten kan ~6s duren.
+          {autoOn
+            ? "Slimme koeling stuurt nu automatisch (stand + doeltemperatuur o.b.v. de weersvoorspelling). Zet uit voor handmatige bediening."
+            : "Stand-Auto = klokprogramma. Een stand of bypass kiezen neemt Modbus-controle over (bypass normaal op Auto = vrije koeling). Slimme koeling = automatisch voorkoelen als het morgen warm wordt."}
         </p>
         {msg && <p className="text-[9px] text-[#ff4444]">{msg}</p>}
       </div>

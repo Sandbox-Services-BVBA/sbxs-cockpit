@@ -26,7 +26,8 @@ interface VentLive {
   extract_airflow_m3h: number;
   supply_pressure_pa: number;
   extract_pressure_pa: number;
-  bypass: string;
+  bypass: string; // valve position
+  bypass_mode: string; // setpoint: auto|open|closed
   filter: "normal" | "dirty";
   fan_control: "wall" | "modbus";
   fan_mode: string; // holiday|low|normal|high when modbus, else "auto"
@@ -59,6 +60,12 @@ const MODES: { key: string; label: string }[] = [
   { key: "holiday", label: "Vakantie" },
 ];
 
+const BYPASS: { key: string; label: string }[] = [
+  { key: "auto", label: "Auto" },
+  { key: "open", label: "Open" },
+  { key: "closed", label: "Dicht" },
+];
+
 function fmt1(n: number | null | undefined) {
   return n == null ? "—" : n.toFixed(1);
 }
@@ -82,6 +89,7 @@ function Stat({ icon: Icon, label, value, unit, sub, color }: { icon: typeof Win
 export function VentilationWidget() {
   const [tick, setTick] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
 
   const { data: live, mutate } = useSWR<VentLive>("/api/ventilation", fetcher, {
     refreshInterval: REFRESH_MS,
@@ -96,14 +104,18 @@ export function VentilationWidget() {
     { refreshInterval: REFRESH_MS, keepPreviousData: true }
   );
 
-  const setMode = async (mode: string) => {
-    setBusy(mode);
+  const control = async (body: Record<string, string>, key: string) => {
+    setBusy(key);
+    setMsg(null);
     try {
-      await fetch("/api/ventilation", {
+      const r = await fetch("/api/ventilation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode }),
+        body: JSON.stringify(body),
       });
+      const j = await r.json().catch(() => ({}));
+      // The unit refuses to force the bypass when its own logic doesn't allow it.
+      if (j && j.ok === false) setMsg(body.bypass ? "Bypass geweigerd door unit (condities)" : j.error || "geweigerd");
       await mutate();
     } finally {
       setBusy(null);
@@ -112,14 +124,14 @@ export function VentilationWidget() {
 
   if (live?.error) {
     return (
-      <WidgetTile title="Ventilatie" size="lg">
+      <WidgetTile title="Ventilatie" size="xl" className="ventilation-wide lg:col-span-4 xl:col-span-6">
         <p className="text-[11px] text-[#ff4444]">Monitor: {live.error}</p>
       </WidgetTile>
     );
   }
   if (!live) {
     return (
-      <WidgetTile title="Ventilatie" size="lg">
+      <WidgetTile title="Ventilatie" size="xl" className="ventilation-wide lg:col-span-4 xl:col-span-6">
         <p className="text-[11px] text-muted-foreground">Verbinden met ventilation-monitor...</p>
       </WidgetTile>
     );
@@ -133,7 +145,8 @@ export function VentilationWidget() {
   return (
     <WidgetTile
       title="Ventilatie"
-      size="lg"
+      size="xl"
+      className="ventilation-wide lg:col-span-4 xl:col-span-6"
       headerRight={
         <span className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
           <span key={tick} className="inline-block h-2 w-2" style={{ background: "#22c55e", animation: `energy-heartbeat ${REFRESH_MS}ms ease-out forwards` }} />
@@ -157,7 +170,7 @@ export function VentilationWidget() {
         </div>
 
         {/* Temp + airflow history */}
-        <div className="h-28 -mx-1">
+        <div className="h-44 -mx-1">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={points} margin={{ top: 4, right: 0, bottom: 0, left: 4 }}>
               <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />
@@ -176,28 +189,57 @@ export function VentilationWidget() {
         </div>
 
         {/* Fan control */}
-        <div className="grid grid-cols-5 gap-1">
-          {MODES.map((m) => {
-            const isActive = activeKey === m.key;
-            return (
-              <button
-                key={m.key}
-                disabled={busy !== null}
-                onClick={() => setMode(m.key)}
-                className={cn(
-                  "border-2 px-1 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors",
-                  isActive ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground",
-                  busy === m.key && "opacity-50"
-                )}
-              >
-                {m.label}
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-2">
+          <span className="w-16 shrink-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Stand</span>
+          <div className="grid flex-1 grid-cols-5 gap-1">
+            {MODES.map((m) => {
+              const key = `fan:${m.key}`;
+              return (
+                <button
+                  key={m.key}
+                  disabled={busy !== null}
+                  onClick={() => control({ mode: m.key }, key)}
+                  className={cn(
+                    "border-2 px-1 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors",
+                    activeKey === m.key ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground",
+                    busy === key && "opacity-50"
+                  )}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
+
+        {/* Bypass control */}
+        <div className="flex items-center gap-2">
+          <span className="w-16 shrink-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Bypass</span>
+          <div className="grid flex-1 grid-cols-3 gap-1">
+            {BYPASS.map((bp) => {
+              const key = `bypass:${bp.key}`;
+              return (
+                <button
+                  key={bp.key}
+                  disabled={busy !== null}
+                  onClick={() => control({ bypass: bp.key }, key)}
+                  className={cn(
+                    "border-2 px-1 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors",
+                    live.bypass_mode === bp.key ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground",
+                    busy === key && "opacity-50"
+                  )}
+                >
+                  {bp.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <p className="text-[9px] text-muted-foreground">
-          Auto = klokprogramma (wandbediening). Een stand kiezen neemt Modbus-controle over; dit kan ~6s duren.
+          Stand-Auto = klokprogramma (wandbediening). Een stand of bypass open/dicht kiezen neemt Modbus-controle over (de bypass staat normaal op Auto = vrije koeling op temperatuur); zetten kan ~6s duren.
         </p>
+        {msg && <p className="text-[9px] text-[#ff4444]">{msg}</p>}
       </div>
     </WidgetTile>
   );

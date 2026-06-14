@@ -68,6 +68,11 @@ function gridColor(w: number) {
 
 const REFRESH_MS = 3000;
 
+// The battery balances grid to ~0 via the CT meter; it hunts ±20-50W around zero.
+// Snap that near-zero noise to 0 for DISPLAY only (logged data stays raw).
+const GRID_DEADBAND = 40;
+const gd = (w: number) => (Math.abs(w) < GRID_DEADBAND ? 0 : w);
+
 function fmtW(w: number | null | undefined) {
   if (w == null) return "—";
   const a = Math.abs(w);
@@ -88,8 +93,8 @@ function netKwh(points: { t: number; grid_w: number }[]) {
 
 // Plain-language live status — the novice's "tell me the verdict in words".
 function statusLine(live: Live): { text: string; good: boolean } {
-  const buying = live.grid_w > 60;
-  const selling = live.grid_w < -60;
+  const buying = gd(live.grid_w) > 0;
+  const selling = gd(live.grid_w) < 0;
   const charging = live.bat_w < -60;
   const discharging = live.bat_w > 60;
   const sun = live.solar_w > 120;
@@ -178,9 +183,10 @@ function FlowDiagram({ live }: { live: Live }) {
   const bat = { x: 290, y: 238 };
   const sw = (w: number) => (w < 30 ? 1.2 : Math.max(2, Math.min(11, w / 200)));
   // dir 'in' = energy toward Huis (animate forward along the outer→Huis line)
+  const gridShown = gd(live.grid_w); // deadbanded so the balancing hunt reads as 0
   const flows = [
     { from: zon, w: live.solar_w, color: C.solar, dir: "in" as const },
-    { from: net, w: Math.abs(live.grid_w), color: gridColor(live.grid_w), dir: live.grid_w >= 0 ? ("in" as const) : ("out" as const) },
+    { from: net, w: Math.abs(gridShown), color: gridColor(gridShown), dir: gridShown >= 0 ? ("in" as const) : ("out" as const) },
     { from: bat, w: Math.abs(live.bat_w), color: C.battery, dir: live.bat_w > 0 ? ("in" as const) : ("out" as const) },
   ];
   return (
@@ -206,7 +212,7 @@ function FlowDiagram({ live }: { live: Live }) {
       })}
       <FlowNode x={zon.x} y={zon.y} label="Zon" value={fmtW(live.solar_w)} color={C.solar} />
       <FlowNode x={huis.x} y={huis.y} label="Huis" value={fmtW(live.house_w)} color={C.house} />
-      <FlowNode x={net.x} y={net.y} label={live.grid_w >= 0 ? "Net afname" : "Net injectie"} value={fmtW(Math.abs(live.grid_w))} color={gridColor(live.grid_w)} />
+      <FlowNode x={net.x} y={net.y} label={gridShown === 0 ? "Net balans" : gridShown > 0 ? "Net afname" : "Net injectie"} value={fmtW(Math.abs(gridShown))} color={gridShown === 0 ? C.house : gridColor(gridShown)} />
       <FlowNode x={bat.x} y={bat.y} label={live.bat_w < 0 ? "Batterij laadt" : live.bat_w > 0 ? "Batterij ontlaadt" : "Batterij"} value={fmtW(Math.abs(live.bat_w))} color={C.battery} />
     </svg>
   );
@@ -298,6 +304,7 @@ export function EnergyWidget() {
   const ratedKwh = (live.rated_wh / 1000).toFixed(1);
   const dayNet = netKwh(points);
   const status = statusLine(live);
+  const gridShown = gd(live.grid_w); // deadbanded live grid for the Net tile
 
   // grid red/pink split offset for the day-net & advanced charts
   const gVals = points.map((p) => p.grid_w).filter((v): v is number => v != null);
@@ -306,7 +313,7 @@ export function EnergyWidget() {
   const goff0 = Math.min(1, Math.max(0, gMax / (gMax - gMin)));
 
   // advanced combined chart data (battery flipped: charge up)
-  const advData = points.map((p) => ({ ...p, bat: p.bat_w == null ? null : -p.bat_w, stored_kwh: p.stored_wh == null ? null : Math.round(p.stored_wh / 100) / 10 }));
+  const advData = points.map((p) => ({ ...p, bat: p.bat_w == null ? null : -p.bat_w, gridD: p.grid_w == null ? null : gd(p.grid_w), stored_kwh: p.stored_wh == null ? null : Math.round(p.stored_wh / 100) / 10 }));
   const ratedKwhNum = live.rated_wh / 1000;
   const toggle = (k: MetricKey) => setShow((s) => ({ ...s, [k]: !s[k] }));
 
@@ -346,11 +353,11 @@ export function EnergyWidget() {
         <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
           <Stat
             icon={Zap}
-            label={live.grid_w >= 0 ? "Net afname" : "Net injectie"}
-            value={fmtW(Math.abs(live.grid_w))}
-            color={gridColor(live.grid_w)}
+            label={gridShown === 0 ? "Net balans" : gridShown > 0 ? "Net afname" : "Net injectie"}
+            value={fmtW(Math.abs(gridShown))}
+            color={gridShown === 0 ? C.house : gridColor(gridShown)}
             big
-            sub={`${live.grid_w >= 0 ? "je koopt" : "je verkoopt"} · T${live.grid?.tariff ?? "?"}`}
+            sub={`${gridShown === 0 ? "batterij in balans" : gridShown > 0 ? "je koopt" : "je verkoopt"} · T${live.grid?.tariff ?? "?"}`}
           />
           <Stat icon={Sun} label="Zon" value={fmtW(live.solar_w)} color={C.solar} sub={live.solar?.total_yield_kwh != null ? `${live.solar.total_yield_kwh.toLocaleString("nl-BE")} kWh tot` : undefined} />
           <Stat icon={Home} label="Verbruik" value={fmtW(live.house_w)} color={C.house} />
@@ -422,7 +429,7 @@ export function EnergyWidget() {
             </div>
             <div className="h-28 -mx-1">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={points} margin={{ top: 4, right: 0, bottom: 0, left: 4 }}>
+                <ComposedChart data={advData} margin={{ top: 4, right: 0, bottom: 0, left: 4 }}>
                   <defs>
                     <linearGradient id="liveGrid" x1="0" y1="0" x2="0" y2="1">
                       <stop offset={goff0} stopColor={C.usage} stopOpacity={0.5} />
@@ -438,7 +445,7 @@ export function EnergyWidget() {
                   <YAxis orientation="right" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} width={44} tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${v / 1000}k` : `${v}`)} />
                   <Tooltip content={<ChartTooltip />} />
                   <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.7} />
-                  <Area type="linear" dataKey="grid_w" baseValue={0} stroke="url(#liveGridStroke)" fill="url(#liveGrid)" strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
+                  <Area type="linear" dataKey="gridD" baseValue={0} stroke="url(#liveGridStroke)" fill="url(#liveGrid)" strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -501,7 +508,7 @@ export function EnergyWidget() {
             <PanelHeader label="Net" right={`${dayNet >= 0 ? "+" : "−"}${Math.abs(dayNet).toFixed(1)} kWh`} rightColor={gridColor(dayNet * 1000)} />
             <div className="h-28 -mx-1">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={points} syncId="energyDay" margin={{ top: 4, right: 0, bottom: 0, left: 4 }}>
+                <ComposedChart data={advData} syncId="energyDay" margin={{ top: 4, right: 0, bottom: 0, left: 4 }}>
                   <defs>
                     <linearGradient id="dGrid" x1="0" y1="0" x2="0" y2="1">
                       <stop offset={goff0} stopColor={C.usage} stopOpacity={0.55} />
@@ -517,7 +524,7 @@ export function EnergyWidget() {
                   <YAxis orientation="right" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} width={44} tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${v / 1000}k` : `${v}`)} />
                   <Tooltip content={<ChartTooltip />} />
                   <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.7} />
-                  <Area type="linear" dataKey="grid_w" baseValue={0} stroke="url(#dGridStroke)" fill="url(#dGrid)" strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
+                  <Area type="linear" dataKey="gridD" baseValue={0} stroke="url(#dGridStroke)" fill="url(#dGrid)" strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>

@@ -20,6 +20,12 @@ export const config = {
   energyBridgeUrl: (process.env.ENERGY_BRIDGE_URL || "http://100.96.197.107:3093").replace(/\/$/, ""),
   energyBridgeKey: process.env.ENERGY_BRIDGE_KEY || "",
 
+  // Ventilation monitor: the cockpit proxies to ventilation-monitor on the dev
+  // server (over Tailscale), which polls + controls the Ubbink Ubiflux Vigor MVHR
+  // over Modbus on the LAN. ventilationKey gates reads/writes; empty => disabled.
+  ventilationBridgeUrl: (process.env.VENTILATION_BRIDGE_URL || "http://100.96.197.107:3094").replace(/\/$/, ""),
+  ventilationBridgeKey: process.env.VENTILATION_BRIDGE_KEY || "",
+
   // Telegram bot
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || "",
   telegramChatId: process.env.TELEGRAM_CHAT_ID || "",

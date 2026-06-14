@@ -27,10 +27,11 @@ import { AgentsWidget } from "./widgets/agents-widget";
 import { FileTreeWidget, FileModal } from "./widgets/file-explorer-widget";
 import { HomeControlWidget } from "./widgets/home-control-widget";
 import { EnergyWidget } from "./widgets/energy-widget";
+import { VentilationWidget } from "./widgets/ventilation-widget";
 import { CATEGORY_LABELS, type WidgetCategory } from "@/lib/widget-registry";
 import { cn } from "@/lib/utils";
 
-const ALL_CATEGORIES: WidgetCategory[] = ["alerts", "infrastructure", "uptime", "business", "analytics", "projects", "devserver", "files", "health", "home", "energy"];
+const ALL_CATEGORIES: WidgetCategory[] = ["alerts", "infrastructure", "uptime", "business", "analytics", "projects", "devserver", "files", "health", "home", "energy", "ventilation"];
 
 const CATEGORY_STORAGE_KEY = "cockpit:disabledCategories";
 const LAYOUT_STORAGE_KEY = "cockpit:layout";
@@ -237,6 +238,9 @@ export function Dashboard() {
 
           {/* Energy — live grid / solar / battery view with graphs */}
           {show("energy") && <EnergyWidget />}
+
+          {/* Ventilation — Ubbink Vigor MVHR: temps, airflow, filter + fan control */}
+          {show("ventilation") && <VentilationWidget />}
         </div>
 
         {loading && !data && (

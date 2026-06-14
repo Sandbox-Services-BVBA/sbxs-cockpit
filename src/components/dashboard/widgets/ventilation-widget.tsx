@@ -114,8 +114,8 @@ export function VentilationWidget() {
         body: JSON.stringify(body),
       });
       const j = await r.json().catch(() => ({}));
-      // The unit refuses to force the bypass when its own logic doesn't allow it.
-      if (j && j.ok === false) setMsg(body.bypass ? "Bypass geweigerd door unit (condities)" : j.error || "geweigerd");
+      // Defensive: surface a control failure (rare — e.g. a transient bus/comms hiccup).
+      if (j && j.ok === false) setMsg(j.error ? `Bediening mislukt: ${j.error}` : "Bediening mislukt");
       await mutate();
     } finally {
       setBusy(null);

@@ -50,6 +50,7 @@ interface HistPoint {
   bat_w: number;
   house_w: number;
   soc_avg: number;
+  stored_wh: number;
 }
 
 const C = {
@@ -115,7 +116,7 @@ function Stat({ icon: Icon, label, value, sub, color, big }: { icon: typeof Sun;
   );
 }
 
-function VerticalBattery({ index, soc, power, online }: { index: number; soc: number | null; power: number; online: boolean }) {
+function VerticalBattery({ index, soc, power, online, cap, rated }: { index: number; soc: number | null; power: number; online: boolean; cap: number | null; rated: number }) {
   const charging = online && power < 0;
   const discharging = online && power > 0;
   const pct = Math.max(0, Math.min(100, soc ?? 0));
@@ -147,7 +148,8 @@ function VerticalBattery({ index, soc, power, online }: { index: number; soc: nu
       </div>
       <div className="text-center leading-tight">
         <div className="text-[10px] font-mono text-muted-foreground">Bat {index}</div>
-        <div className="text-sm font-bold tabular-nums">{soc ?? "—"}%</div>
+        <div className="text-base font-bold tabular-nums" style={{ color: C.battery }}>{cap != null ? (cap / 1000).toFixed(1) : "—"} kWh</div>
+        <div className="text-[10px] font-mono text-muted-foreground">{soc ?? "—"}% · {(rated / 1000).toFixed(1)} kWh</div>
         <div className="text-[10px] font-mono" style={{ color: charging || discharging ? C.battery : undefined }}>
           {state}
           {online && power !== 0 ? ` ${fmtW(Math.abs(power))}` : ""}
@@ -304,7 +306,8 @@ export function EnergyWidget() {
   const goff0 = Math.min(1, Math.max(0, gMax / (gMax - gMin)));
 
   // advanced combined chart data (battery flipped: charge up)
-  const advData = points.map((p) => ({ ...p, bat: p.bat_w == null ? null : -p.bat_w }));
+  const advData = points.map((p) => ({ ...p, bat: p.bat_w == null ? null : -p.bat_w, stored_kwh: p.stored_wh == null ? null : Math.round(p.stored_wh / 100) / 10 }));
+  const ratedKwhNum = live.rated_wh / 1000;
   const toggle = (k: MetricKey) => setShow((s) => ({ ...s, [k]: !s[k] }));
 
   const xAxisCommon = {
@@ -353,7 +356,7 @@ export function EnergyWidget() {
           <Stat icon={Home} label="Verbruik" value={fmtW(live.house_w)} color={C.house} />
           <div className="flex items-center justify-center gap-5 border-2 border-border px-2 py-1">
             {live.batteries.map((b, i) => (
-              <VerticalBattery key={b.ip} index={i + 1} soc={b.soc} power={b.power_w} online={b.online} />
+              <VerticalBattery key={b.ip} index={i + 1} soc={b.soc} power={b.power_w} online={b.online} cap={b.capacity_wh} rated={b.rated_wh} />
             ))}
           </div>
         </div>
@@ -439,6 +442,30 @@ export function EnergyWidget() {
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
+
+            <div className="flex items-baseline justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Batterij (laatste {Math.round(liveWin / 60)} min)</span>
+              <span className="text-[9px] italic text-muted-foreground">boven 0 = laden · onder 0 = ontladen</span>
+            </div>
+            <div className="h-24 -mx-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={advData} margin={{ top: 4, right: 0, bottom: 0, left: 4 }}>
+                  <defs>
+                    <linearGradient id="liveBat" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#22c55e" stopOpacity={0.4} />
+                      <stop offset="50%" stopColor={C.battery} stopOpacity={0.08} />
+                      <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.4} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />
+                  <XAxis {...xAxisCommon} />
+                  <YAxis orientation="right" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} width={44} tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${v / 1000}k` : `${v}`)} />
+                  <Tooltip content={<ChartTooltip />} />
+                  <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.7} />
+                  <Area type="linear" dataKey="bat" baseValue={0} stroke={C.battery} fill="url(#liveBat)" strokeWidth={1.6} dot={false} isAnimationActive={false} connectNulls />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         )}
 
@@ -495,27 +522,33 @@ export function EnergyWidget() {
               </ResponsiveContainer>
             </div>
 
-            {/* C — Batterij (W + SoC%) */}
-            <PanelHeader label="Batterij" right={`${socPct}% · ${storedKwh}/${ratedKwh} kWh`} rightColor={C.battery} />
-            <div className="h-28 -mx-1">
+            {/* C — Batterij: laden/ontladen (W) + lading (kWh) */}
+            <PanelHeader label="Batterij — laden / ontladen · lading" right={`${storedKwh}/${ratedKwh} kWh · ${socPct}%`} rightColor={C.battery} />
+            <div className="h-32 -mx-1">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={advData} syncId="energyDay" margin={{ top: 4, right: 0, bottom: 0, left: 4 }}>
                   <defs>
                     <linearGradient id="dBat" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={C.battery} stopOpacity={0.28} />
-                      <stop offset="100%" stopColor={C.battery} stopOpacity={0.02} />
+                      <stop offset="0%" stopColor="#22c55e" stopOpacity={0.3} />
+                      <stop offset="50%" stopColor={C.battery} stopOpacity={0.08} />
+                      <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.3} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />
                   <XAxis {...xAxisCommon} />
                   <YAxis yAxisId="w" orientation="right" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} width={44} tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${v / 1000}k` : `${v}`)} />
-                  <YAxis yAxisId="soc" orientation="left" domain={[0, 100]} tick={{ fontSize: 8, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} width={26} tickFormatter={(v) => `${v}`} />
+                  <YAxis yAxisId="kwh" orientation="left" domain={[0, Math.ceil(ratedKwhNum)]} tick={{ fontSize: 8, fill: C.battery }} tickLine={false} axisLine={false} width={30} tickFormatter={(v) => `${v}`} />
                   <Tooltip content={<ChartTooltip />} />
                   <ReferenceLine yAxisId="w" y={0} stroke="var(--muted-foreground)" strokeOpacity={0.7} />
                   <Area yAxisId="w" type="linear" dataKey="bat" baseValue={0} stroke={C.battery} fill="url(#dBat)" strokeWidth={1.6} dot={false} isAnimationActive={false} connectNulls />
-                  <Line yAxisId="soc" type="linear" dataKey="soc_avg" stroke="#94a3b8" strokeWidth={1} strokeDasharray="3 3" dot={false} isAnimationActive={false} connectNulls />
+                  <Line yAxisId="kwh" type="linear" dataKey="stored_kwh" stroke={C.battery} strokeWidth={2} strokeDasharray="4 2" dot={false} isAnimationActive={false} connectNulls />
                 </ComposedChart>
               </ResponsiveContainer>
+            </div>
+            <div className="flex flex-wrap gap-x-3 text-[9px] text-muted-foreground">
+              <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-3" style={{ background: "#22c55e" }} />laden (boven 0)</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-3" style={{ background: "#f59e0b" }} />ontladen (onder 0)</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-3" style={{ background: C.battery }} />lading (kWh, stippellijn)</span>
             </div>
           </div>
         )}

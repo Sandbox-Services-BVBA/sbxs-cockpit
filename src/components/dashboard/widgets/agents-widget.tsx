@@ -38,9 +38,9 @@ export function AgentsWidget() {
   return (
     <WidgetTile
       title="Agents"
-      size="lg"
+      size="md"
       headerRight={
-        <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground tabular-nums">
+        <span className="flex items-center gap-1.5 text-tiny text-muted-foreground tabular-nums">
           {active > 0 && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
           {active} active / {windows.length}
         </span>
@@ -50,7 +50,7 @@ export function AgentsWidget() {
         <p className="text-xs text-muted-foreground">{data?.error ? "Dev server unreachable" : "No tmux agents"}</p>
       ) : (
         <div className="max-h-[55vh] overflow-y-auto">
-          <table className="w-full table-fixed font-mono text-[10px] leading-snug">
+          <table className="w-full table-fixed font-mono text-tiny leading-snug">
             <colgroup>
               <col className="w-3" />
               <col className="w-28" />

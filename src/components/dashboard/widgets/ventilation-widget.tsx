@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import useSWR from "swr";
 import { WidgetTile } from "../widget-tile";
+import type { LayoutMode } from "@/lib/widget-registry";
 import { cn } from "@/lib/utils";
 import { Wind, Thermometer, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import {
@@ -87,7 +88,7 @@ function fmt1(n: number | null | undefined) {
 function Stat({ icon: Icon, label, value, unit, sub, color }: { icon: typeof Wind; label: string; value: string; unit?: string; sub?: string; color: string }) {
   return (
     <div className="border-2 border-border px-3 py-2.5">
-      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-tiny font-bold uppercase tracking-widest text-muted-foreground">
         <Icon className="h-4 w-4" style={{ color }} />
         {label}
       </div>
@@ -95,12 +96,19 @@ function Stat({ icon: Icon, label, value, unit, sub, color }: { icon: typeof Win
         {value}
         {unit && <span className="ml-1 text-sm font-semibold text-muted-foreground">{unit}</span>}
       </div>
-      {sub && <div className="mt-1 text-[10px] text-muted-foreground">{sub}</div>}
+      {sub && <div className="mt-1 text-tiny text-muted-foreground">{sub}</div>}
     </div>
   );
 }
 
-export function VentilationWidget() {
+export function VentilationWidget({ layout = "grid" }: { layout?: LayoutMode }) {
+  // See EnergyWidget: full-width chart, layout-aware width.
+  const wideCls =
+    layout === "columns"
+      ? "ventilation-wide"
+      : layout === "wall"
+        ? ""
+        : "sm:col-span-2 lg:col-span-4 xl:col-span-6 3xl:col-span-8 4xl:col-span-12";
   const [tick, setTick] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -153,15 +161,15 @@ export function VentilationWidget() {
 
   if (live?.error) {
     return (
-      <WidgetTile title="Ventilatie" size="xl" className="ventilation-wide lg:col-span-4 xl:col-span-6">
-        <p className="text-[11px] text-[#ff4444]">Monitor: {live.error}</p>
+      <WidgetTile title="Ventilatie" size="sm" className={wideCls}>
+        <p className="text-petite text-[#ff4444]">Monitor: {live.error}</p>
       </WidgetTile>
     );
   }
   if (!live) {
     return (
-      <WidgetTile title="Ventilatie" size="xl" className="ventilation-wide lg:col-span-4 xl:col-span-6">
-        <p className="text-[11px] text-muted-foreground">Verbinden met ventilation-monitor...</p>
+      <WidgetTile title="Ventilatie" size="sm" className={wideCls}>
+        <p className="text-petite text-muted-foreground">Verbinden met ventilation-monitor...</p>
       </WidgetTile>
     );
   }
@@ -176,10 +184,10 @@ export function VentilationWidget() {
   return (
     <WidgetTile
       title="Ventilatie"
-      size="xl"
-      className="ventilation-wide lg:col-span-4 xl:col-span-6"
+      size="sm"
+      className={wideCls}
       headerRight={
-        <span className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
+        <span className="flex items-center gap-1.5 text-tiny font-mono text-muted-foreground">
           <span key={tick} className="inline-block h-2 w-2" style={{ background: "#22c55e", animation: `energy-heartbeat ${REFRESH_MS}ms ease-out forwards` }} />
           live · {live.fan_control === "wall" ? "klok" : "modbus"} · bypass {live.bypass}
         </span>
@@ -227,13 +235,13 @@ export function VentilationWidget() {
           )}
         >
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-tiny font-bold uppercase tracking-widest text-muted-foreground">
               <Wind className="h-3.5 w-3.5" style={{ color: "#06b6d4" }} />
               Slimme koeling · voorspelling
             </div>
-            <div className="mt-0.5 text-[11px] truncate">{autoOn ? auto?.reason || auto?.status : "uit — handmatige bediening"}</div>
+            <div className="mt-0.5 text-petite truncate">{autoOn ? auto?.reason || auto?.status : "uit — handmatige bediening"}</div>
             {auto?.forecast && (
-              <div className="text-[9px] text-muted-foreground">
+              <div className="text-mini text-muted-foreground">
                 morgen {auto.forecast.tomorrow_high_c ?? "?"}°C · overmorgen {auto.forecast.dayafter_high_c ?? "?"}°C · buiten nu {auto.forecast.current_outdoor_c ?? "?"}°C
               </div>
             )}
@@ -242,7 +250,7 @@ export function VentilationWidget() {
             onClick={toggleAuto}
             disabled={busy !== null}
             className={cn(
-              "shrink-0 border-2 px-4 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-colors",
+              "shrink-0 border-2 px-4 py-1.5 text-petite font-bold uppercase tracking-wide transition-colors",
               autoOn ? "border-[#06b6d4] bg-[#06b6d4]/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground",
               busy === "auto" && "opacity-50"
             )}
@@ -253,7 +261,7 @@ export function VentilationWidget() {
 
         {/* Fan control */}
         <div className={cn("flex items-center gap-2", autoOn && "opacity-40")}>
-          <span className="w-16 shrink-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Stand</span>
+          <span className="w-16 shrink-0 text-tiny font-bold uppercase tracking-widest text-muted-foreground">Stand</span>
           <div className="grid flex-1 grid-cols-5 gap-1">
             {MODES.map((m) => {
               const key = `fan:${m.key}`;
@@ -263,7 +271,7 @@ export function VentilationWidget() {
                   disabled={busy !== null || autoOn}
                   onClick={() => control({ mode: m.key }, key)}
                   className={cn(
-                    "border-2 px-1 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors",
+                    "border-2 px-1 py-1.5 text-tiny font-bold uppercase tracking-wide transition-colors",
                     activeKey === m.key ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground",
                     busy === key && "opacity-50"
                   )}
@@ -277,7 +285,7 @@ export function VentilationWidget() {
 
         {/* Bypass control */}
         <div className={cn("flex items-center gap-2", autoOn && "opacity-40")}>
-          <span className="w-16 shrink-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Bypass</span>
+          <span className="w-16 shrink-0 text-tiny font-bold uppercase tracking-widest text-muted-foreground">Bypass</span>
           <div className="grid flex-1 grid-cols-3 gap-1">
             {BYPASS.map((bp) => {
               const key = `bypass:${bp.key}`;
@@ -287,7 +295,7 @@ export function VentilationWidget() {
                   disabled={busy !== null || autoOn}
                   onClick={() => control({ bypass: bp.key }, key)}
                   className={cn(
-                    "border-2 px-1 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors",
+                    "border-2 px-1 py-1.5 text-tiny font-bold uppercase tracking-wide transition-colors",
                     live.bypass_mode === bp.key ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground",
                     busy === key && "opacity-50"
                   )}
@@ -299,12 +307,12 @@ export function VentilationWidget() {
           </div>
         </div>
 
-        <p className="text-[9px] text-muted-foreground">
+        <p className="text-mini text-muted-foreground">
           {autoOn
             ? "Slimme koeling stuurt nu automatisch (stand + doeltemperatuur o.b.v. de weersvoorspelling). Zet uit voor handmatige bediening."
             : "Stand-Auto = klokprogramma. Een stand of bypass kiezen neemt Modbus-controle over (bypass normaal op Auto = vrije koeling). Slimme koeling = automatisch voorkoelen als het morgen warm wordt."}
         </p>
-        {msg && <p className="text-[9px] text-[#ff4444]">{msg}</p>}
+        {msg && <p className="text-mini text-[#ff4444]">{msg}</p>}
       </div>
     </WidgetTile>
   );

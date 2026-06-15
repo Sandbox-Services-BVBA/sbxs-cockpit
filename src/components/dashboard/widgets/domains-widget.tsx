@@ -15,7 +15,7 @@ export function DomainsWidget({ domains }: { domains: Domain[] | null }) {
   if (!domains || domains.length === 0) {
     return (
       <WidgetTile title="Domain Renewals" size="sm">
-        <p className="text-[11px] text-muted-foreground">No data</p>
+        <p className="text-petite text-muted-foreground">No data</p>
       </WidgetTile>
     );
   }
@@ -29,7 +29,7 @@ export function DomainsWidget({ domains }: { domains: Domain[] | null }) {
       title="Domain Renewals"
       size="sm"
       headerRight={
-        <span className={cn("text-[9px] font-mono", soonCount > 0 ? "text-[#ccaa33]" : "text-muted-foreground")}>
+        <span className={cn("text-mini font-mono", soonCount > 0 ? "text-[#ccaa33]" : "text-muted-foreground")}>
           {domains.filter((d) => d.days_left > 0).length} upcoming
         </span>
       }
@@ -41,21 +41,21 @@ export function DomainsWidget({ domains }: { domains: Domain[] | null }) {
               "h-1.5 w-1.5 shrink-0",
               d.days_left <= 7 ? "bg-[#ccaa33]" : "bg-muted-foreground"
             )} />
-            <span className="text-[11px] truncate flex-1">{d.name}</span>
+            <span className="text-petite truncate flex-1">{d.name}</span>
             {d.registrar && (
-              <span className="text-[8px] font-mono text-muted-foreground border border-border px-1">
+              <span className="text-micro font-mono text-muted-foreground border border-border px-1">
                 {d.registrar}
               </span>
             )}
             <span className={cn(
-              "text-[9px] font-mono whitespace-nowrap",
+              "text-mini font-mono whitespace-nowrap",
               d.days_left <= 7 ? "text-[#ccaa33]" : "text-muted-foreground"
             )}>
               {d.days_left}d
             </span>
           </div>
         )) : (
-          <p className="text-[9px] text-[#33aa55] font-mono">NO UPCOMING RENEWALS</p>
+          <p className="text-mini text-[#33aa55] font-mono">NO UPCOMING RENEWALS</p>
         )}
       </div>
     </WidgetTile>

@@ -25,7 +25,7 @@ export function IntegrationsWidget({ integrations }: { integrations: Integration
     <WidgetTile
       title="Integrations"
       size="md"
-      headerRight={<span className="text-[10px] text-muted-foreground">{healthyCount}/{integrations.length}</span>}
+      headerRight={<span className="text-tiny text-muted-foreground">{healthyCount}/{integrations.length}</span>}
     >
       <div className="grid grid-cols-2 gap-2">
         {integrations.map((i) => (

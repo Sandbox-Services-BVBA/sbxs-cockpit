@@ -34,7 +34,7 @@ export function ProjectsWidget({ projects }: { projects: Project[] }) {
     <WidgetTile
       title="Recent Projects"
       size="sm"
-      headerRight={<span className="text-[10px] text-muted-foreground">{activeCount} active</span>}
+      headerRight={<span className="text-tiny text-muted-foreground">{activeCount} active</span>}
     >
       <div className="space-y-1.5">
         {sorted.map((p) => {
@@ -50,7 +50,7 @@ export function ProjectsWidget({ projects }: { projects: Project[] }) {
               )} />
               <span className="text-xs truncate flex-1">{p.name}</span>
               {lastActivity && (
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                <span className="text-tiny text-muted-foreground whitespace-nowrap">
                   {lastActivity}
                 </span>
               )}

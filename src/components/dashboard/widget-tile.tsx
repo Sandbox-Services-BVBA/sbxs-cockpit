@@ -32,7 +32,7 @@ export function WidgetTile({
     >
       {title && (
         <div className="flex items-center justify-between px-2 pt-1.5 pb-0">
-          <h3 className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">{title}</h3>
+          <h3 className="text-tiny font-bold text-muted-foreground tracking-widest uppercase">{title}</h3>
           {headerRight}
         </div>
       )}

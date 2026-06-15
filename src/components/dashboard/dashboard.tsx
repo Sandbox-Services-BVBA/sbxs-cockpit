@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { Fragment, useState, useCallback, useEffect } from "react";
 import { useDashboardData } from "@/hooks/use-dashboard-data";
 import { DashboardHeader } from "./header";
 import { AlertsSummaryWidget } from "./widgets/alerts-summary-widget";
@@ -28,37 +28,57 @@ import { FileTreeWidget, FileModal } from "./widgets/file-explorer-widget";
 import { HomeControlWidget } from "./widgets/home-control-widget";
 import { EnergyWidget } from "./widgets/energy-widget";
 import { VentilationWidget } from "./widgets/ventilation-widget";
-import { CATEGORY_LABELS, type WidgetCategory } from "@/lib/widget-registry";
+import {
+  ALL_CATEGORIES,
+  DEFAULT_ENABLED_CATEGORIES,
+  DEFAULT_WIDGETS,
+  CATEGORY_LABELS,
+  type LayoutMode,
+  type WidgetCategory,
+} from "@/lib/widget-registry";
 import { cn } from "@/lib/utils";
-
-const ALL_CATEGORIES: WidgetCategory[] = ["alerts", "infrastructure", "uptime", "business", "analytics", "projects", "devserver", "files", "health", "home", "energy", "ventilation"];
 
 const CATEGORY_STORAGE_KEY = "cockpit:disabledCategories";
 const LAYOUT_STORAGE_KEY = "cockpit:layout";
 
-type LayoutMode = "grid" | "columns";
+// Energy/Ventilation are full-width charts; on the wall they get their own
+// 2-up band instead of joining the masonry flow.
+const BAND_IDS = new Set(["energy", "ventilation"]);
 
-// Vertical: responsive grid that wraps into rows (good for phones).
-const GRID_CLS = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-2";
-// Horizontal: widgets fill a column top-to-bottom then wrap rightward; the
-// page scrolls sideways. Fixed viewport height drives the column wrapping.
+// Vertical: responsive grid that wraps into rows (good for phones). items-start
+// + auto column count up to a wall-display tier keeps tiles packed without the
+// equal-row-height empty bands.
+const GRID_CLS =
+  "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 3xl:grid-cols-8 4xl:grid-cols-12 gap-2 items-start";
+// Horizontal: widgets fill a column top-to-bottom then wrap rightward; the page
+// scrolls sideways. Fixed viewport height drives the column wrapping.
 const COLS_CLS =
-  "flex flex-col flex-wrap content-start gap-2 overflow-x-auto h-[calc(100vh-128px)] pb-2 [&>*]:w-[400px] [&>*]:shrink-0 [&>.fa-wide]:w-[820px] [&>.energy-wide]:w-[calc(100vw-2rem)] [&>.ventilation-wide]:w-[calc(100vw-2rem)]";
+  "flex flex-col flex-wrap content-start gap-2 overflow-x-auto h-[calc(100vh-128px)] pb-2 [&>*]:w-[400px] [&>*]:shrink-0 [&>.energy-wide]:w-[820px] [&>.ventilation-wide]:w-[820px]";
+// Wall: width-driven CSS-columns masonry. Column WIDTH (not count) drives how
+// many columns appear, so the layout scales continuously to any display with no
+// breakpoint cap and no empty rows. Tiles never split across columns.
+const WALL_CLS = "[column-width:340px] [column-gap:0.5rem]";
 
 function LayoutToggle({ layout, onChange }: { layout: LayoutMode; onChange: (m: LayoutMode) => void }) {
+  const labels: Record<LayoutMode, string> = { grid: "Vertical", columns: "Horizontal", wall: "Wall" };
+  const titles: Record<LayoutMode, string> = {
+    grid: "Vertical (stack & scroll down)",
+    columns: "Horizontal (columns, scroll right)",
+    wall: "Wall (dense masonry for always-on display)",
+  };
   return (
     <div className="flex shrink-0 border-2 border-border">
-      {(["grid", "columns"] as const).map((m) => (
+      {(["grid", "columns", "wall"] as const).map((m) => (
         <button
           key={m}
           onClick={() => onChange(m)}
-          title={m === "grid" ? "Vertical (stack & scroll down)" : "Horizontal (columns, scroll right)"}
+          title={titles[m]}
           className={cn(
-            "px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors",
+            "px-2 py-0.5 text-mini font-bold uppercase tracking-wide transition-colors",
             layout === m ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
           )}
         >
-          {m === "grid" ? "Vertical" : "Horizontal"}
+          {labels[m]}
         </button>
       ))}
     </div>
@@ -79,7 +99,7 @@ function CategoryFilter({
           key={cat}
           onClick={() => onToggle(cat)}
           className={cn(
-            "px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide border-2 transition-colors",
+            "px-2 py-0.5 text-mini font-bold uppercase tracking-wide border-2 transition-colors",
             enabled.has(cat)
               ? "bg-primary text-primary-foreground border-primary"
               : "bg-muted text-muted-foreground border-border hover:border-muted-foreground"
@@ -95,7 +115,7 @@ function CategoryFilter({
 export function Dashboard() {
   const { data, loading, error, refresh } = useDashboardData();
   const [enabledCategories, setEnabledCategories] = useState<Set<WidgetCategory>>(
-    new Set(ALL_CATEGORIES)
+    new Set(DEFAULT_ENABLED_CATEGORIES)
   );
   const [hydrated, setHydrated] = useState(false);
   const [layout, setLayout] = useState<LayoutMode>("grid");
@@ -110,7 +130,7 @@ export function Dashboard() {
         setEnabledCategories(new Set(ALL_CATEGORIES.filter((c) => !disabled.has(c))));
       }
       const l = localStorage.getItem(LAYOUT_STORAGE_KEY);
-      if (l === "columns" || l === "grid") setLayout(l);
+      if (l === "columns" || l === "grid" || l === "wall") setLayout(l);
     } catch {
       /* ignore malformed storage */
     }
@@ -132,16 +152,56 @@ export function Dashboard() {
   const toggleCategory = useCallback((cat: WidgetCategory) => {
     setEnabledCategories((prev) => {
       const next = new Set(prev);
-      if (next.has(cat)) {
-        next.delete(cat);
-      } else {
-        next.add(cat);
-      }
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
       return next;
     });
   }, []);
 
-  const show = (cat: WidgetCategory) => enabledCategories.has(cat);
+  // Render a single widget by id. Data-driven widgets are only invoked once
+  // `data` is present (see the visible-list filter below), so the non-null
+  // assertions are safe.
+  const nodeFor = (id: string): React.ReactNode => {
+    switch (id) {
+      case "alerts-summary": return <AlertsSummaryWidget alerts={data!.alerts} />;
+      case "uptime-grid": return <UptimeGridWidget uptime={data!.uptime} uptimeHistory={data!.uptimeHistory} />;
+      case "cityscreens": return <CityScreensWidget displays={data!.cityscreens} />;
+      case "domains": return <DomainsWidget domains={data!.domains} />;
+      case "umami-plaq": return <UmamiWidget site="plaqstudio" title="Plaq Studio" />;
+      case "umami-byb": return <UmamiWidget site="bookyourbox" title="BookYourBox" />;
+      case "servers": return <ServersWidget servers={data!.servers} />;
+      case "backups": return <BackupsWidget backups={data!.backups} />;
+      case "integrations": return <IntegrationsWidget integrations={data!.integrations} />;
+      case "crons": return <CronsWidget crons={data!.crons} />;
+      case "services": return <ServicesWidget services={data?.services} />;
+      case "unbilled": return <UnbilledWidget unbilled={data!.unbilled} />;
+      case "bank": return <BankWidget />;
+      case "timeentries": return <TimeEntriesWidget entries={data!.timeentries} />;
+      case "inbox": return <InboxWidget inboxes={data!.inboxes} />;
+      case "mailroom": return <MailroomWidget mailroom={data!.mailroom} />;
+      case "agents": return <AgentsWidget />;
+      case "file-activity": return <FileActivityWidget layout={layout} />;
+      case "projects": return <ProjectsWidget projects={data!.projects} />;
+      case "file-explorer": return <FileTreeWidget layout={layout} />;
+      case "energy": return <EnergyWidget layout={layout} />;
+      case "ventilation": return <VentilationWidget layout={layout} />;
+      case "home-control": return <HomeControlWidget />;
+      case "sobriety": return <SobrietyWidget />;
+      case "weight": return <WeightWidget />;
+      case "btc": return <BtcWidget />;
+      default: return null;
+    }
+  };
+
+  // Widgets to render: enabled category + (self-fetching OR shared data loaded),
+  // ordered by importance.
+  const visible = DEFAULT_WIDGETS
+    .filter((w) => enabledCategories.has(w.category) && (w.selfFetch || data))
+    .sort((a, b) => a.order - b.order);
+
+  const alertsWidgets = visible.filter((w) => w.category === "alerts");
+  const bandWidgets = visible.filter((w) => BAND_IDS.has(w.id));
+  const mainWidgets = visible.filter((w) => w.category !== "alerts" && !BAND_IDS.has(w.id));
 
   return (
     <div className="min-h-screen bg-background">
@@ -152,96 +212,44 @@ export function Dashboard() {
       />
 
       {error && (
-        <div className="mx-2 mt-2 border-2 border-[#ff4444] bg-[#ff4444]/10 px-2 py-1.5 text-[11px]">
+        <div className="mx-2 mt-2 border-2 border-[#ff4444] bg-[#ff4444]/10 px-2 py-1.5 text-petite">
           Failed to load: {error}
         </div>
       )}
 
-      <main className={cn("p-2 space-y-2 mx-auto", layout === "columns" ? "max-w-none" : "max-w-[1800px]")}>
+      <main className={cn("p-2 space-y-2 mx-auto", layout === "grid" ? "max-w-[2400px]" : "max-w-none")}>
         <div className="flex items-start justify-between gap-2">
           <CategoryFilter enabled={enabledCategories} onToggle={toggleCategory} />
           <LayoutToggle layout={layout} onChange={setLayout} />
         </div>
 
-        <div className={layout === "columns" ? COLS_CLS : GRID_CLS}>
-          {/* File Activity — first / focus widget */}
-          {show("devserver") && data && <FileActivityWidget layout={layout} />}
-
-          {/* Alerts */}
-          {show("alerts") && data && (
-            <AlertsSummaryWidget alerts={data.alerts} />
-          )}
-
-          {/* Infrastructure */}
-          {show("infrastructure") && data && (
-            <>
-              <ServersWidget servers={data.servers} />
-              <BackupsWidget backups={data.backups} />
-              <CronsWidget crons={data.crons} />
-              <DomainsWidget domains={data.domains} />
-            </>
-          )}
-
-          {/* Uptime */}
-          {show("uptime") && data && (
-            <>
-              <UptimeGridWidget uptime={data.uptime} uptimeHistory={data.uptimeHistory} />
-              <CityScreensWidget displays={data.cityscreens} />
-            </>
-          )}
-
-          {/* Business */}
-          {show("business") && data && (
-            <>
-              <UnbilledWidget unbilled={data.unbilled} />
-              <BankWidget />
-              <BtcWidget />
-              <TimeEntriesWidget entries={data.timeentries} />
-              <InboxWidget inboxes={data.inboxes} />
-              <MailroomWidget mailroom={data.mailroom} />
-            </>
-          )}
-
-          {/* Analytics */}
-          {show("analytics") && (
-            <>
-              <UmamiWidget site="plaqstudio" title="Plaq Studio" />
-              <UmamiWidget site="bookyourbox" title="BookYourBox" />
-            </>
-          )}
-
-          {/* Projects */}
-          {show("projects") && data && (
-            <>
-              <ProjectsWidget projects={data.projects} />
-              <IntegrationsWidget integrations={data.integrations} />
-            </>
-          )}
-
-          {/* Dev Server (File Activity is rendered first above) */}
-          {show("devserver") && data && <ServicesWidget services={data.services} />}
-          {show("devserver") && <AgentsWidget />}
-
-          {/* Files — lightweight tree; clicking a file opens the full explorer modal */}
-          {show("files") && <FileTreeWidget layout={layout} />}
-
-          {/* Health */}
-          {show("health") && (
-            <>
-              <SobrietyWidget />
-              <WeightWidget />
-            </>
-          )}
-
-          {/* Home — office lights + scenes (interactive) */}
-          {show("home") && <HomeControlWidget />}
-
-          {/* Energy — live grid / solar / battery view with graphs */}
-          {show("energy") && <EnergyWidget />}
-
-          {/* Ventilation — Ubbink Vigor MVHR: temps, airflow, filter + fan control */}
-          {show("ventilation") && <VentilationWidget />}
-        </div>
+        {layout === "wall" ? (
+          <div className="space-y-2">
+            {alertsWidgets.map((w) => (
+              <Fragment key={w.id}>{nodeFor(w.id)}</Fragment>
+            ))}
+            <div className={WALL_CLS}>
+              {mainWidgets.map((w) => (
+                <div key={w.id} className="break-inside-avoid mb-2">
+                  {nodeFor(w.id)}
+                </div>
+              ))}
+            </div>
+            {bandWidgets.length > 0 && (
+              <div className="grid grid-cols-1 2xl:grid-cols-2 gap-2 items-start">
+                {bandWidgets.map((w) => (
+                  <Fragment key={w.id}>{nodeFor(w.id)}</Fragment>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className={layout === "columns" ? COLS_CLS : GRID_CLS}>
+            {visible.map((w) => (
+              <Fragment key={w.id}>{nodeFor(w.id)}</Fragment>
+            ))}
+          </div>
+        )}
 
         {loading && !data && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-2">

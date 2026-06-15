@@ -16,7 +16,7 @@ export function CityScreensWidget({ displays }: { displays: Display[] | null }) 
   if (!displays || displays.length === 0) {
     return (
       <WidgetTile title="CityScreens" size="sm">
-        <p className="text-[11px] text-muted-foreground">No data</p>
+        <p className="text-petite text-muted-foreground">No data</p>
       </WidgetTile>
     );
   }
@@ -29,7 +29,7 @@ export function CityScreensWidget({ displays }: { displays: Display[] | null }) 
       title="CityScreens"
       size="sm"
       headerRight={
-        <span className={cn("text-[9px] font-mono", offline.length > 0 ? "text-[#ff4444]" : "text-[#33aa55]")}>
+        <span className={cn("text-mini font-mono", offline.length > 0 ? "text-[#ff4444]" : "text-[#33aa55]")}>
           {online.length}/{displays.length} online
         </span>
       }
@@ -41,8 +41,8 @@ export function CityScreensWidget({ displays }: { displays: Display[] | null }) 
               "h-1.5 w-1.5 shrink-0",
               d.mode === "online" ? "bg-[#33aa55]" : "bg-[#ff4444]"
             )} />
-            <span className="text-[11px] truncate flex-1">{d.name || d.player_id}</span>
-            <span className="text-[9px] font-mono text-muted-foreground uppercase">{d.mode}</span>
+            <span className="text-petite truncate flex-1">{d.name || d.player_id}</span>
+            <span className="text-mini font-mono text-muted-foreground uppercase">{d.mode}</span>
           </div>
         ))}
       </div>

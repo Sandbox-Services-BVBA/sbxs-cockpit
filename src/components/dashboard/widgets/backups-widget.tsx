@@ -27,14 +27,14 @@ export function BackupsWidget({ backups }: { backups: BackupStatus[] }) {
     <WidgetTile
       title="Backups"
       size="md"
-      headerRight={<span className="text-[10px] text-muted-foreground">{okCount}/{backups.length}</span>}
+      headerRight={<span className="text-tiny text-muted-foreground">{okCount}/{backups.length}</span>}
     >
       <div className="space-y-2">
         {backups.map((b) => (
           <div key={b.backup_name} className="flex items-center gap-2">
             <span className={cn("h-1.5 w-1.5  shrink-0", statusDot[b.status])} />
             <span className="text-xs truncate flex-1">{b.backup_name}</span>
-            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+            <span className="text-tiny text-muted-foreground whitespace-nowrap">
               {b.last_backup_at ? formatDistanceToNow(new Date(b.last_backup_at), { addSuffix: true }) : "never"}
             </span>
           </div>

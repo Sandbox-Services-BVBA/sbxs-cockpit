@@ -22,7 +22,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
   if (!active || !payload?.[0]) return null;
   const d = payload[0].payload;
   return (
-    <div className="bg-popover border-2 border-border px-1.5 py-1 text-[9px] font-mono">
+    <div className="bg-popover border-2 border-border px-1.5 py-1 text-mini font-mono">
       <div>{d.date}</div>
       <div>EUR {d.eur.toLocaleString()}</div>
       <div className="text-muted-foreground">USD {d.usd?.toLocaleString()}</div>
@@ -55,7 +55,7 @@ export function BtcWidget() {
         <select
           value={days}
           onChange={(e) => setDays(e.target.value)}
-          className="bg-transparent text-[9px] font-mono text-muted-foreground border border-border px-1 py-0.5 cursor-pointer focus:outline-none"
+          className="bg-transparent text-mini font-mono text-muted-foreground border border-border px-1 py-0.5 cursor-pointer focus:outline-none"
         >
           {PERIODS.map((p) => (
             <option key={p.key} value={p.key}>{p.label}</option>
@@ -70,36 +70,36 @@ export function BtcWidget() {
             {current ? (
               <>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-[9px] text-muted-foreground font-mono">USD</span>
+                  <span className="text-mini text-muted-foreground font-mono">USD</span>
                   <span className="text-xl font-black tabular-nums">{current.usd.toLocaleString()}</span>
                 </div>
                 <div className="flex items-baseline gap-1 mt-0.5">
-                  <span className="text-[9px] text-muted-foreground font-mono">EUR</span>
+                  <span className="text-mini text-muted-foreground font-mono">EUR</span>
                   <span className="text-base font-black tabular-nums text-muted-foreground">{current.eur.toLocaleString()}</span>
                 </div>
               </>
             ) : (
-              <span className="text-[11px] text-muted-foreground">Loading...</span>
+              <span className="text-petite text-muted-foreground">Loading...</span>
             )}
           </div>
 
           <div className="text-right">
             {current && (
               <>
-                <div className="text-[11px] font-bold">
+                <div className="text-petite font-bold">
                   USD {current.portfolioUsd.toLocaleString()}
                 </div>
-                <div className="text-[11px] font-bold text-muted-foreground">
+                <div className="text-petite font-bold text-muted-foreground">
                   EUR {current.portfolioEur.toLocaleString()}
                 </div>
-                <div className="text-[9px] font-mono text-muted-foreground">
+                <div className="text-mini font-mono text-muted-foreground">
                   {holdings} BTC
                 </div>
               </>
             )}
             {change && (
               <div className={cn(
-                "text-[9px] font-mono",
+                "text-mini font-mono",
                 change.pct >= 0 ? "text-[#33aa55]" : "text-[#ff4444]"
               )}>
                 {change.pct >= 0 ? "+" : ""}{change.pct}%
@@ -134,7 +134,7 @@ export function BtcWidget() {
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="h-40 flex items-center justify-center text-[9px] text-muted-foreground">Loading chart...</div>
+          <div className="h-40 flex items-center justify-center text-mini text-muted-foreground">Loading chart...</div>
         )}
       </div>
     </WidgetTile>

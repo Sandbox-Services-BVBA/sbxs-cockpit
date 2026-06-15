@@ -29,12 +29,12 @@ export function DashboardHeader({
       <div className="flex items-center justify-between px-2 py-1.5">
         <div className="flex items-center gap-2">
           <div className="h-6 w-6 bg-[#fe644d] flex items-center justify-center border-2 border-[#cc4433]">
-            <span className="text-[10px] font-black text-white">S</span>
+            <span className="text-tiny font-black text-white">S</span>
           </div>
           <div>
             <h1 className="text-xs font-black tracking-wide uppercase">SBXS Cockpit</h1>
             {lastUpdated && (
-              <p className="text-[9px] text-muted-foreground font-mono">
+              <p className="text-mini text-muted-foreground font-mono">
                 {new Date(lastUpdated).toLocaleTimeString()}
               </p>
             )}

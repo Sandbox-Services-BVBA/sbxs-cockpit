@@ -22,7 +22,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
   if (!active || !payload?.[0]) return null;
   const d = payload[0].payload;
   return (
-    <div className="bg-popover border-2 border-border px-1.5 py-1 text-[9px] font-mono">
+    <div className="bg-popover border-2 border-border px-1.5 py-1 text-mini font-mono">
       <div>{d.date}</div>
       <div>EUR {d.balance.toLocaleString()}</div>
     </div>
@@ -53,7 +53,7 @@ export function BankWidget() {
         <select
           value={period}
           onChange={(e) => setPeriod(e.target.value)}
-          className="bg-transparent text-[9px] font-mono text-muted-foreground border border-border px-1 py-0.5 cursor-pointer focus:outline-none"
+          className="bg-transparent text-mini font-mono text-muted-foreground border border-border px-1 py-0.5 cursor-pointer focus:outline-none"
         >
           {PERIODS.map((p) => (
             <option key={p.key} value={p.key}>{p.label}</option>
@@ -67,27 +67,27 @@ export function BankWidget() {
             {balance ? (
               <>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-[9px] text-muted-foreground font-mono">EUR</span>
+                  <span className="text-mini text-muted-foreground font-mono">EUR</span>
                   <span className="text-xl font-black tabular-nums">{balance.currentBalance.toLocaleString()}</span>
                 </div>
-                <div className="text-[9px] font-mono text-muted-foreground">
+                <div className="text-mini font-mono text-muted-foreground">
                   as of {balance.asOf}
                 </div>
               </>
             ) : (
-              <span className="text-[11px] text-muted-foreground">Loading...</span>
+              <span className="text-petite text-muted-foreground">Loading...</span>
             )}
           </div>
 
           {balance?.thisMonth && (
             <div className="text-right space-y-0.5">
-              <div className="text-[9px] font-mono">
+              <div className="text-mini font-mono">
                 <span className="text-[#33aa55]">+{balance.thisMonth.income.toLocaleString()}</span>
               </div>
-              <div className="text-[9px] font-mono">
+              <div className="text-mini font-mono">
                 <span className="text-[#ff4444]">{balance.thisMonth.expenses.toLocaleString()}</span>
               </div>
-              <div className={cn("text-[9px] font-mono font-bold", balance.thisMonth.net >= 0 ? "text-[#33aa55]" : "text-[#ff4444]")}>
+              <div className={cn("text-mini font-mono font-bold", balance.thisMonth.net >= 0 ? "text-[#33aa55]" : "text-[#ff4444]")}>
                 {balance.thisMonth.net >= 0 ? "+" : ""}{balance.thisMonth.net.toLocaleString()}
               </div>
             </div>
@@ -120,7 +120,7 @@ export function BankWidget() {
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="h-40 flex items-center justify-center text-[9px] text-muted-foreground">Loading chart...</div>
+          <div className="h-40 flex items-center justify-center text-mini text-muted-foreground">Loading chart...</div>
         )}
       </div>
     </WidgetTile>

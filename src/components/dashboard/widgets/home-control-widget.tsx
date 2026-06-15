@@ -73,14 +73,14 @@ export function HomeControlWidget() {
   if (data?.error) {
     return (
       <WidgetTile title="Office" size="md">
-        <p className="text-[11px] text-[#ff4444]">Bridge: {data.error}</p>
+        <p className="text-petite text-[#ff4444]">Bridge: {data.error}</p>
       </WidgetTile>
     );
   }
   if (isLoading && !data) {
     return (
       <WidgetTile title="Office" size="md">
-        <p className="text-[11px] text-muted-foreground">Connecting to home bridge...</p>
+        <p className="text-petite text-muted-foreground">Connecting to home bridge...</p>
       </WidgetTile>
     );
   }
@@ -95,7 +95,7 @@ export function HomeControlWidget() {
       title="Office"
       size="md"
       headerRight={
-        <span className="flex items-center gap-1 text-[9px] text-muted-foreground font-mono">
+        <span className="flex items-center gap-1 text-mini text-muted-foreground font-mono">
           <Monitor className="h-2.5 w-2.5" />
           {data?.proxmox?.enabled ? (
             <span className="inline-block h-2.5 w-2.5 border border-border" style={{ background: rgbCss(data.proxmox.rgb) }} />
@@ -124,7 +124,7 @@ export function HomeControlWidget() {
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
-                <span className="text-[9px] font-bold uppercase tracking-wide leading-tight text-center">{s.label}</span>
+                <span className="text-mini font-bold uppercase tracking-wide leading-tight text-center">{s.label}</span>
               </button>
             );
           })}
@@ -145,8 +145,8 @@ export function HomeControlWidget() {
                 )}
               >
                 <span className={cn("h-1.5 w-1.5 shrink-0", sw.on ? "bg-emerald-500" : "bg-zinc-500")} />
-                <span className="text-[11px] truncate flex-1 text-left">{sw.name}</span>
-                <span className="text-[9px] font-mono text-muted-foreground">{sw.on ? "ON" : "OFF"}</span>
+                <span className="text-petite truncate flex-1 text-left">{sw.name}</span>
+                <span className="text-mini font-mono text-muted-foreground">{sw.on ? "ON" : "OFF"}</span>
               </button>
             );
           })}
@@ -160,9 +160,9 @@ export function HomeControlWidget() {
                 className={cn("h-2 w-2 shrink-0 border border-border", !l.on && "opacity-30")}
                 style={{ background: l.on ? rgbCss(l.rgb) : "transparent" }}
               />
-              <span className="text-[9px] text-muted-foreground truncate flex-1">{l.name}</span>
+              <span className="text-mini text-muted-foreground truncate flex-1">{l.name}</span>
               {l.on && l.brightness != null && (
-                <span className="text-[8px] font-mono text-muted-foreground">{l.brightness}%</span>
+                <span className="text-micro font-mono text-muted-foreground">{l.brightness}%</span>
               )}
             </div>
           ))}

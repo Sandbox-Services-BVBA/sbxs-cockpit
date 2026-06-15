@@ -115,7 +115,7 @@ function LiveRing({ startDate }: { startDate: string }) {
         <ProgressRing progress={dayProgress} />
         <div className="absolute inset-0 flex flex-col items-center justify-center rotate-0">
           <span className="text-3xl font-black tabular-nums leading-none">{completedDays}</span>
-          <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider">
+          <span className="text-mini font-mono text-muted-foreground uppercase tracking-wider">
             {completedDays === 1 ? "day" : "days"}
           </span>
         </div>
@@ -128,13 +128,13 @@ function LiveRing({ startDate }: { startDate: string }) {
         <span>{String(remMins).padStart(2, "0")}</span>
         <span className="opacity-50">:</span>
         <span>{String(remSecs).padStart(2, "0")}</span>
-        <span className="text-[9px] ml-1 opacity-50">to day {completedDays + 1}</span>
+        <span className="text-mini ml-1 opacity-50">to day {completedDays + 1}</span>
       </div>
 
       {/* Next milestone */}
       {next && (
         <div className="text-center">
-          <p className="text-[9px] font-mono text-muted-foreground">
+          <p className="text-mini font-mono text-muted-foreground">
             next: <span className="text-foreground font-bold">{next.label}</span>
           </p>
         </div>
@@ -143,7 +143,7 @@ function LiveRing({ startDate }: { startDate: string }) {
       {/* Current milestone badge */}
       {current && (
         <div className="border border-[#33aa55]/30 bg-[#33aa55]/10 px-2 py-0.5">
-          <p className="text-[9px] text-[#33aa55] font-bold font-mono uppercase tracking-wide">
+          <p className="text-mini text-[#33aa55] font-bold font-mono uppercase tracking-wide">
             {current.label}
           </p>
         </div>

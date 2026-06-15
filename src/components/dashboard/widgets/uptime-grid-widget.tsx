@@ -41,10 +41,10 @@ function UptimeRow({ check, history }: { check: UptimeCheck & { failing_paths?: 
       <div className="flex items-center gap-1.5">
         <span className={cn("h-1.5 w-1.5 shrink-0", check.is_up ? "bg-[#33aa55]" : "bg-[#ff4444] animate-pulse")} />
         <div className="truncate flex-1">
-          <span className="text-[11px] font-bold">{check.site_name}</span>
-          <span className="text-[8px] font-mono text-muted-foreground ml-1">{new URL(check.site_url).hostname}</span>
+          <span className="text-petite font-bold">{check.site_name}</span>
+          <span className="text-micro font-mono text-muted-foreground ml-1">{new URL(check.site_url).hostname}</span>
         </div>
-        <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground">
+        <div className="flex items-center gap-2 text-mini font-mono text-muted-foreground">
           {check.response_time_ms !== null && <span>{check.response_time_ms}ms</span>}
           {check.ssl_days_remaining !== null && (
             <span className={cn(check.ssl_days_remaining <= 14 && "text-[#ccaa33]")}>
@@ -54,7 +54,7 @@ function UptimeRow({ check, history }: { check: UptimeCheck & { failing_paths?: 
         </div>
       </div>
       {!check.is_up && failingPaths.length > 0 && (
-        <div className="text-[8px] font-mono text-[#ff4444] pl-3">
+        <div className="text-micro font-mono text-[#ff4444] pl-3">
           {failingPaths.map((p) => (
             <span key={p} className="mr-2">{p === "/" ? "/ (root)" : p}</span>
           ))}
@@ -69,7 +69,7 @@ export function UptimeGridWidget({ uptime, uptimeHistory }: { uptime: (UptimeChe
   if (uptime.length === 0) {
     return (
       <WidgetTile title="Uptime Monitor" size="lg">
-        <p className="text-[11px] text-muted-foreground">No uptime data yet</p>
+        <p className="text-petite text-muted-foreground">No uptime data yet</p>
       </WidgetTile>
     );
   }
@@ -82,7 +82,7 @@ export function UptimeGridWidget({ uptime, uptimeHistory }: { uptime: (UptimeChe
       title="Uptime Monitor"
       size="lg"
       headerRight={
-        <span className={cn("text-[9px] font-mono", allUp ? "text-[#33aa55]" : "text-[#ff4444]")}>
+        <span className={cn("text-mini font-mono", allUp ? "text-[#33aa55]" : "text-[#ff4444]")}>
           {upCount}/{uptime.length} online
         </span>
       }

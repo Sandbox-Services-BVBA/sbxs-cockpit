@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { WidgetTile } from "../widget-tile";
+import type { LayoutMode } from "@/lib/widget-registry";
 import { cn } from "@/lib/utils";
 import { openFile } from "@/lib/file-viewer-store";
 import type { FileChange } from "@/types";
@@ -102,7 +103,7 @@ function Toggle({ on, onClick, label, title }: { on: boolean; onClick: () => voi
       onClick={onClick}
       title={title}
       className={cn(
-        "px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide border transition-colors",
+        "px-1.5 py-0.5 text-mini font-bold uppercase tracking-wide border transition-colors",
         on
           ? "bg-primary text-primary-foreground border-primary"
           : "bg-muted text-muted-foreground border-border hover:border-muted-foreground"
@@ -113,7 +114,7 @@ function Toggle({ on, onClick, label, title }: { on: boolean; onClick: () => voi
   );
 }
 
-export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "columns" }) {
+export function FileActivityWidget({ layout = "grid" }: { layout?: LayoutMode }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const [failed, setFailed] = useState(false);
@@ -179,15 +180,14 @@ export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "col
   return (
     <WidgetTile
       title="File Activity"
-      size="sm"
-      className="fa-wide sm:col-span-2 lg:col-span-4 xl:col-span-6"
+      size="lg"
       headerRight={
         <div className="flex items-center gap-2">
           <Toggle on={showTemp} onClick={() => setShowTemp((v) => !v)} label="temp"
             title="Show/hide temporary/duplicate write artifacts (name.tmp.*, backups, swap files)" />
           <Toggle on={showNoise} onClick={() => setShowNoise((v) => !v)} label="noise"
             title="Show/hide .claude, mailroom and service state churn" />
-          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1.5 text-tiny text-muted-foreground">
             <span className={cn("h-1.5 w-1.5 rounded-full", liveCount > 0 ? "bg-emerald-500 animate-pulse" : "bg-zinc-600")} />
             {liveCount > 0 ? `${liveCount} live` : "idle"}
           </span>
@@ -203,8 +203,8 @@ export function FileActivityWidget({ layout = "grid" }: { layout?: "grid" | "col
       ) : visible.length === 0 ? (
         <p className="text-xs text-muted-foreground">No file changes in the last 3 hours</p>
       ) : (
-        <div className={cn("overflow-y-auto scroll-smooth", layout === "columns" ? "h-[calc(100vh-168px)]" : "h-[60vh]")}>
-          <table className="w-full table-fixed font-mono text-[10px] leading-snug">
+        <div className={cn("overflow-y-auto scroll-smooth", layout === "columns" ? "h-[calc(100vh-168px)]" : layout === "wall" ? "h-[420px]" : "h-[60vh]")}>
+          <table className="w-full table-fixed font-mono text-tiny leading-snug">
             <colgroup>
               <col className="w-3" />
               <col className="w-28" />

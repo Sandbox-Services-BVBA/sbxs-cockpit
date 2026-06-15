@@ -13,8 +13,8 @@ interface UnbilledData {
 export function UnbilledWidget({ unbilled }: { unbilled: UnbilledData | null }) {
   if (!unbilled) {
     return (
-      <WidgetTile title="Unbilled" size="sm">
-        <p className="text-[11px] text-muted-foreground">No data</p>
+      <WidgetTile title="Unbilled" size="md">
+        <p className="text-petite text-muted-foreground">No data</p>
       </WidgetTile>
     );
   }
@@ -26,12 +26,12 @@ export function UnbilledWidget({ unbilled }: { unbilled: UnbilledData | null }) 
   return (
     <WidgetTile
       title="Unbilled"
-      size="sm"
-      headerRight={<span className="text-[9px] font-mono text-muted-foreground">{unbilled.total_hours.toFixed(1)}h</span>}
+      size="md"
+      headerRight={<span className="text-mini font-mono text-muted-foreground">{unbilled.total_hours.toFixed(1)}h</span>}
     >
       <div className="space-y-1.5">
         <div className="flex items-baseline gap-1.5">
-          <span className="text-[9px] text-muted-foreground font-mono">EUR</span>
+          <span className="text-mini text-muted-foreground font-mono">EUR</span>
           <span className={cn(
             "text-2xl font-black tabular-nums",
             unbilled.total_amount > 500 ? "text-[#ccaa33]" : ""
@@ -42,7 +42,7 @@ export function UnbilledWidget({ unbilled }: { unbilled: UnbilledData | null }) 
         {clients.length > 0 && (
           <div className="space-y-0.5">
             {clients.slice(0, 5).map(([name, amount]) => (
-              <div key={name} className="flex justify-between text-[9px] font-mono">
+              <div key={name} className="flex justify-between text-mini font-mono">
                 <span className="text-muted-foreground truncate mr-2">{name}</span>
                 <span>{Math.round(amount)}</span>
               </div>
@@ -50,7 +50,7 @@ export function UnbilledWidget({ unbilled }: { unbilled: UnbilledData | null }) 
           </div>
         )}
         {unbilled.entry_count > 0 && (
-          <p className="text-[9px] text-muted-foreground font-mono">{unbilled.entry_count} entries</p>
+          <p className="text-mini text-muted-foreground font-mono">{unbilled.entry_count} entries</p>
         )}
       </div>
     </WidgetTile>

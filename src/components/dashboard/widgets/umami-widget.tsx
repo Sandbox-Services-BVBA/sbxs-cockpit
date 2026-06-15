@@ -24,7 +24,7 @@ function DayBar({ value, max }: { value: number; max: number }) {
           style={{ height: `${height}%` }}
         />
       </div>
-      <span className="text-[8px] font-mono text-muted-foreground">{value || ""}</span>
+      <span className="text-micro font-mono text-muted-foreground">{value || ""}</span>
     </div>
   );
 }
@@ -44,7 +44,7 @@ function WeekChart({ daily }: { daily: { date: string; visitors: number }[] }) {
         {daily.map((d, i) => {
           const dayName = new Date(d.date).toLocaleDateString("en", { weekday: "short" }).slice(0, 2);
           return (
-            <div key={d.date} className="flex-1 text-center text-[7px] font-mono text-muted-foreground">
+            <div key={d.date} className="flex-1 text-center text-nano font-mono text-muted-foreground">
               {dayName}
             </div>
           );
@@ -62,13 +62,13 @@ export function UmamiWidget({ site, title }: { site: "plaqstudio" | "bookyourbox
   return (
     <WidgetTile title={title} size="sm">
       {!siteData ? (
-        <p className="text-[11px] text-muted-foreground">{data === undefined ? "Loading..." : "No data"}</p>
+        <p className="text-petite text-muted-foreground">{data === undefined ? "Loading..." : "No data"}</p>
       ) : (
         <div className="space-y-1.5">
           <div className="flex items-baseline gap-1.5">
             <span className="text-2xl font-black tabular-nums">{siteData.today}</span>
-            <span className="text-[9px] text-muted-foreground font-mono">TODAY</span>
-            <span className="text-[9px] text-muted-foreground font-mono ml-auto">EU {siteData.euVisitors}/wk</span>
+            <span className="text-mini text-muted-foreground font-mono">TODAY</span>
+            <span className="text-mini text-muted-foreground font-mono ml-auto">EU {siteData.euVisitors}/wk</span>
           </div>
 
           <WeekChart daily={siteData.daily} />
@@ -76,7 +76,7 @@ export function UmamiWidget({ site, title }: { site: "plaqstudio" | "bookyourbox
           {siteData.topCountries.length > 0 && (
             <div className="flex gap-1.5 flex-wrap">
               {siteData.topCountries.map(c => (
-                <span key={c.country} className="text-[8px] font-mono text-muted-foreground">
+                <span key={c.country} className="text-micro font-mono text-muted-foreground">
                   {c.country} {c.visitors}
                 </span>
               ))}

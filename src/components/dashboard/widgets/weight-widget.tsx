@@ -96,8 +96,8 @@ export function WeightWidget() {
             ) : (
               <span className="text-sm text-muted-foreground">Loading...</span>
             )}
-            {todayWeight && <p className="text-[10px] text-muted-foreground">today</p>}
-            {!todayWeight && latestWeight && <p className="text-[10px] text-muted-foreground">latest</p>}
+            {todayWeight && <p className="text-tiny text-muted-foreground">today</p>}
+            {!todayWeight && latestWeight && <p className="text-tiny text-muted-foreground">latest</p>}
           </div>
 
           {/* Period toggles */}
@@ -107,7 +107,7 @@ export function WeightWidget() {
                 key={p.key}
                 onClick={() => setPeriod(p.key)}
                 className={cn(
-                  "px-2 py-0.5 rounded text-[10px] font-medium transition-all",
+                  "px-2 py-0.5 rounded text-tiny font-medium transition-all",
                   period === p.key
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -158,7 +158,7 @@ export function WeightWidget() {
         )}
 
         {/* Footer stats */}
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <div className="flex items-center justify-between text-tiny text-muted-foreground">
           <span>{chartData.length} entries</span>
           {totalCount !== undefined && totalCount > chartData.length && (
             <span>{totalCount} total stored</span>

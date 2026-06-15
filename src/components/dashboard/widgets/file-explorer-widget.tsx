@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { WidgetTile } from "../widget-tile";
+import type { LayoutMode } from "@/lib/widget-registry";
 import { cn } from "@/lib/utils";
 import { fsLs, fsCat, getFsKey, setFsKey, type FsEntry, type FsFile } from "@/lib/fs-client";
 import { openFile, useFileViewer } from "@/lib/file-viewer-store";
@@ -77,8 +78,8 @@ function FileTree({
   if (!unlocked) {
     return (
       <div className="flex flex-col gap-2 max-w-sm py-2">
-        <p className="text-[11px] text-muted-foreground">Read-only file browser. Enter the access key to unlock.</p>
-        {err && <p className="text-[11px] text-red-400">{err}</p>}
+        <p className="text-petite text-muted-foreground">Read-only file browser. Enter the access key to unlock.</p>
+        {err && <p className="text-petite text-red-400">{err}</p>}
         <div className="flex gap-1">
           <input
             type="password"
@@ -88,7 +89,7 @@ function FileTree({
             placeholder="FS access key"
             className="flex-1 bg-input border-2 border-border px-2 py-1 text-xs font-mono focus:outline-none focus:border-primary"
           />
-          <button onClick={submitKey} className="px-3 py-1 text-[11px] font-bold uppercase bg-primary text-primary-foreground border-2 border-primary">
+          <button onClick={submitKey} className="px-3 py-1 text-petite font-bold uppercase bg-primary text-primary-foreground border-2 border-primary">
             Unlock
           </button>
         </div>
@@ -98,7 +99,7 @@ function FileTree({
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1 flex-wrap shrink-0">
+      <div className="flex items-center gap-1 text-tiny text-muted-foreground mb-1 flex-wrap shrink-0">
         <button onClick={() => loadDir("")} className="hover:text-foreground">~</button>
         {crumbs.map((c, i) => (
           <span key={i} className="flex items-center gap-1">
@@ -107,8 +108,8 @@ function FileTree({
           </span>
         ))}
       </div>
-      {err && <p className="text-[11px] text-red-400 shrink-0">{err}</p>}
-      <div className="overflow-y-auto flex-1 min-h-0 font-mono text-[11px]">
+      {err && <p className="text-petite text-red-400 shrink-0">{err}</p>}
+      <div className="overflow-y-auto flex-1 min-h-0 font-mono text-petite">
         {entries.map((e) => (
           <button
             key={e.path}
@@ -122,10 +123,10 @@ function FileTree({
               {e.type === "dir" ? "▸" : " "}
             </span>
             <span className={cn("flex-1 truncate", e.type === "dir" ? "text-foreground" : "text-foreground/80")}>{e.name}</span>
-            {e.type === "file" && <span className="shrink-0 text-[9px] text-muted-foreground/50">{fmtSize(e.size)}</span>}
+            {e.type === "file" && <span className="shrink-0 text-mini text-muted-foreground/50">{fmtSize(e.size)}</span>}
           </button>
         ))}
-        {entries.length === 0 && !err && <p className="text-[11px] text-muted-foreground px-1">empty</p>}
+        {entries.length === 0 && !err && <p className="text-petite text-muted-foreground px-1">empty</p>}
       </div>
     </div>
   );
@@ -161,7 +162,7 @@ function FileViewer({ path }: { path: string }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       {path ? (
-        <div className="text-[10px] text-muted-foreground mb-1 flex items-center justify-between gap-2 shrink-0">
+        <div className="text-tiny text-muted-foreground mb-1 flex items-center justify-between gap-2 shrink-0">
           <span className="truncate" title={path}>{shortPath(path)}</span>
           {file && (
             <span className="shrink-0 tabular-nums">
@@ -171,13 +172,13 @@ function FileViewer({ path }: { path: string }) {
           )}
         </div>
       ) : (
-        <p className="text-[11px] text-muted-foreground">Select a file to read.</p>
+        <p className="text-petite text-muted-foreground">Select a file to read.</p>
       )}
-      {loading && <p className="text-[11px] text-muted-foreground">Loading...</p>}
-      {err && <p className="text-[11px] text-red-400">{err}</p>}
+      {loading && <p className="text-petite text-muted-foreground">Loading...</p>}
+      {err && <p className="text-petite text-red-400">{err}</p>}
       {file && (
         <div className="overflow-auto flex-1 min-h-0 border border-border bg-background">
-          <div className="flex font-mono text-[11px] leading-[1.5]">
+          <div className="flex font-mono text-petite leading-[1.5]">
             <pre className="text-right pr-2 pl-2 py-1 text-muted-foreground/40 select-none border-r border-border/50">
               {shown.map((_, i) => i + 1).join("\n")}
             </pre>
@@ -190,10 +191,10 @@ function FileViewer({ path }: { path: string }) {
 }
 
 // ─── Lightweight dashboard widget: tree only, opens files in the modal ───────
-export function FileTreeWidget({ layout = "grid" }: { layout?: "grid" | "columns" }) {
+export function FileTreeWidget({ layout = "grid" }: { layout?: LayoutMode }) {
   return (
     <WidgetTile title="Files" size="sm" className="sm:col-span-2 lg:col-span-3 xl:col-span-3">
-      <div className={cn(layout === "columns" ? "h-[calc(100vh-168px)]" : "h-[60vh]")}>
+      <div className={cn(layout === "columns" ? "h-[calc(100vh-168px)]" : layout === "wall" ? "h-[420px]" : "h-[60vh]")}>
         <FileTree onOpenFile={openFile} />
       </div>
     </WidgetTile>
@@ -234,7 +235,7 @@ export function FileModal() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b-2 border-border px-3 py-1.5 shrink-0">
-          <h3 className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">File Explorer</h3>
+          <h3 className="text-tiny font-bold text-muted-foreground tracking-widest uppercase">File Explorer</h3>
           <button onClick={() => setOpen(false)} className="h-5 w-5 flex items-center justify-center border border-border hover:bg-accent">
             <X className="h-3 w-3" />
           </button>

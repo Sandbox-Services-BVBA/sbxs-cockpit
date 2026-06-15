@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import useSWR from "swr";
 import { WidgetTile } from "../widget-tile";
+import type { LayoutMode } from "@/lib/widget-registry";
 import { cn } from "@/lib/utils";
 import { Sun, Zap, Home, ChevronLeft, ChevronRight } from "lucide-react";
 import {
@@ -109,14 +110,14 @@ function statusLine(live: Live): { text: string; good: boolean } {
 function Stat({ icon: Icon, label, value, sub, color, big }: { icon: typeof Sun; label: string; value: string; sub?: React.ReactNode; color: string; big?: boolean }) {
   return (
     <div className={cn("border-2 border-border px-3 py-2.5", big && "ring-2 ring-inset")} style={big ? { boxShadow: `inset 0 0 0 2px ${color}` } : undefined}>
-      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-tiny font-bold uppercase tracking-widest text-muted-foreground">
         <Icon className="h-4 w-4" style={{ color }} />
         {label}
       </div>
       <div className={cn("mt-1 font-bold tabular-nums leading-none", big ? "text-4xl" : "text-3xl")} style={{ color }}>
         {value}
       </div>
-      {sub && <div className="mt-1 text-[10px] text-muted-foreground">{sub}</div>}
+      {sub && <div className="mt-1 text-tiny text-muted-foreground">{sub}</div>}
     </div>
   );
 }
@@ -152,10 +153,10 @@ function VerticalBattery({ index, soc, power, online, cap, rated }: { index: num
         </div>
       </div>
       <div className="text-center leading-tight">
-        <div className="text-[10px] font-mono text-muted-foreground">Bat {index}</div>
+        <div className="text-tiny font-mono text-muted-foreground">Bat {index}</div>
         <div className="text-base font-bold tabular-nums" style={{ color: C.battery }}>{cap != null ? (cap / 1000).toFixed(1) : "—"} kWh</div>
-        <div className="text-[10px] font-mono text-muted-foreground">{soc ?? "—"}% · {(rated / 1000).toFixed(1)} kWh</div>
-        <div className="text-[10px] font-mono" style={{ color: charging || discharging ? C.battery : undefined }}>
+        <div className="text-tiny font-mono text-muted-foreground">{soc ?? "—"}% · {(rated / 1000).toFixed(1)} kWh</div>
+        <div className="text-tiny font-mono" style={{ color: charging || discharging ? C.battery : undefined }}>
           {state}
           {online && power !== 0 ? ` ${fmtW(Math.abs(power))}` : ""}
         </div>
@@ -223,7 +224,7 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
   const d = payload[0].payload;
   const time = new Date(d.t * 1000).toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" });
   return (
-    <div className="border border-border bg-popover px-2 py-1 text-[11px] shadow-lg space-y-0.5">
+    <div className="border border-border bg-popover px-2 py-1 text-petite shadow-lg space-y-0.5">
       <div className="font-bold text-muted-foreground">{time}</div>
       <div style={{ color: C.solar }}>Zon {fmtW(d.solar_w)}</div>
       <div style={{ color: gridColor(d.grid_w) }}>Grid {fmtSigned(d.grid_w)}</div>
@@ -241,7 +242,16 @@ const METRICS: { key: MetricKey; label: string; color: string }[] = [
   { key: "house", label: "Verbruik", color: C.house },
 ];
 
-export function EnergyWidget() {
+export function EnergyWidget({ layout = "grid" }: { layout?: LayoutMode }) {
+  // Full-width chart. In grid mode span the row; in wall mode the parent band
+  // controls width (so two charts sit 2-up); in columns mode the marker class
+  // drives a fixed pixel width.
+  const wideCls =
+    layout === "columns"
+      ? "energy-wide"
+      : layout === "wall"
+        ? ""
+        : "sm:col-span-2 lg:col-span-4 xl:col-span-6 3xl:col-span-8 4xl:col-span-12";
   const [view, setView] = useState<"live" | "dag" | "geavanceerd">("live");
   const [liveWin, setLiveWin] = useState<number>(1800); // 300 (5m) / 1800 (30m)
   const [dayOffset, setDayOffset] = useState<number>(0);
@@ -285,15 +295,15 @@ export function EnergyWidget() {
 
   if (live?.error) {
     return (
-      <WidgetTile title="Energie" size="xl" className="energy-wide lg:col-span-4 xl:col-span-6">
-        <p className="text-[11px] text-[#ff4444]">Monitor: {live.error}</p>
+      <WidgetTile title="Energie" size="sm" className={wideCls}>
+        <p className="text-petite text-[#ff4444]">Monitor: {live.error}</p>
       </WidgetTile>
     );
   }
   if (!live) {
     return (
-      <WidgetTile title="Energie" size="xl" className="energy-wide lg:col-span-4 xl:col-span-6">
-        <p className="text-[11px] text-muted-foreground">Verbinden met energy-monitor...</p>
+      <WidgetTile title="Energie" size="sm" className={wideCls}>
+        <p className="text-petite text-muted-foreground">Verbinden met energy-monitor...</p>
       </WidgetTile>
     );
   }
@@ -333,10 +343,10 @@ export function EnergyWidget() {
   return (
     <WidgetTile
       title="Energie"
-      size="xl"
-      className="energy-wide lg:col-span-4 xl:col-span-6"
+      size="sm"
+      className={wideCls}
       headerRight={
-        <span className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
+        <span className="flex items-center gap-1.5 text-tiny font-mono text-muted-foreground">
           <span key={tick} className="inline-block h-2 w-2" style={{ background: "#22c55e", animation: `energy-heartbeat ${REFRESH_MS}ms ease-out forwards` }} />
           live · {live.batteries?.[0]?.mode ?? ""} · piek {fmtW(live.grid?.monthly_peak_w)}
         </span>
@@ -344,7 +354,7 @@ export function EnergyWidget() {
     >
       <div className="space-y-3">
         {/* Plain-language verdict */}
-        <div className="flex items-center gap-2 border-2 px-3 py-1.5 text-[12px] font-bold" style={{ borderColor: status.good ? "#22c55e" : C.usage, color: status.good ? "#16a34a" : C.usage }}>
+        <div className="flex items-center gap-2 border-2 px-3 py-1.5 text-xs font-bold" style={{ borderColor: status.good ? "#22c55e" : C.usage, color: status.good ? "#16a34a" : C.usage }}>
           <span className="inline-block h-2 w-2 shrink-0" style={{ background: status.good ? "#22c55e" : C.usage }} />
           {status.text}
         </div>
@@ -376,7 +386,7 @@ export function EnergyWidget() {
                 key={v}
                 onClick={() => setView(v)}
                 className={cn(
-                  "border-2 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors",
+                  "border-2 px-2.5 py-0.5 text-tiny font-bold uppercase tracking-wide transition-colors",
                   i > 0 && "border-l-0",
                   view === v ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:text-foreground"
                 )}
@@ -393,7 +403,7 @@ export function EnergyWidget() {
                     key={w}
                     onClick={() => setLiveWin(w)}
                     className={cn(
-                      "border-2 px-2 py-0.5 text-[10px] font-bold uppercase transition-colors",
+                      "border-2 px-2 py-0.5 text-tiny font-bold uppercase transition-colors",
                       i === 1 && "border-l-0",
                       liveWin === w ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:text-foreground"
                     )}
@@ -408,7 +418,7 @@ export function EnergyWidget() {
                 <button onClick={() => setDayOffset((o) => o - 1)} className="border-2 border-border p-1 text-muted-foreground hover:text-foreground" aria-label="Vorige dag">
                   <ChevronLeft className="h-3.5 w-3.5" />
                 </button>
-                <span className="min-w-[92px] text-center text-[11px] font-bold tabular-nums">{dayLabel(dayOffset, dayStart)}</span>
+                <span className="min-w-[92px] text-center text-petite font-bold tabular-nums">{dayLabel(dayOffset, dayStart)}</span>
                 <button onClick={() => setDayOffset((o) => Math.min(0, o + 1))} disabled={dayOffset >= 0} className="border-2 border-border p-1 text-muted-foreground hover:text-foreground disabled:opacity-30" aria-label="Volgende dag">
                   <ChevronRight className="h-3.5 w-3.5" />
                 </button>
@@ -424,8 +434,8 @@ export function EnergyWidget() {
               <FlowDiagram live={live} />
             </div>
             <div className="flex items-baseline justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Net (laatste {Math.round(liveWin / 60)} min)</span>
-              <span className="text-[9px] italic text-muted-foreground">rood boven = afname · roze onder = injectie</span>
+              <span className="text-tiny font-bold uppercase tracking-widest text-muted-foreground">Net (laatste {Math.round(liveWin / 60)} min)</span>
+              <span className="text-mini italic text-muted-foreground">rood boven = afname · roze onder = injectie</span>
             </div>
             <div className="h-28 -mx-1">
               <ResponsiveContainer width="100%" height="100%">
@@ -451,8 +461,8 @@ export function EnergyWidget() {
             </div>
 
             <div className="flex items-baseline justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Batterij (laatste {Math.round(liveWin / 60)} min)</span>
-              <span className="text-[9px] italic text-muted-foreground">boven 0 = laden · onder 0 = ontladen</span>
+              <span className="text-tiny font-bold uppercase tracking-widest text-muted-foreground">Batterij (laatste {Math.round(liveWin / 60)} min)</span>
+              <span className="text-mini italic text-muted-foreground">boven 0 = laden · onder 0 = ontladen</span>
             </div>
             <div className="h-24 -mx-1">
               <ResponsiveContainer width="100%" height="100%">
@@ -552,7 +562,7 @@ export function EnergyWidget() {
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex flex-wrap gap-x-3 text-[9px] text-muted-foreground">
+            <div className="flex flex-wrap gap-x-3 text-mini text-muted-foreground">
               <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-3" style={{ background: "#22c55e" }} />laden (boven 0)</span>
               <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-3" style={{ background: "#f59e0b" }} />ontladen (onder 0)</span>
               <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-3" style={{ background: C.battery }} />lading (kWh, stippellijn)</span>
@@ -565,12 +575,12 @@ export function EnergyWidget() {
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-1.5">
               {METRICS.map((m) => (
-                <button key={m.key} onClick={() => toggle(m.key)} className={cn("flex items-center gap-1.5 border-2 border-border px-2 py-0.5 text-[10px] font-bold transition-opacity", !show[m.key] && "opacity-35")}>
+                <button key={m.key} onClick={() => toggle(m.key)} className={cn("flex items-center gap-1.5 border-2 border-border px-2 py-0.5 text-tiny font-bold transition-opacity", !show[m.key] && "opacity-35")}>
                   <span className="inline-block h-2 w-3" style={{ background: m.color }} />
                   {m.label}
                 </button>
               ))}
-              <span className="ml-auto text-[9px] italic text-muted-foreground">boven 0 = afname/laden/opwekken · onder 0 = injectie/ontladen</span>
+              <span className="ml-auto text-mini italic text-muted-foreground">boven 0 = afname/laden/opwekken · onder 0 = injectie/ontladen</span>
             </div>
             <div className="h-96 -mx-1">
               <ResponsiveContainer width="100%" height="100%">
@@ -611,8 +621,8 @@ export function EnergyWidget() {
 function PanelHeader({ label, right, rightColor, hideRight }: { label: string; right?: string; rightColor?: string; hideRight?: boolean }) {
   return (
     <div className="flex items-baseline justify-between pt-1">
-      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
-      {!hideRight && right && <span className="text-[11px] font-bold tabular-nums" style={{ color: rightColor }}>{right}</span>}
+      <span className="text-tiny font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
+      {!hideRight && right && <span className="text-petite font-bold tabular-nums" style={{ color: rightColor }}>{right}</span>}
     </div>
   );
 }

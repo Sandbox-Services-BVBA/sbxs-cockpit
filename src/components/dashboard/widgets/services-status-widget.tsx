@@ -31,7 +31,7 @@ export function ServicesWidget({ services }: { services?: Service[] | null }) {
 
   if (!services) {
     return (
-      <WidgetTile title="Services" size="lg">
+      <WidgetTile title="Services" size="md">
         <p className="text-xs text-muted-foreground">Waiting for agent...</p>
       </WidgetTile>
     );
@@ -46,14 +46,14 @@ export function ServicesWidget({ services }: { services?: Service[] | null }) {
   return (
     <WidgetTile
       title="Services"
-      size="lg"
+      size="md"
       headerRight={
-        <span className="text-[10px] text-muted-foreground tabular-nums">
+        <span className="text-tiny text-muted-foreground tabular-nums">
           {up}/{services.length} up
         </span>
       }
     >
-      <table className="w-full table-fixed font-mono text-[10px] leading-snug">
+      <table className="w-full table-fixed font-mono text-tiny leading-snug">
         <colgroup>
           <col className="w-3" />
           <col className="w-32" />

@@ -114,7 +114,8 @@ export const DEFAULT_WIDGETS: WidgetConfig[] = [
   // House — energy / ventilation / lights
   { id: "energy", title: "Energie", category: "house", size: "xl", order: 21, selfFetch: true },
   { id: "ventilation", title: "Ventilatie", category: "house", size: "xl", order: 22, selfFetch: true },
-  { id: "home-control", title: "Office", category: "house", size: "md", order: 23, selfFetch: true },
+  { id: "raw-metrics", title: "Live metrics", category: "house", size: "lg", order: 23, selfFetch: true },
+  { id: "home-control", title: "Office", category: "house", size: "md", order: 24, selfFetch: true },
 
   // Personal — off by default
   { id: "sobriety", title: "Sobriety", category: "personal", size: "sm", order: 24, selfFetch: true },

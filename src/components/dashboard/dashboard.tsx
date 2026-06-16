@@ -27,6 +27,7 @@ import { AgentsWidget } from "./widgets/agents-widget";
 import { FileTreeWidget, FileModal } from "./widgets/file-explorer-widget";
 import { HomeControlWidget } from "./widgets/home-control-widget";
 import { EnergyWidget } from "./widgets/energy-widget";
+import { RawMetricsWidget } from "./widgets/raw-metrics-widget";
 import { VentilationWidget } from "./widgets/ventilation-widget";
 import {
   ALL_CATEGORIES,
@@ -185,6 +186,7 @@ export function Dashboard() {
       case "file-explorer": return <FileTreeWidget layout={layout} />;
       case "energy": return <EnergyWidget layout={layout} />;
       case "ventilation": return <VentilationWidget layout={layout} />;
+      case "raw-metrics": return <RawMetricsWidget />;
       case "home-control": return <HomeControlWidget />;
       case "sobriety": return <SobrietyWidget />;
       case "weight": return <WeightWidget />;

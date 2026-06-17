@@ -29,6 +29,7 @@ import { HomeControlWidget } from "./widgets/home-control-widget";
 import { EnergyWidget } from "./widgets/energy-widget";
 import { RawMetricsWidget } from "./widgets/raw-metrics-widget";
 import { VentilationWidget } from "./widgets/ventilation-widget";
+import { TemperatureWidget, HumidityWidget } from "./widgets/climate-widget";
 import {
   ALL_CATEGORIES,
   DEFAULT_ENABLED_CATEGORIES,
@@ -186,6 +187,8 @@ export function Dashboard() {
       case "file-explorer": return <FileTreeWidget layout={layout} />;
       case "energy": return <EnergyWidget layout={layout} />;
       case "ventilation": return <VentilationWidget layout={layout} />;
+      case "temperature": return <TemperatureWidget layout={layout} />;
+      case "humidity": return <HumidityWidget layout={layout} />;
       case "raw-metrics": return <RawMetricsWidget />;
       case "home-control": return <HomeControlWidget />;
       case "sobriety": return <SobrietyWidget />;

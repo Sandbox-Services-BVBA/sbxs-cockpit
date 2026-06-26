@@ -58,10 +58,18 @@ interface VentPoint {
 }
 
 const C = {
-  supply: "#06b6d4", // cyan — incoming/fresh
-  extract: "#f59e0b", // amber — outgoing/stale
+  supply: "#06b6d4", // cyan — inblaas (air going INTO the house)
+  extract: "#f59e0b", // amber — retour (air coming OUT of the house ≈ indoor temp)
   airflow: "#22c55e",
 };
+
+// A bypass valve that is open (or opening) routes intake around the heat
+// exchanger for free cooling, so the inblaas temp drops toward outdoor — it can
+// fall below the retour temp, which looks like supply/extract "swapped". It did
+// not: warmteterugwinning is simply off. We surface this so the chart reads true.
+function bypassActive(bypass: string | undefined) {
+  return bypass === "open" || bypass === "opening";
+}
 
 const REFRESH_MS = 10000;
 const HIST_WIN = 6 * 3600; // last 6h
@@ -176,6 +184,7 @@ export function VentilationWidget({ layout = "grid" }: { layout?: LayoutMode }) 
 
   const points = hist?.points ?? [];
   const filterDirty = live.filter === "dirty";
+  const bypassOpen = bypassActive(live.bypass);
   // Which control is active: "wall" -> Auto, else the named modbus preset.
   const activeKey = live.fan_control === "wall" ? "wall" : live.fan_mode;
   const auto = live.automation;
@@ -194,17 +203,18 @@ export function VentilationWidget({ layout = "grid" }: { layout?: LayoutMode }) 
       }
     >
       <div className="space-y-2">
-        {/* Live stats */}
+        {/* Live stats — "Inblaas" = air blown INTO the house (after heat recovery),
+            "Retour" = air pulled back OUT of the house (≈ indoor temperature). */}
         <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
-          <Stat icon={ArrowDownToLine} label="Toevoer" value={fmt1(live.supply_temp_c)} unit="°C" sub={`${live.supply_airflow_m3h} m³/h`} color={C.supply} />
-          <Stat icon={ArrowUpFromLine} label="Afvoer" value={fmt1(live.extract_temp_c)} unit="°C" sub={`${live.extract_airflow_m3h} m³/h`} color={C.extract} />
-          <Stat icon={Wind} label="Debiet" value={`${live.supply_airflow_m3h}`} unit="m³/h" sub={`afvoer ${live.extract_airflow_m3h}`} color={C.airflow} />
+          <Stat icon={ArrowDownToLine} label="Inblaas" value={fmt1(live.supply_temp_c)} unit="°C" sub={`naar woning · ${live.supply_airflow_m3h} m³/h`} color={C.supply} />
+          <Stat icon={ArrowUpFromLine} label="Retour" value={fmt1(live.extract_temp_c)} unit="°C" sub={`uit woning · ${live.extract_airflow_m3h} m³/h`} color={C.extract} />
+          <Stat icon={Wind} label="Debiet" value={`${live.supply_airflow_m3h}`} unit="m³/h" sub={`retour ${live.extract_airflow_m3h}`} color={C.airflow} />
           <Stat
             icon={Thermometer}
             label="Filter"
             value={filterDirty ? "Vuil" : "OK"}
-            sub={`bypass ${live.bypass}`}
-            color={filterDirty ? "#ef4444" : "#22c55e"}
+            sub={bypassOpen ? "bypass open · vrije koeling" : `bypass ${live.bypass}`}
+            color={filterDirty ? "#ef4444" : bypassOpen ? "#06b6d4" : "#22c55e"}
           />
         </div>
 
@@ -221,8 +231,8 @@ export function VentilationWidget({ layout = "grid" }: { layout?: LayoutMode }) 
                 labelFormatter={(t) => new Date(Number(t) * 1000).toLocaleTimeString("nl-BE")}
               />
               <Area yAxisId="f" type="monotone" dataKey="supply_airflow" name="debiet" stroke={C.airflow} fill={C.airflow} fillOpacity={0.12} strokeWidth={1} dot={false} connectNulls />
-              <Line yAxisId="t" type="monotone" dataKey="supply_temp" name="toevoer °C" stroke={C.supply} strokeWidth={1.8} dot={false} connectNulls />
-              <Line yAxisId="t" type="monotone" dataKey="extract_temp" name="afvoer °C" stroke={C.extract} strokeWidth={1.8} dot={false} connectNulls />
+              <Line yAxisId="t" type="monotone" dataKey="supply_temp" name="inblaas °C" stroke={C.supply} strokeWidth={1.8} dot={false} connectNulls />
+              <Line yAxisId="t" type="monotone" dataKey="extract_temp" name="retour °C" stroke={C.extract} strokeWidth={1.8} dot={false} connectNulls />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -307,6 +317,12 @@ export function VentilationWidget({ layout = "grid" }: { layout?: LayoutMode }) 
           </div>
         </div>
 
+        <p className="text-mini text-muted-foreground">
+          Inblaas = verse lucht die de woning ingeblazen wordt (na warmteterugwinning). Retour = lucht die uit de woning afgezogen wordt (≈ binnentemperatuur).
+          {bypassOpen
+            ? " Bypass staat open: warmteterugwinning is uit, dus de inblaas zakt naar buitentemperatuur (vrije koeling) en kan onder de retour duiken. Geen fout, gewoon vrije koeling."
+            : " Bij open bypass valt de warmteterugwinning weg en zakt de inblaas naar buitentemperatuur, dan lijken inblaas/retour om te wisselen."}
+        </p>
         <p className="text-mini text-muted-foreground">
           {autoOn
             ? "Slimme koeling stuurt nu automatisch (stand + doeltemperatuur o.b.v. de weersvoorspelling). Zet uit voor handmatige bediening."

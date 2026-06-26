@@ -53,6 +53,21 @@ interface HistPoint {
   soc_avg: number;
   stored_wh: number;
 }
+interface SummaryPoint {
+  d: string;
+  opwek: number; // solar produced (kWh)
+  verbruik: number; // house consumption (kWh)
+  net: number; // grid import (kWh)
+  injectie: number; // grid export (kWh)
+  zelf: number; // self-consumed (kWh)
+  zelf_pct: number | null;
+  kosten: number; // indicative € (energy only)
+}
+interface SummaryData {
+  days: number;
+  points: SummaryPoint[];
+  error?: string;
+}
 
 const C = {
   solar: "#f59e0b", // amber
@@ -118,6 +133,39 @@ function Stat({ icon: Icon, label, value, sub, color, big }: { icon: typeof Sun;
         {value}
       </div>
       {sub && <div className="mt-1 text-tiny text-muted-foreground">{sub}</div>}
+    </div>
+  );
+}
+
+// Daily energy totals — the HomeWizard "Vandaag" row. kWh derived server-side
+// from cumulative P1 import/export + SMA yield counters, so they line up with
+// the HomeWizard app. Counters only started persisting on 2026-06-26, so today
+// counts from then; full calendar days are exact from the next day onward.
+function DayTotals({ point }: { point?: SummaryPoint }) {
+  const fk = (n: number | null | undefined) =>
+    n == null ? "—" : n.toLocaleString("nl-BE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const cells: { label: string; value: string; sub?: string; color: string }[] = [
+    { label: "Opwek", value: `${fk(point?.opwek)} kWh`, color: C.solar },
+    { label: "Verbruik", value: `${fk(point?.verbruik)} kWh`, sub: point?.kosten != null ? `€ ${point.kosten.toLocaleString("nl-BE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : undefined, color: C.house },
+    { label: "Net afname", value: `${fk(point?.net)} kWh`, color: C.usage },
+    { label: "Injectie", value: `${fk(point?.injectie)} kWh`, color: C.gridPink },
+    { label: "Zelfvoorzienend", value: point?.zelf_pct != null ? `${point.zelf_pct}%` : "—", sub: point?.zelf != null ? `${fk(point.zelf)} kWh` : undefined, color: "#22c55e" },
+  ];
+  return (
+    <div>
+      <div className="mb-1 flex items-baseline justify-between">
+        <span className="text-tiny font-bold uppercase tracking-widest text-muted-foreground">Vandaag</span>
+        <span className="text-mini italic text-muted-foreground">telt vanaf vandaag · volledige dagen vanaf morgen exact</span>
+      </div>
+      <div className="grid grid-cols-2 gap-1 sm:grid-cols-5">
+        {cells.map((c) => (
+          <div key={c.label} className="border-2 border-border px-2.5 py-1.5">
+            <div className="text-tiny font-bold uppercase tracking-widest text-muted-foreground">{c.label}</div>
+            <div className="mt-0.5 text-xl font-bold tabular-nums leading-none" style={{ color: c.color }}>{c.value}</div>
+            {c.sub && <div className="mt-0.5 text-tiny text-muted-foreground">{c.sub}</div>}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -275,6 +323,13 @@ export function EnergyWidget({ layout = "grid" }: { layout?: LayoutMode }) {
     onSuccess: () => setTick((t) => t + 1),
   });
 
+  // Daily totals (Opwek/Verbruik/Net/Injectie/Zelfvoorzienend) from cumulative
+  // counters — the exact basis HomeWizard uses, so the kWh match its "Vandaag".
+  const { data: summary } = useSWR<SummaryData>("/api/energy?summary=1&days=1", fetcher, {
+    refreshInterval: 30000,
+    keepPreviousData: true,
+  });
+
   const fetchEnd = useMemo(() => Math.floor(Date.now() / 1000), [tick]);
   const winStart = isLive ? fetchEnd - liveWin - 60 : dayStart;
   const winEnd = isLive ? fetchEnd : dayEnd;
@@ -377,6 +432,9 @@ export function EnergyWidget({ layout = "grid" }: { layout?: LayoutMode }) {
             ))}
           </div>
         </div>
+
+        {/* Daily totals — matches HomeWizard's "Vandaag" tiles (kWh from counters) */}
+        <DayTotals point={summary?.points?.[summary.points.length - 1]} />
 
         {/* View toggle */}
         <div className="flex items-center justify-between gap-2 border-t border-border pt-1.5">

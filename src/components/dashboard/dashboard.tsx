@@ -27,6 +27,8 @@ import { AgentsWidget } from "./widgets/agents-widget";
 import { FileTreeWidget, FileModal } from "./widgets/file-explorer-widget";
 import { HomeControlWidget } from "./widgets/home-control-widget";
 import { EnergyWidget } from "./widgets/energy-widget";
+import { GasWidget } from "./widgets/gas-widget";
+import { WaterWidget } from "./widgets/water-widget";
 import { RawMetricsWidget } from "./widgets/raw-metrics-widget";
 import { VentilationWidget } from "./widgets/ventilation-widget";
 import { TemperatureWidget, HumidityWidget } from "./widgets/climate-widget";
@@ -186,6 +188,8 @@ export function Dashboard() {
       case "projects": return <ProjectsWidget projects={data!.projects} />;
       case "file-explorer": return <FileTreeWidget layout={layout} />;
       case "energy": return <EnergyWidget layout={layout} />;
+      case "gas": return <GasWidget layout={layout} />;
+      case "water": return <WaterWidget layout={layout} />;
       case "ventilation": return <VentilationWidget layout={layout} />;
       case "temperature": return <TemperatureWidget layout={layout} />;
       case "humidity": return <HumidityWidget layout={layout} />;

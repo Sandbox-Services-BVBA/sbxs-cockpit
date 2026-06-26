@@ -12,6 +12,12 @@ export const dynamic = "force-dynamic";
 //   GET /api/energy?climate_history=1&hours=24
 //                                       -> per-room temp/humidity time-series
 //                                          (forwards to /api/climate/history)
+//   GET /api/energy?gas=1&days=30       -> per-day gas consumption (m³/kWh/€)
+//                                          (forwards to /api/gas)
+//   GET /api/energy?water=1&days=30     -> per-day water consumption (L/m³/€)
+//                                          (forwards to /api/water)
+//   GET /api/energy?summary=1&days=7    -> daily Opwek/Verbruik/Net/Injectie
+//                                          (forwards to /api/summary)
 
 const BASE = config.energyBridgeUrl;
 const KEY = config.energyBridgeKey;
@@ -23,6 +29,15 @@ export async function GET(request: Request) {
   if (sp.get("climate_history")) {
     const hours = sp.get("hours") || "24";
     path = `/api/climate/history?hours=${encodeURIComponent(hours)}`;
+  } else if (sp.get("gas")) {
+    const days = sp.get("days") || "30";
+    path = `/api/gas?days=${encodeURIComponent(days)}`;
+  } else if (sp.get("water")) {
+    const days = sp.get("days") || "30";
+    path = `/api/water?days=${encodeURIComponent(days)}`;
+  } else if (sp.get("summary")) {
+    const days = sp.get("days") || "7";
+    path = `/api/summary?days=${encodeURIComponent(days)}`;
   } else if (sp.get("raw")) {
     path = "/api/raw";
   } else if (sp.get("start") && sp.get("end")) {

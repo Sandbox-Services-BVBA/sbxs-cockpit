@@ -1,8 +1,9 @@
 "use client";
 
-import { RefreshCw, Moon, Sun, Monitor } from "lucide-react";
+import { RefreshCw, Moon, Sun, Monitor, Zap } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 const THEME_ORDER = ["system", "light", "dark"] as const;
@@ -42,6 +43,14 @@ export function DashboardHeader({
         </div>
 
         <div className="flex items-center gap-1">
+          <Link
+            href="/energy"
+            title="Energie-pagina (HomeWizard-stijl)"
+            className="flex h-6 items-center gap-1 border-2 border-border bg-muted px-1.5 hover:bg-accent"
+          >
+            <Zap className="h-3 w-3 text-[#f59e0b]" />
+            <span className="text-mini font-bold uppercase tracking-wide">Energie</span>
+          </Link>
           <button
             onClick={onRefresh}
             disabled={loading}

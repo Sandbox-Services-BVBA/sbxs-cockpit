@@ -13,8 +13,13 @@ import {
   CartesianGrid,
 } from "recharts";
 import { Section, Segmented } from "../ui";
+import type { Range, TFMode } from "@/lib/energy-range";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+// Climate history is rolling "last N hours" only, so map the global timeframe to
+// a duration. At the current period this lines up with the other sections.
+const HOURS_FOR: Record<TFMode, number> = { live: 6, day: 24, week: 168, month: 720, year: 8760 };
 
 interface ClimatePoint {
   t: number;
@@ -88,14 +93,8 @@ function ClimateTooltip({ active, payload, unit }: { active?: boolean; payload?:
   );
 }
 
-const RANGES = [
-  { value: 6, label: "6u" },
-  { value: 24, label: "24u" },
-  { value: 72, label: "3d" },
-];
-
-export function Climate() {
-  const [hours, setHours] = useState(24);
+export function Climate({ range }: { range: Range }) {
+  const hours = HOURS_FOR[range.mode];
   const [metric, setMetric] = useState<Metric>("temp");
   const unit = metric === "temp" ? "°C" : "%";
 
@@ -116,6 +115,7 @@ export function Climate() {
       icon={Thermometer}
       right={
         <div className="flex items-center gap-2">
+          <span className="hidden font-mono text-mini text-muted-foreground sm:inline">laatste {hours >= 24 ? `${Math.round(hours / 24)}d` : `${hours}u`}</span>
           <Segmented
             options={[
               { value: "temp", label: "Temp" },
@@ -124,7 +124,6 @@ export function Climate() {
             value={metric}
             onChange={setMetric}
           />
-          <Segmented options={RANGES} value={hours} onChange={setHours} />
         </div>
       }
     >

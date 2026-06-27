@@ -17,9 +17,15 @@ import {
 import { Section } from "../ui";
 import { cn } from "@/lib/utils";
 import { EC, fmtW, fmtKwh, type Battery, type HistPoint, type Live } from "@/lib/energy-format";
+import type { Range } from "@/lib/energy-range";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
-const WIN = 1800; // 30 min
+
+function timeFmt(bucket: Range["bucket"]) {
+  if (bucket === "day") return (t: number) => new Date(t * 1000).toLocaleDateString("nl-BE", { day: "numeric", month: "short" });
+  if (bucket === "month") return (t: number) => new Date(t * 1000).toLocaleDateString("nl-BE", { month: "short" });
+  return (t: number) => new Date(t * 1000).toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" });
+}
 
 // Vertical battery cell with charge/discharge packet animation (cockpit style).
 function Cell({ index, b }: { index: number; b: Battery }) {
@@ -76,7 +82,7 @@ interface ChartTip {
 function BatTooltip({ active, payload }: ChartTip) {
   if (!active || !payload?.[0]) return null;
   const d = payload[0].payload;
-  const time = new Date(d.t * 1000).toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" });
+  const time = new Date(d.t * 1000).toLocaleString("nl-BE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   return (
     <div className="space-y-0.5 border border-border bg-popover px-2 py-1 text-petite shadow-lg">
       <div className="font-bold text-muted-foreground">{time}</div>
@@ -86,12 +92,12 @@ function BatTooltip({ active, payload }: ChartTip) {
   );
 }
 
-export function Batteries({ live }: { live: Live }) {
-  const now = Math.floor(live.ts);
-  const { data: hist } = useSWR<{ points: HistPoint[] }>(`/api/energy?start=${now - WIN}&end=${now}`, fetcher, {
-    refreshInterval: 3000,
+export function Batteries({ live, range }: { live: Live; range: Range }) {
+  const { data: hist } = useSWR<{ points: HistPoint[] }>(`/api/energy?start=${range.start}&end=${range.fetchEnd}`, fetcher, {
+    refreshInterval: range.canNext ? 0 : range.mode === "live" ? 3000 : 30000,
     keepPreviousData: true,
   });
+  const xFmt = timeFmt(range.bucket);
 
   // Flip battery sign so charging reads "up" (positive) like HomeWizard.
   const data = useMemo(
@@ -125,7 +131,7 @@ export function Batteries({ live }: { live: Live }) {
         {/* Charge/discharge + stored charge chart */}
         <div>
           <div className="mb-1 flex items-baseline justify-between">
-            <span className="text-tiny font-bold uppercase tracking-widest text-muted-foreground">Laden / ontladen · lading (30 min)</span>
+            <span className="text-tiny font-bold uppercase tracking-widest text-muted-foreground">Laden / ontladen · lading</span>
             <span className="text-mini italic text-muted-foreground">boven 0 = laden · onder 0 = ontladen</span>
           </div>
           <div className="h-48 -mx-1 sm:h-56">
@@ -144,7 +150,7 @@ export function Batteries({ live }: { live: Live }) {
                   type="number"
                   domain={["dataMin", "dataMax"]}
                   tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
-                  tickFormatter={(t) => new Date(t * 1000).toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" })}
+                  tickFormatter={xFmt}
                   tickLine={false}
                   axisLine={false}
                   minTickGap={40}

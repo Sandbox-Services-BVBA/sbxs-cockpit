@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import useSWR from "swr";
 import { Wind, Thermometer, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import {
@@ -15,8 +15,15 @@ import {
 } from "recharts";
 import { Section, Metric, LivePulse } from "../ui";
 import { cn } from "@/lib/utils";
+import type { Range } from "@/lib/energy-range";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+function ventTimeFmt(bucket: Range["bucket"]) {
+  if (bucket === "day") return (t: number) => new Date(t * 1000).toLocaleDateString("nl-BE", { day: "numeric", month: "short" });
+  if (bucket === "month") return (t: number) => new Date(t * 1000).toLocaleDateString("nl-BE", { month: "short" });
+  return (t: number) => new Date(t * 1000).toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" });
+}
 
 interface VentLive {
   ts: number;
@@ -52,7 +59,6 @@ interface VentPoint {
 
 const C = { supply: "#06b6d4", extract: "#f59e0b", airflow: "#22c55e" };
 const REFRESH_MS = 10000;
-const HIST_WIN = 6 * 3600;
 
 const MODES = [
   { key: "wall", label: "Auto" },
@@ -70,7 +76,7 @@ const BYPASS = [
 const fmt1 = (n: number | null | undefined) => (n == null ? "—" : n.toFixed(1));
 const bypassActive = (b: string | undefined) => b === "open" || b === "opening";
 
-export function Ventilation() {
+export function Ventilation({ range }: { range: Range }) {
   const [tick, setTick] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -80,11 +86,11 @@ export function Ventilation() {
     keepPreviousData: true,
     onSuccess: () => setTick((t) => t + 1),
   });
-  const now = useMemo(() => Math.floor(Date.now() / 1000), [tick]);
-  const { data: hist } = useSWR<{ points: VentPoint[] }>(`/api/ventilation?start=${now - HIST_WIN}&end=${now}`, fetcher, {
-    refreshInterval: REFRESH_MS,
+  const { data: hist } = useSWR<{ points: VentPoint[] }>(`/api/ventilation?start=${range.start}&end=${range.fetchEnd}`, fetcher, {
+    refreshInterval: range.canNext ? 0 : REFRESH_MS,
     keepPreviousData: true,
   });
+  const xFmt = ventTimeFmt(range.bucket);
 
   const control = async (body: Record<string, string>, key: string) => {
     setBusy(key);
@@ -157,7 +163,7 @@ export function Ventilation() {
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={points} margin={{ top: 4, right: 0, bottom: 0, left: 4 }}>
               <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />
-              <XAxis dataKey="t" type="number" domain={["dataMin", "dataMax"]} tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickFormatter={(t) => new Date(t * 1000).toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" })} tickLine={false} axisLine={false} minTickGap={40} />
+              <XAxis dataKey="t" type="number" domain={["dataMin", "dataMax"]} tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickFormatter={xFmt} tickLine={false} axisLine={false} minTickGap={40} />
               <YAxis yAxisId="t" orientation="right" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} width={30} domain={["auto", "auto"]} tickLine={false} axisLine={false} />
               <YAxis yAxisId="f" orientation="left" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} width={28} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", fontSize: 11 }} labelFormatter={(t) => new Date(Number(t) * 1000).toLocaleTimeString("nl-BE")} />

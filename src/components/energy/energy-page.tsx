@@ -3,10 +3,11 @@
 import { useState, useMemo } from "react";
 import useSWR from "swr";
 import Link from "next/link";
-import { ArrowLeft, Zap, BarChart3, BatteryCharging, Thermometer, Wind } from "lucide-react";
+import { ArrowLeft, Zap, BarChart3, BatteryCharging, Thermometer, Wind, Droplet } from "lucide-react";
 import { PowerNow } from "./sections/power-now";
 import { EnergySection } from "./sections/energy-section";
 import { Batteries } from "./sections/batteries";
+import { Water } from "./sections/water";
 import { Climate } from "./sections/climate";
 import { Ventilation } from "./sections/ventilation";
 import { TimeframeBar } from "./timeframe-bar";
@@ -20,6 +21,7 @@ const NAV = [
   { id: "vermogen", label: "Vermogen", icon: Zap },
   { id: "energie", label: "Energie", icon: BarChart3 },
   { id: "batterij", label: "Batterij", icon: BatteryCharging },
+  { id: "water", label: "Water", icon: Droplet },
   { id: "klimaat", label: "Klimaat", icon: Thermometer },
   { id: "ventilatie", label: "Ventilatie", icon: Wind },
 ];
@@ -93,6 +95,9 @@ export function EnergyPage() {
             </div>
             <div id="batterij" className="scroll-mt-32">
               <Batteries live={live} range={range} />
+            </div>
+            <div id="water" className="scroll-mt-32">
+              <Water range={range} />
             </div>
             <div id="klimaat" className="scroll-mt-32">
               <Climate range={range} />

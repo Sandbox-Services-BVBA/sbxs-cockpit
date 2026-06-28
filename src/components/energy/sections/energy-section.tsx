@@ -58,7 +58,8 @@ function BarTooltip({ active, payload, bucket }: { active?: boolean; payload?: A
 }
 
 // ---- Live mode: rolling power lines (W) -------------------------------------
-function LivePowerTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: HistPoint & { gridD: number } }> }) {
+// batD is bat_w flipped so charging reads "up" (positive), discharging "down".
+function LivePowerTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: HistPoint & { gridD: number; batD: number } }> }) {
   if (!active || !payload?.[0]) return null;
   const d = payload[0].payload;
   const time = new Date(d.t * 1000).toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" });
@@ -68,6 +69,7 @@ function LivePowerTooltip({ active, payload }: { active?: boolean; payload?: Arr
       <div style={{ color: EC.solar }}>Zon {fmtW(d.solar_w)}</div>
       <div style={{ color: gridColor(d.gridD) }}>Net {fmtSigned(d.gridD)}</div>
       <div style={{ color: EC.house }}>Verbruik {fmtW(d.house_w)}</div>
+      <div style={{ color: EC.battery }}>Batterij {d.batD === 0 ? "0 W" : d.batD > 0 ? `laden ${fmtW(d.batD)}` : `ontladen ${fmtW(-d.batD)}`}</div>
     </div>
   );
 }
@@ -89,9 +91,9 @@ export function EnergySection({ range }: { range: Range }) {
   const netMax = Math.max(0.2, ...bars.map((b) => b.net_import));
   const netMin = Math.min(-0.2, ...bars.map((b) => b.net_export));
 
-  // Live rolling power series.
+  // Live rolling power series. batD flips bat_w so charging reads "up".
   const livePts = useMemo(
-    () => points.map((p) => ({ ...p, gridD: p.grid_w == null ? 0 : gd(p.grid_w) })),
+    () => points.map((p) => ({ ...p, gridD: p.grid_w == null ? 0 : gd(p.grid_w), batD: p.bat_w == null ? 0 : -p.bat_w })),
     [points]
   );
   const gVals = livePts.map((p) => p.gridD);
@@ -108,7 +110,7 @@ export function EnergySection({ range }: { range: Range }) {
         {isLive ? (
           <>
             <div className="mb-1 flex items-baseline justify-between">
-              <span className="text-tiny font-bold uppercase tracking-widest text-muted-foreground">Net & opwek (laatste 30 min)</span>
+              <span className="text-tiny font-bold uppercase tracking-widest text-muted-foreground">Net, opwek & batterij (laatste 30 min)</span>
               <span className="text-mini italic text-muted-foreground">net boven 0 = afname · onder 0 = injectie</span>
             </div>
             <div className="h-56 -mx-1 sm:h-64">
@@ -136,6 +138,7 @@ export function EnergySection({ range }: { range: Range }) {
                   <Area type="linear" dataKey="solar_w" stroke={EC.solar} fill="url(#liveSolar)" strokeWidth={1.6} dot={false} isAnimationActive={false} connectNulls />
                   <Line type="linear" dataKey="house_w" stroke={EC.house} strokeWidth={1.4} dot={false} isAnimationActive={false} connectNulls />
                   <Area type="linear" dataKey="gridD" baseValue={0} stroke="url(#liveGridStroke)" fill="url(#liveGridFill)" strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
+                  <Line type="linear" dataKey="batD" stroke={EC.battery} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -143,6 +146,7 @@ export function EnergySection({ range }: { range: Range }) {
               <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-3" style={{ background: EC.solar }} />zon</span>
               <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-3" style={{ background: EC.house }} />verbruik</span>
               <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-3" style={{ background: EC.import }} />net afname / <span className="inline-block h-1.5 w-3" style={{ background: EC.export }} />injectie</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-3" style={{ background: EC.battery }} />batterij (boven 0 = laden)</span>
             </div>
             <p className="text-mini text-muted-foreground">Kies een periode (Dag/Week/Maand/Jaar) hierboven om energie in kWh te zien. De live-tegels en flow staan bovenaan.</p>
           </>

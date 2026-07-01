@@ -152,56 +152,82 @@ function LiveRing({ startDate }: { startDate: string }) {
   );
 }
 
-function ResetButton({ onReset }: { onReset: () => Promise<void> }) {
-  const [confirming, setConfirming] = useState(false);
+function toLocalInputValue(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function ResetForm({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: (startDate: string) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Auto-cancel the confirm state after a few seconds
+  // Prefill with the current local time on mount
   useEffect(() => {
-    if (!confirming) return;
-    const timer = setTimeout(() => setConfirming(false), 4000);
-    return () => clearTimeout(timer);
-  }, [confirming]);
+    setValue(toLocalInputValue(new Date()));
+  }, []);
 
-  const handleClick = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (busy) return;
-    if (!confirming) {
-      setConfirming(true);
-      return;
-    }
+  const confirm = async () => {
+    const picked = new Date(value);
+    if (!value || isNaN(picked.getTime()) || busy) return;
     setBusy(true);
     try {
-      await onReset();
+      await onConfirm(picked.toISOString());
     } finally {
       setBusy(false);
-      setConfirming(false);
     }
   };
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={busy}
-      className={cn(
-        "text-mini font-mono uppercase tracking-wide px-1.5 py-0.5 border transition-colors",
-        confirming
-          ? "border-[#ff4444]/50 bg-[#ff4444]/10 text-[#ff4444] font-bold"
-          : "border-border text-muted-foreground hover:text-foreground"
-      )}
-    >
-      {busy ? "..." : confirming ? "sure?" : "reset"}
-    </button>
+    <div className="flex flex-col items-center gap-1.5 pt-2 mt-2 border-t border-border w-full">
+      <p className="text-mini font-mono text-muted-foreground uppercase tracking-wider">
+        new start
+      </p>
+      <input
+        type="datetime-local"
+        value={value}
+        max={toLocalInputValue(new Date())}
+        onChange={(e) => setValue(e.target.value)}
+        className="w-full bg-muted border border-border px-1.5 py-1 text-xs font-mono tabular-nums text-foreground"
+      />
+      <div className="flex gap-1 w-full">
+        <button
+          onClick={confirm}
+          disabled={busy || !value}
+          className="flex-1 text-mini font-mono font-bold uppercase tracking-wide px-1.5 py-1 border border-[#ff4444]/50 bg-[#ff4444]/10 text-[#ff4444] disabled:opacity-50"
+        >
+          {busy ? "..." : "reset counter"}
+        </button>
+        <button
+          onClick={onCancel}
+          disabled={busy}
+          className="flex-1 text-mini font-mono uppercase tracking-wide px-1.5 py-1 border border-border text-muted-foreground hover:text-foreground"
+        >
+          cancel
+        </button>
+      </div>
+    </div>
   );
 }
 
 export function SobrietyWidget() {
   const { data, mutate } = useSWR("/api/health", fetcher, { refreshInterval: 60000 });
   const sobriety = data?.sobriety;
+  const [resetting, setResetting] = useState(false);
 
-  const reset = async () => {
-    await fetch("/api/health/sobriety", { method: "POST" });
+  const reset = async (startDate: string) => {
+    await fetch("/api/health/sobriety", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ start_date: startDate }),
+    });
     await mutate();
+    setResetting(false);
   };
 
   if (!sobriety) {
@@ -214,9 +240,27 @@ export function SobrietyWidget() {
     );
   }
 
+  const toggle = (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        setResetting((r) => !r);
+      }}
+      className={cn(
+        "text-mini font-mono uppercase tracking-wide px-1.5 py-0.5 border transition-colors",
+        resetting
+          ? "border-border bg-muted text-foreground"
+          : "border-border text-muted-foreground hover:text-foreground"
+      )}
+    >
+      {resetting ? "cancel" : "reset"}
+    </button>
+  );
+
   return (
-    <WidgetTile title="Sobriety" size="sm" headerRight={<ResetButton onReset={reset} />}>
+    <WidgetTile title="Sobriety" size="sm" headerRight={toggle}>
       <LiveRing startDate={sobriety.start_date} />
+      {resetting && <ResetForm onConfirm={reset} onCancel={() => setResetting(false)} />}
     </WidgetTile>
   );
 }

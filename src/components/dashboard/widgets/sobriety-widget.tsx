@@ -152,9 +152,57 @@ function LiveRing({ startDate }: { startDate: string }) {
   );
 }
 
+function ResetButton({ onReset }: { onReset: () => Promise<void> }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  // Auto-cancel the confirm state after a few seconds
+  useEffect(() => {
+    if (!confirming) return;
+    const timer = setTimeout(() => setConfirming(false), 4000);
+    return () => clearTimeout(timer);
+  }, [confirming]);
+
+  const handleClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (busy) return;
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    setBusy(true);
+    try {
+      await onReset();
+    } finally {
+      setBusy(false);
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={busy}
+      className={cn(
+        "text-mini font-mono uppercase tracking-wide px-1.5 py-0.5 border transition-colors",
+        confirming
+          ? "border-[#ff4444]/50 bg-[#ff4444]/10 text-[#ff4444] font-bold"
+          : "border-border text-muted-foreground hover:text-foreground"
+      )}
+    >
+      {busy ? "..." : confirming ? "sure?" : "reset"}
+    </button>
+  );
+}
+
 export function SobrietyWidget() {
-  const { data } = useSWR("/api/health", fetcher, { refreshInterval: 60000 });
+  const { data, mutate } = useSWR("/api/health", fetcher, { refreshInterval: 60000 });
   const sobriety = data?.sobriety;
+
+  const reset = async () => {
+    await fetch("/api/health/sobriety", { method: "POST" });
+    await mutate();
+  };
 
   if (!sobriety) {
     return (
@@ -167,7 +215,7 @@ export function SobrietyWidget() {
   }
 
   return (
-    <WidgetTile title="Sobriety" size="sm">
+    <WidgetTile title="Sobriety" size="sm" headerRight={<ResetButton onReset={reset} />}>
       <LiveRing startDate={sobriety.start_date} />
     </WidgetTile>
   );

@@ -2,13 +2,12 @@ import { config } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
-// Well-pump log — authenticated proxy to energy-monitor on the dev server,
-// same bridge as /api/energy. The pump feeds the toilets from the water well;
-// Bob toggles it by hand and logs each toggle here so city-water usage can be
+// Well-day checkmarks — authenticated proxy to energy-monitor on the dev
+// server, same bridge as /api/energy. The pump feeds the toilets from the
+// water well; Bob checks off the days it ran so city-water usage can be
 // compared between well-days and city-days.
-//   GET  /api/energy/well                    -> { running, since, events }
-//   POST /api/energy/well { running, ts? }   -> log a toggle (ts = unix,
-//                                               optional, for backdating)
+//   GET  /api/energy/well                      -> { days: ["YYYY-MM-DD", ...] }
+//   POST /api/energy/well { d, well }          -> check/uncheck a day
 // No auth on the cockpit side — dashboard is Tailscale-only, same as the
 // sobriety and home-control routes.
 

@@ -24,7 +24,7 @@ interface WaterPoint {
   m3: number; // consumption that day
   liter: number;
   eur: number;
-  well?: number | null; // fraction of the day the well pump ran (null = not logged)
+  well?: boolean; // checked as a well-pump day (checkmarks live on the energy page)
 }
 interface WaterData {
   days: number;
@@ -33,8 +33,6 @@ interface WaterData {
   current_m3: number | null; // cumulative meter reading
   current_ts: number | null;
   flow_lpm: number | null; // live flow
-  well_running?: boolean | null; // well pump state (toggle lives on the energy page)
-  well_since?: number | null;
   points: WaterPoint[];
   error?: string;
 }
@@ -43,8 +41,6 @@ interface WaterData {
 const REFRESH_MS = 30000;
 const WATER_COLOR = "#3b82f6"; // blue droplet (matches HomeWizard water hue)
 const WELL_COLOR = "#10b981"; // emerald — days the well pump ran
-
-const isWellDay = (p: WaterPoint) => (p.well ?? 0) >= 0.5;
 
 const RANGES = [
   { days: 7, label: "7d" },
@@ -77,7 +73,7 @@ function WaterTooltip({ active, payload }: { active?: boolean; payload?: Tooltip
   const p = payload[0]?.payload;
   if (!p) return null;
   const date = new Date(p.d).toLocaleDateString("nl-BE", { day: "2-digit", month: "short" });
-  const color = isWellDay(p) ? WELL_COLOR : WATER_COLOR;
+  const color = p.well ? WELL_COLOR : WATER_COLOR;
   return (
     <div className="border border-border bg-popover px-2 py-1 text-petite shadow-lg space-y-0.5">
       <div className="font-bold text-muted-foreground">{date}</div>
@@ -89,9 +85,7 @@ function WaterTooltip({ active, payload }: { active?: boolean; payload?: Tooltip
       <div className="text-muted-foreground tabular-nums">
         {fmt(p.m3, 3)} m³ · € {fmt(p.eur, 2)}
       </div>
-      {p.well != null && p.well > 0 && (
-        <div style={{ color: WELL_COLOR }}>putpomp aan ({Math.round(p.well * 100)}%)</div>
-      )}
+      {p.well && <div style={{ color: WELL_COLOR }}>putpomp draaide</div>}
     </div>
   );
 }
@@ -151,9 +145,9 @@ export function WaterWidget({ layout = "grid" }: { layout?: LayoutMode }) {
       className={cls}
       headerRight={
         <span className="flex items-center gap-2 text-tiny font-mono text-muted-foreground">
-          {data.well_running && (
+          {points.length > 0 && points[points.length - 1].well && (
             <span className="font-bold uppercase" style={{ color: WELL_COLOR }}>
-              putpomp aan
+              putpomp-dag
             </span>
           )}
           <Droplet className={cn("h-3.5 w-3.5", flowing && "animate-pulse")} style={{ color: WATER_COLOR }} />
@@ -215,7 +209,7 @@ export function WaterWidget({ layout = "grid" }: { layout?: LayoutMode }) {
               <Tooltip content={<WaterTooltip />} cursor={{ fill: "var(--border)", fillOpacity: 0.3 }} />
               <Bar dataKey="liter" name="L" fill={WATER_COLOR} isAnimationActive={false} radius={[2, 2, 0, 0]}>
                 {points.map((p) => (
-                  <Cell key={p.d} fill={isWellDay(p) ? WELL_COLOR : WATER_COLOR} />
+                  <Cell key={p.d} fill={p.well ? WELL_COLOR : WATER_COLOR} />
                 ))}
               </Bar>
             </BarChart>
@@ -224,8 +218,8 @@ export function WaterWidget({ layout = "grid" }: { layout?: LayoutMode }) {
 
         <p className="text-mini text-muted-foreground">
           Dagverbruik stadswater (liter) uit de HomeWizard watermeter. <span style={{ color: WELL_COLOR }}>Groen</span> = putpomp draaide die dag
-          (aan/uit markeren kan op de Energie-pagina). € indicatief: {fmt(data.price_eur_per_m3, 2)} €/m³ (afgeleid uit de afrekening van De
-          Watergroep, EUR 485,46 / 101 m³).
+          (aanvinken kan op de Energie-pagina). € indicatief: {fmt(data.price_eur_per_m3, 2)} €/m³ (afgeleid uit de afrekening van De Watergroep,
+          EUR 485,46 / 101 m³).
         </p>
       </div>
     </WidgetTile>

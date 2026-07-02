@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import useSWR from "swr";
-import { Droplet, Waves } from "lucide-react";
+import { Check, Droplet, Waves } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { Section, Metric } from "../ui";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,7 @@ interface WaterPoint {
   m3: number;
   liter: number;
   eur: number;
-  well?: number | null; // fraction of the day the well pump ran (null = not logged)
+  well?: boolean; // checked as a well-pump day
 }
 interface WaterData {
   days: number;
@@ -27,16 +27,19 @@ interface WaterData {
   current_m3: number | null;
   current_ts: number | null;
   flow_lpm: number | null;
-  well_running?: boolean | null;
-  well_since?: number | null;
   points: WaterPoint[];
+  error?: string;
+}
+interface WellData {
+  days: string[]; // all checked days, YYYY-MM-DD
   error?: string;
 }
 
 const fmt = (n: number, d = 1) => n.toLocaleString("nl-BE", { minimumFractionDigits: d, maximumFractionDigits: d });
 const fmtVol = (liter: number) => (liter >= 1000 ? `${fmt(liter / 1000, 2)} m³` : `${fmt(liter, 0)} L`);
 
-const isWellDay = (p: WaterPoint) => (p.well ?? 0) >= 0.5;
+const localDay = (dt: Date) =>
+  `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 
 // Water history is per-day ("last N days") only, so the timeframe maps to a day
 // count. Live/Dag show a recent window for context (a single day is not a graph);
@@ -75,7 +78,7 @@ function WaterTooltip({ active, payload, monthly }: { active?: boolean; payload?
   const label = monthly
     ? new Date(p.d).toLocaleDateString("nl-BE", { month: "long", year: "numeric" })
     : new Date(p.d).toLocaleDateString("nl-BE", { weekday: "short", day: "numeric", month: "short" });
-  const color = !monthly && isWellDay(p) ? WELL : WATER;
+  const color = !monthly && p.well ? WELL : WATER;
   return (
     <div className="space-y-0.5 border border-border bg-popover px-2 py-1 text-petite shadow-lg">
       <div className="font-bold capitalize text-muted-foreground">{label}</div>
@@ -85,99 +88,86 @@ function WaterTooltip({ active, payload, monthly }: { active?: boolean; payload?
         <span className="font-bold tabular-nums">{fmtVol(p.liter)}</span>
       </div>
       <div className="tabular-nums text-muted-foreground">{fmt(p.m3, 3)} m³ · € {fmt(p.eur, 2)}</div>
-      {!monthly && p.well != null && p.well > 0 && (
-        <div style={{ color: WELL }}>putpomp aan ({Math.round(p.well * 100)}% van de dag)</div>
-      )}
+      {!monthly && p.well && <div style={{ color: WELL }}>putpomp draaide</div>}
     </div>
   );
 }
 
-// Inline pump toggle — mirrors the sobriety-widget pattern: one click opens a
-// small confirm form with an optional backdate, POST goes through the cockpit
-// proxy to energy-monitor.
-function PumpControl({ running, since, onLogged }: { running: boolean | null | undefined; since: number | null | undefined; onLogged: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [when, setWhen] = useState("");
-  const [busy, setBusy] = useState(false);
+// Checkmark strip for the last two weeks: one chip per day, tap to mark it as a
+// well-pump day (emerald) or unmark it. Marks live in energy-monitor via the
+// /api/energy/well proxy.
+function WellDayStrip({ onChanged }: { onChanged: () => void }) {
+  const { data, mutate } = useSWR<WellData>("/api/energy/well", fetcher, { refreshInterval: REFRESH_MS });
+  const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  const next = !(running ?? false);
+  const marked = useMemo(() => new Set(data?.days ?? []), [data]);
+  const chips = useMemo(() => {
+    const out: { d: string; label: string; weekday: string }[] = [];
+    for (let i = 13; i >= 0; i--) {
+      const dt = new Date();
+      dt.setDate(dt.getDate() - i);
+      out.push({
+        d: localDay(dt),
+        label: dt.toLocaleDateString("nl-BE", { day: "2-digit", month: "2-digit" }),
+        weekday: dt.toLocaleDateString("nl-BE", { weekday: "short" }),
+      });
+    }
+    return out;
+  }, []);
 
-  async function submit() {
-    setBusy(true);
+  async function toggle(d: string) {
+    setBusy(d);
     setErr(null);
     try {
-      const body: { running: boolean; ts?: number } = { running: next };
-      if (when) body.ts = Math.floor(new Date(when).getTime() / 1000);
       const res = await fetch("/api/energy/well", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ d, well: !marked.has(d) }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
-      setOpen(false);
-      setWhen("");
-      onLogged();
+      await mutate();
+      onChanged();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "mislukt");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-2 border-border px-3 py-2">
-      <span className="flex items-center gap-2 text-petite font-bold">
-        <Waves className="h-4 w-4" style={{ color: running ? WELL : "var(--muted-foreground)" }} />
-        Putpomp{" "}
-        {running == null ? (
-          <span className="text-muted-foreground">nog niet gelogd</span>
-        ) : (
-          <span style={{ color: running ? WELL : undefined }}>{running ? "AAN" : "UIT"}</span>
-        )}
-      </span>
-      {since != null && (
-        <span className="text-tiny text-muted-foreground">
-          sinds {new Date(since * 1000).toLocaleString("nl-BE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-        </span>
-      )}
-      <div className="ml-auto flex flex-wrap items-center gap-2">
-        {open && (
-          <>
-            <input
-              type="datetime-local"
-              value={when}
-              max={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
-              onChange={(e) => setWhen(e.target.value)}
-              className="border-2 border-border bg-transparent px-2 py-0.5 text-tiny text-foreground"
-              title="Optioneel: wanneer je de pomp echt omzette (leeg = nu)"
-            />
-            <button
-              onClick={submit}
-              disabled={busy}
-              className="border-2 border-primary bg-primary px-2.5 py-0.5 text-tiny font-bold uppercase tracking-wide text-primary-foreground disabled:opacity-50"
-            >
-              {busy ? "..." : "Bevestig"}
-            </button>
-            <button
-              onClick={() => { setOpen(false); setErr(null); }}
-              className="border-2 border-border px-2.5 py-0.5 text-tiny font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground"
-            >
-              Annuleer
-            </button>
-          </>
-        )}
-        {!open && (
-          <button
-            onClick={() => setOpen(true)}
-            className="border-2 border-border px-2.5 py-0.5 text-tiny font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground"
-          >
-            Markeer {next ? "aan" : "uit"}
-          </button>
-        )}
+    <div className="border-2 border-border px-3 py-2">
+      <div className="mb-1.5 flex items-center gap-2 text-tiny font-bold uppercase tracking-widest text-muted-foreground">
+        <Waves className="h-4 w-4" style={{ color: WELL }} />
+        Putpomp-dagen
+        <span className="font-normal normal-case tracking-normal">— vink de dagen aan waarop de pomp draaide</span>
       </div>
-      {err && <span className="w-full text-tiny text-[#ff4444]">Loggen mislukt: {err}</span>}
+      <div className="flex flex-wrap gap-1">
+        {chips.map((c) => {
+          const on = marked.has(c.d);
+          return (
+            <button
+              key={c.d}
+              onClick={() => toggle(c.d)}
+              disabled={busy != null}
+              className={cn(
+                "flex min-w-[3.1rem] flex-col items-center border-2 px-1.5 py-1 leading-tight transition-colors disabled:opacity-60",
+                on ? "border-transparent text-white" : "border-border text-muted-foreground hover:text-foreground"
+              )}
+              style={on ? { background: WELL } : undefined}
+              title={on ? "Putpomp draaide — klik om uit te vinken" : "Klik om als putpomp-dag te markeren"}
+            >
+              <span className="text-mini uppercase">{c.weekday}</span>
+              <span className="flex items-center gap-1 text-tiny font-bold tabular-nums">
+                {c.label}
+                {(busy === c.d || on) && <Check className={cn("h-3 w-3", busy === c.d && "animate-pulse")} strokeWidth={3} />}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {err && <p className="mt-1 text-tiny text-[#ff4444]">Opslaan mislukt: {err}</p>}
     </div>
   );
 }
@@ -201,11 +191,10 @@ export function Water({ range }: { range: Range }) {
   const flowing = (data?.flow_lpm ?? 0) > 0;
 
   // Well vs city comparison over COMPLETE days (today is partial, skip it).
-  // A day counts as a well-day when the pump ran at least half the day.
   const cmp = useMemo(() => {
     const done = raw.slice(0, -1).filter((p) => p.liter > 0);
-    const wellDays = done.filter((p) => isWellDay(p));
-    const cityDays = done.filter((p) => !isWellDay(p));
+    const wellDays = done.filter((p) => p.well);
+    const cityDays = done.filter((p) => !p.well);
     if (!wellDays.length || !cityDays.length) return null;
     const wellAvg = wellDays.reduce((s, p) => s + p.liter, 0) / wellDays.length;
     const cityAvg = cityDays.reduce((s, p) => s + p.liter, 0) / cityDays.length;
@@ -235,7 +224,7 @@ export function Water({ range }: { range: Range }) {
         <p className="text-petite text-muted-foreground">Verbinden met energy-monitor...</p>
       ) : (
         <div className="space-y-3">
-          <PumpControl running={data.well_running} since={data.well_since} onLogged={() => mutate()} />
+          <WellDayStrip onChanged={() => mutate()} />
 
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             <Metric label="Vandaag" value={today ? fmt(today.liter, 0) : "—"} unit="L" color={WATER} sub={today ? `€ ${fmt(today.eur, 2)}` : undefined} />
@@ -253,7 +242,7 @@ export function Water({ range }: { range: Range }) {
                 <Tooltip content={<WaterTooltip monthly={monthly} />} cursor={{ fill: "var(--muted)", opacity: 0.3 }} />
                 <Bar dataKey="liter" name="L" fill={WATER} isAnimationActive={false}>
                   {points.map((p) => (
-                    <Cell key={p.d} fill={!monthly && isWellDay(p) ? WELL : WATER} />
+                    <Cell key={p.d} fill={!monthly && p.well ? WELL : WATER} />
                   ))}
                 </Bar>
               </BarChart>
@@ -277,8 +266,8 @@ export function Water({ range }: { range: Range }) {
 
           <p className="text-mini text-muted-foreground">
             Dagverbruik stadswater (liter) uit de HomeWizard watermeter{range.mode === "live" || range.mode === "day" ? " — laatste 14 dagen (water heeft geen uurdata)" : ""}.{" "}
-            <span style={{ color: WELL }}>Groene balken</span> = dagen waarop de putpomp draaide (toiletten op putwater); markeer aan/uit hierboven bij elke fysieke
-            omschakeling. € indicatief: {fmt(data.price_eur_per_m3, 2)} €/m³ (De Watergroep).
+            <span style={{ color: WELL }}>Groene balken</span> = aangevinkte putpomp-dagen (toiletten op putwater). € indicatief: {fmt(data.price_eur_per_m3, 2)} €/m³ (De
+            Watergroep).
           </p>
         </div>
       )}

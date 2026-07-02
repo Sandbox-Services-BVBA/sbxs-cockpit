@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  Cell,
   YAxis,
   XAxis,
   Tooltip,
@@ -23,6 +24,7 @@ interface WaterPoint {
   m3: number; // consumption that day
   liter: number;
   eur: number;
+  well?: number | null; // fraction of the day the well pump ran (null = not logged)
 }
 interface WaterData {
   days: number;
@@ -31,6 +33,8 @@ interface WaterData {
   current_m3: number | null; // cumulative meter reading
   current_ts: number | null;
   flow_lpm: number | null; // live flow
+  well_running?: boolean | null; // well pump state (toggle lives on the energy page)
+  well_since?: number | null;
   points: WaterPoint[];
   error?: string;
 }
@@ -38,6 +42,9 @@ interface WaterData {
 // Water moves slowly; poll lazily but often enough to catch a live tap (flow).
 const REFRESH_MS = 30000;
 const WATER_COLOR = "#3b82f6"; // blue droplet (matches HomeWizard water hue)
+const WELL_COLOR = "#10b981"; // emerald — days the well pump ran
+
+const isWellDay = (p: WaterPoint) => (p.well ?? 0) >= 0.5;
 
 const RANGES = [
   { days: 7, label: "7d" },
@@ -70,17 +77,21 @@ function WaterTooltip({ active, payload }: { active?: boolean; payload?: Tooltip
   const p = payload[0]?.payload;
   if (!p) return null;
   const date = new Date(p.d).toLocaleDateString("nl-BE", { day: "2-digit", month: "short" });
+  const color = isWellDay(p) ? WELL_COLOR : WATER_COLOR;
   return (
     <div className="border border-border bg-popover px-2 py-1 text-petite shadow-lg space-y-0.5">
       <div className="font-bold text-muted-foreground">{date}</div>
-      <div className="flex items-center gap-2" style={{ color: WATER_COLOR }}>
-        <span className="inline-block h-1.5 w-3" style={{ background: WATER_COLOR }} />
+      <div className="flex items-center gap-2" style={{ color }}>
+        <span className="inline-block h-1.5 w-3" style={{ background: color }} />
         <span className="flex-1">Water</span>
         <span className="font-bold tabular-nums">{fmt(p.liter, 0)} L</span>
       </div>
       <div className="text-muted-foreground tabular-nums">
         {fmt(p.m3, 3)} m³ · € {fmt(p.eur, 2)}
       </div>
+      {p.well != null && p.well > 0 && (
+        <div style={{ color: WELL_COLOR }}>putpomp aan ({Math.round(p.well * 100)}%)</div>
+      )}
     </div>
   );
 }
@@ -139,7 +150,12 @@ export function WaterWidget({ layout = "grid" }: { layout?: LayoutMode }) {
       size="sm"
       className={cls}
       headerRight={
-        <span className="flex items-center gap-1.5 text-tiny font-mono text-muted-foreground">
+        <span className="flex items-center gap-2 text-tiny font-mono text-muted-foreground">
+          {data.well_running && (
+            <span className="font-bold uppercase" style={{ color: WELL_COLOR }}>
+              putpomp aan
+            </span>
+          )}
           <Droplet className={cn("h-3.5 w-3.5", flowing && "animate-pulse")} style={{ color: WATER_COLOR }} />
           {flowing ? `${fmt(data.flow_lpm ?? 0, 1)} l/min` : `meterstand ${data.current_m3 != null ? `${fmt(data.current_m3, 3)} m³` : "—"}`}
         </span>
@@ -197,14 +213,19 @@ export function WaterWidget({ layout = "grid" }: { layout?: LayoutMode }) {
                 tickFormatter={(v) => `${v}`}
               />
               <Tooltip content={<WaterTooltip />} cursor={{ fill: "var(--border)", fillOpacity: 0.3 }} />
-              <Bar dataKey="liter" name="L" fill={WATER_COLOR} isAnimationActive={false} radius={[2, 2, 0, 0]} />
+              <Bar dataKey="liter" name="L" fill={WATER_COLOR} isAnimationActive={false} radius={[2, 2, 0, 0]}>
+                {points.map((p) => (
+                  <Cell key={p.d} fill={isWellDay(p) ? WELL_COLOR : WATER_COLOR} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         <p className="text-mini text-muted-foreground">
-          Dagverbruik water (liter) uit de HomeWizard watermeter. € indicatief: {fmt(data.price_eur_per_m3, 2)} €/m³ (afgeleid uit de
-          afrekening van De Watergroep, EUR 485,46 / 101 m³). Bijstellen zodra de PDF-detailprijs binnen is.
+          Dagverbruik stadswater (liter) uit de HomeWizard watermeter. <span style={{ color: WELL_COLOR }}>Groen</span> = putpomp draaide die dag
+          (aan/uit markeren kan op de Energie-pagina). € indicatief: {fmt(data.price_eur_per_m3, 2)} €/m³ (afgeleid uit de afrekening van De
+          Watergroep, EUR 485,46 / 101 m³).
         </p>
       </div>
     </WidgetTile>

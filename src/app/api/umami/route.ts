@@ -1,5 +1,3 @@
-import { config } from "@/lib/config";
-
 export const dynamic = "force-dynamic";
 
 const UMAMI_URL = process.env.UMAMI_URL || "https://analytics.sbxs.io";

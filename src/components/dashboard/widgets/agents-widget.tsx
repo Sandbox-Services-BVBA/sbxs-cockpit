@@ -31,7 +31,7 @@ export function AgentsWidget() {
     { refreshInterval: 5000, dedupingInterval: 2000, keepPreviousData: true }
   );
 
-  const now = data?.now ?? Math.floor(Date.now() / 1000);
+  const now = data?.now ?? 0;
   const windows = [...(data?.windows ?? [])].sort((a, b) => b.activity - a.activity);
   const active = windows.filter((w) => now - w.activity < 60).length;
 

@@ -61,12 +61,19 @@ export async function GET() {
   }
   const uptime = Array.from(uptimeBySite.values());
 
-  // Uptime history: aggregate per site per check round (group by site_url + checked_at)
-  // For the sparkline, a site is "up" at a given time only if ALL paths were up
+  // The client renders 24 check rounds per site. Bound this in SQL instead of
+  // shipping every path check from the last 24 hours on each 30-second poll.
   const uptimeHistory = db.prepare(`
+    WITH ranked AS (
+      SELECT site_url, site_name, checked_path, is_up, response_time_ms, checked_at,
+        DENSE_RANK() OVER (
+          PARTITION BY site_url ORDER BY checked_at DESC
+        ) AS check_rank
+      FROM uptime_checks
+    )
     SELECT site_url, site_name, checked_path, is_up, response_time_ms, checked_at
-    FROM uptime_checks
-    WHERE checked_at > datetime('now', '-24 hours')
+    FROM ranked
+    WHERE check_rank <= 24
     ORDER BY site_url, checked_at DESC
   `).all() as UptimeCheck[];
 
@@ -96,20 +103,21 @@ export async function GET() {
     "SELECT * FROM alerts WHERE resolved = 0 ORDER BY severity DESC, created_at DESC"
   ).all() as Alert[];
 
-  // Server health history (last 24h for charts)
-  const serverHistory = db.prepare(`
-    SELECT server_name, disk_usage_percent, ram_usage_percent, cpu_usage_percent, checked_at
-    FROM server_health
-    WHERE checked_at > datetime('now', '-24 hours')
-    ORDER BY server_name, checked_at
-  `).all() as ServerHealth[];
-
   // Extra data from kv_store
   const getKv = (key: string) => {
     try {
       const row = db.prepare("SELECT value FROM kv_store WHERE key = ?").get(key) as { value: string } | undefined;
       return row ? JSON.parse(row.value) : null;
     } catch { return null; }
+  };
+
+  const latestTimestamp = (query: string, params: string[] = []) => {
+    try {
+      const row = db.prepare(query).get(...params) as { timestamp: string | null } | undefined;
+      return row?.timestamp ?? null;
+    } catch {
+      return null;
+    }
   };
 
   // Services: agent-reported running-state, enriched with the real-time "last
@@ -126,6 +134,19 @@ export async function GET() {
     ? servicesRaw.map((s) => ({ ...s, last_beat: beatMap.get(s.name as string) ?? null }))
     : null;
 
+  const generatedAt = new Date().toISOString();
+  const freshness = {
+    // Server health is present in every cockpit-agent payload and is therefore
+    // the heartbeat for the entire multi-source ingestion pipeline.
+    agent: latestTimestamp("SELECT MAX(checked_at) AS timestamp FROM server_health"),
+    uptime: latestTimestamp("SELECT MAX(checked_at) AS timestamp FROM uptime_checks"),
+    business: latestTimestamp(
+      `SELECT MAX(updated_at) AS timestamp FROM kv_store
+       WHERE key IN (?, ?, ?, ?, ?)`,
+      ["inboxes", "mailroom", "unbilled", "timeentries", "domains"]
+    ),
+  };
+
   return Response.json({
     servers,
     services,
@@ -136,13 +157,14 @@ export async function GET() {
     projects,
     integrations,
     alerts,
-    serverHistory,
     inboxes: getKv("inboxes"),
     domains: getKv("domains"),
     cityscreens: getKv("cityscreens"),
     mailroom: getKv("mailroom"),
     unbilled: getKv("unbilled"),
     timeentries: getKv("timeentries"),
-    lastUpdated: new Date().toISOString(),
+    generatedAt,
+    lastUpdated: generatedAt,
+    freshness,
   });
 }

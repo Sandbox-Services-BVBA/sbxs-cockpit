@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { WidgetTile } from "../widget-tile";
 import type { LayoutMode } from "@/lib/widget-registry";
@@ -56,10 +56,16 @@ function FileTree({
   }, []);
 
   useEffect(() => {
-    if (getFsKey()) {
+    if (!getFsKey()) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
       setUnlocked(true);
-      loadDir(startPath);
-    }
+      void loadDir(startPath);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [loadDir, startPath]);
 
   const submitKey = () => {
@@ -136,17 +142,11 @@ function FileTree({
 function FileViewer({ path }: { path: string }) {
   const [file, setFile] = useState<FsFile | null>(null);
   const [err, setErr] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(path));
 
   useEffect(() => {
-    if (!path) {
-      setFile(null);
-      return;
-    }
+    if (!path) return;
     let alive = true;
-    setLoading(true);
-    setErr("");
-    setFile(null);
     fsCat(path)
       .then((f) => alive && setFile(f))
       .catch((e) => alive && setErr((e as Error).message || "Failed to open"))
@@ -204,17 +204,13 @@ export function FileTreeWidget({ layout = "grid" }: { layout?: LayoutMode }) {
 // ─── Full explorer in a modal, opened by clicking a file anywhere ───────────
 export function FileModal() {
   const req = useFileViewer();
-  const [open, setOpen] = useState(false);
-  const [viewPath, setViewPath] = useState("");
-  const lastNonce = useRef(0);
+  if (!req.path) return null;
+  return <FileModalContent key={req.nonce} initialPath={req.path} />;
+}
 
-  useEffect(() => {
-    if (req.path && req.nonce !== lastNonce.current) {
-      lastNonce.current = req.nonce;
-      setViewPath(req.path);
-      setOpen(true);
-    }
-  }, [req]);
+function FileModalContent({ initialPath }: { initialPath: string }) {
+  const [open, setOpen] = useState(true);
+  const [viewPath, setViewPath] = useState(initialPath);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -245,7 +241,7 @@ export function FileModal() {
             <FileTree startPath={dir} selected={viewPath} onOpenFile={setViewPath} />
           </div>
           <div className="flex-1 min-w-0 p-2 overflow-hidden">
-            <FileViewer path={viewPath} />
+            <FileViewer key={viewPath} path={viewPath} />
           </div>
         </div>
       </div>

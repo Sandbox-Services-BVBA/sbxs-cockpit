@@ -36,6 +36,7 @@ interface ClimateHistory {
   series: ClimateSeries[];
   error?: string;
 }
+const EMPTY_SERIES: ClimateSeries[] = [];
 
 const REFRESH_MS = 30000;
 const INDOOR_COLORS = ["#06b6d4", "#f59e0b", "#a855f7", "#22c55e", "#ec4899", "#3b82f6"];
@@ -103,7 +104,7 @@ export function Climate({ range }: { range: Range }) {
     keepPreviousData: true,
   });
 
-  const series = data?.series ?? [];
+  const series = data?.series ?? EMPTY_SERIES;
   const indoor = useMemo(() => series.filter((s) => !s.outdoor), [series]);
   const outdoor = useMemo(() => series.find((s) => s.outdoor), [series]);
   const merged = useMemo(() => mergeSeries(series, metric), [series, metric]);

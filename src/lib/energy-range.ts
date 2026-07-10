@@ -43,12 +43,6 @@ function startOfWeek(d: Date) {
   x.setDate(x.getDate() - dow);
   return x;
 }
-function startOfMonth(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
-}
-function startOfYear(d: Date) {
-  return new Date(d.getFullYear(), 0, 1);
-}
 const secs = (d: Date) => Math.floor(d.getTime() / 1000);
 
 export function buildRange(mode: TFMode, offset: number): Range {

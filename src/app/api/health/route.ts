@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
-import { config } from "@/lib/config";
+import { isMachineAuthorized, unauthorizedResponse } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -56,10 +56,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader !== `Bearer ${config.apiKey}`) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (!isMachineAuthorized(request)) return unauthorizedResponse();
 
   const db = getDb();
   db.exec(`

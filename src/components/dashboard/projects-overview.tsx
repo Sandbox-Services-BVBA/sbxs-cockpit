@@ -20,7 +20,7 @@ function ProjectRow({ project }: { project: Project }) {
     : null;
 
   const isStale = project.last_commit_at
-    ? Date.now() - new Date(project.last_commit_at).getTime() > 7 * 24 * 60 * 60 * 1000
+    ? new Date(project.checked_at).getTime() - new Date(project.last_commit_at).getTime() > 7 * 24 * 60 * 60 * 1000
     : false;
 
   return (

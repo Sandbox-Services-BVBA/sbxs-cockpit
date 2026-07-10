@@ -1,6 +1,6 @@
 export const config = {
   // API key for cockpit-agent to authenticate status pushes
-  apiKey: process.env.COCKPIT_API_KEY || "dev-key-change-me",
+  apiKey: process.env.COCKPIT_API_KEY || "",
 
   // Read-only file explorer: the cockpit backend proxies to the dev-server
   // file-watcher's fs endpoint (over Tailscale, server-to-server with apiKey).

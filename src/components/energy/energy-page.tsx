@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import { ArrowLeft, Zap, BarChart3, BatteryCharging, Thermometer, Wind, Droplet } from "lucide-react";
@@ -31,9 +31,8 @@ export function EnergyPage() {
   const [mode, setMode] = useState<TFMode>("live");
   const [offset, setOffset] = useState(0);
 
-  // Rebuild the range when mode/offset change. `tick` keeps the live window
-  // sliding forward as new live data arrives.
-  const range = useMemo(() => buildRange(mode, offset), [mode, offset, tick]);
+  // The live-data tick rerenders the page, keeping this rolling range current.
+  const range = buildRange(mode, offset);
 
   const { data: live } = useSWR<Live>("/api/energy", fetcher, {
     refreshInterval: LIVE_MS,

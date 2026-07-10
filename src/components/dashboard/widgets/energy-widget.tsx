@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import useSWR from "swr";
 import { WidgetTile } from "../widget-tile";
 import type { LayoutMode } from "@/lib/widget-registry";
@@ -306,21 +306,31 @@ export function EnergyWidget({ layout = "grid" }: { layout?: LayoutMode }) {
   const [show, setShow] = useState<Record<MetricKey, boolean>>({ solar: true, usage: true, bat: true, house: true });
   const [tick, setTick] = useState(0);
   const [clock, setClock] = useState(() => Math.floor(Date.now() / 1000));
+  const [fetchEnd, setFetchEnd] = useState(() => Math.floor(Date.now() / 1000));
   const { start: dayStart, end: dayEnd } = dayWindow(dayOffset);
   const isLive = view === "live";
   const isDay = view === "dag" || view === "geavanceerd";
 
   useEffect(() => {
     if (!isLive) return;
-    setClock(Math.floor(Date.now() / 1000));
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) setClock(Math.floor(Date.now() / 1000));
+    });
     const id = setInterval(() => setClock(Math.floor(Date.now() / 1000)), 1000);
-    return () => clearInterval(id);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, [isLive]);
 
   const { data: live } = useSWR<Live>("/api/energy", fetcher, {
     refreshInterval: REFRESH_MS,
     keepPreviousData: true,
-    onSuccess: () => setTick((t) => t + 1),
+    onSuccess: () => {
+      setFetchEnd(Math.floor(Date.now() / 1000));
+      setTick((t) => t + 1);
+    },
   });
 
   // Daily totals (Opwek/Verbruik/Net/Injectie/Zelfvoorzienend) from cumulative
@@ -330,7 +340,6 @@ export function EnergyWidget({ layout = "grid" }: { layout?: LayoutMode }) {
     keepPreviousData: true,
   });
 
-  const fetchEnd = useMemo(() => Math.floor(Date.now() / 1000), [tick]);
   const winStart = isLive ? fetchEnd - liveWin - 60 : dayStart;
   const winEnd = isLive ? fetchEnd : dayEnd;
   const { data: hist } = useSWR<{ points: HistPoint[] }>(

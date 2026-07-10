@@ -60,22 +60,22 @@ export const CATEGORY_LABELS: Record<WidgetCategory, string> = {
 };
 
 export const CATEGORY_COLORS: Record<WidgetCategory, string> = {
-  alerts: "#ef4444",
-  sites: "#10b981",
-  money: "#f59e0b",
-  infra: "#517FA4",
-  comms: "#14b8a6",
-  dev: "#8b5cf6",
-  house: "#a855f7",
-  personal: "#ec4899",
+  alerts: "#c43b31",
+  sites: "#237a57",
+  money: "#9a6800",
+  infra: "#376b87",
+  comms: "#18746d",
+  dev: "#3c67a3",
+  house: "#b35d25",
+  personal: "#a8455d",
 };
 
 // Size maps to CSS grid column spans (only used in the "grid" / vertical layout).
 export const SIZE_SPANS: Record<WidgetSize, string> = {
-  sm: "col-span-1",
-  md: "col-span-1 lg:col-span-2",
-  lg: "col-span-1 sm:col-span-2 lg:col-span-3 3xl:col-span-4",
-  xl: "col-span-1 sm:col-span-2 lg:col-span-4 xl:col-span-6 3xl:col-span-8 4xl:col-span-12",
+  sm: "col-span-1 md:col-span-1 xl:col-span-2",
+  md: "col-span-1 md:col-span-1 xl:col-span-2",
+  lg: "col-span-1 md:col-span-2 xl:col-span-4",
+  xl: "col-span-1 md:col-span-2 xl:col-span-6",
 };
 
 // All 26 widgets, ordered by importance for an always-on ops wall.

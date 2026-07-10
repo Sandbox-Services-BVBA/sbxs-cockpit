@@ -180,7 +180,7 @@ export async function backfillWeight(years = 5) {
   earliest.setFullYear(earliest.getFullYear() - years);
 
   let totalSynced = 0;
-  let cursor = new Date(earliest);
+  const cursor = new Date(earliest);
 
   while (cursor < now) {
     const chunkEnd = new Date(cursor);

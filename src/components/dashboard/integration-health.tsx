@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { StatusDot, StatusBadge } from "./status-indicator";
+import { StatusBadge } from "./status-indicator";
 import { Plug } from "lucide-react";
 import type { IntegrationHealth as IntegrationHealthType } from "@/types";
 

@@ -33,6 +33,7 @@ interface ClimateHistory {
   series: ClimateSeries[];
   error?: string;
 }
+const EMPTY_SERIES: ClimateSeries[] = [];
 
 // Refresh on the same cadence as the other house widgets (slow-moving data).
 const REFRESH_MS = 30000;
@@ -151,7 +152,7 @@ function ClimateWidget({
     { refreshInterval: REFRESH_MS, keepPreviousData: true }
   );
 
-  const series = data?.series ?? [];
+  const series = data?.series ?? EMPTY_SERIES;
   const indoor = useMemo(() => series.filter((s) => !s.outdoor), [series]);
   const outdoor = useMemo(() => series.find((s) => s.outdoor), [series]);
   const merged = useMemo(() => mergeSeries(series, metric), [series, metric]);

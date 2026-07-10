@@ -125,13 +125,20 @@ export function FileActivityWidget({ layout = "grid" }: { layout?: LayoutMode })
 
   // Restore filter toggles, then persist changes (skip the initial restore).
   useEffect(() => {
-    try {
-      setShowNoise(localStorage.getItem(NOISE_STORAGE_KEY) === "1");
-      setShowTemp(localStorage.getItem(TEMP_STORAGE_KEY) === "1");
-    } catch {
-      /* ignore */
-    }
-    setPrefsReady(true);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      try {
+        setShowNoise(localStorage.getItem(NOISE_STORAGE_KEY) === "1");
+        setShowTemp(localStorage.getItem(TEMP_STORAGE_KEY) === "1");
+      } catch {
+        /* ignore */
+      }
+      setPrefsReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
   useEffect(() => {
     if (!prefsReady) return;

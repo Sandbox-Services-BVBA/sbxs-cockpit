@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import useSWR from "swr";
 import { WidgetTile } from "../widget-tile";
 import type { LayoutMode } from "@/lib/widget-registry";
@@ -118,16 +118,19 @@ export function VentilationWidget({ layout = "grid" }: { layout?: LayoutMode }) 
         ? ""
         : "sm:col-span-2 lg:col-span-4 xl:col-span-6 3xl:col-span-8 4xl:col-span-12";
   const [tick, setTick] = useState(0);
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
   const { data: live, mutate } = useSWR<VentLive>("/api/ventilation", fetcher, {
     refreshInterval: REFRESH_MS,
     keepPreviousData: true,
-    onSuccess: () => setTick((t) => t + 1),
+    onSuccess: () => {
+      setNow(Math.floor(Date.now() / 1000));
+      setTick((t) => t + 1);
+    },
   });
 
-  const now = useMemo(() => Math.floor(Date.now() / 1000), [tick]);
   const { data: hist } = useSWR<{ points: VentPoint[] }>(
     `/api/ventilation?start=${now - HIST_WIN}&end=${now}`,
     fetcher,

@@ -3,12 +3,13 @@
 import { formatDistanceToNow } from "date-fns";
 import type { Alert } from "@/types";
 
-export function AlertsSummaryWidget({ alerts }: { alerts: Alert[] }) {
+export function AlertsSummaryWidget({ alerts, suppressHealthy = false }: { alerts: Alert[]; suppressHealthy?: boolean }) {
   if (alerts.length === 0) {
+    if (suppressHealthy) return null;
     return (
-      <div className="col-span-full border-2 border-[#33aa55] bg-[#33aa55]/10 px-2 py-1.5 flex items-center gap-2">
-        <span className="h-2 w-2 bg-[#33aa55]" />
-        <span className="text-petite font-bold text-[#33aa55] uppercase tracking-wide">All systems operational</span>
+      <div className="col-span-full flex items-center gap-3 rounded-xl border border-emerald-600/25 bg-emerald-600/[0.07] px-4 py-3">
+        <span className="h-2 w-2 rounded-full bg-emerald-600" />
+        <span className="text-petite font-bold text-emerald-800 dark:text-emerald-200">All monitored systems are operational</span>
       </div>
     );
   }
@@ -17,20 +18,20 @@ export function AlertsSummaryWidget({ alerts }: { alerts: Alert[] }) {
   const warnings = alerts.filter((a) => a.severity === "warning");
 
   return (
-    <div className="col-span-full space-y-1">
+    <div className="col-span-full space-y-2">
       {criticals.map((a) => (
-        <div key={a.id} className="border-2 border-[#ff4444] bg-[#ff4444]/10 px-2 py-1.5 flex items-center gap-2">
-          <span className="h-2 w-2 bg-[#ff4444] animate-pulse" />
-          <span className="text-petite font-bold flex-1 truncate">
+        <div key={a.id} className="flex items-center gap-3 rounded-xl border border-red-600/35 bg-red-600/[0.08] px-4 py-3 text-red-900 dark:text-red-100">
+          <span className="h-2 w-2 shrink-0 rounded-full bg-red-600 motion-safe:animate-pulse" />
+          <span className="min-w-0 flex-1 truncate text-petite font-bold">
             {a.source}: {a.message}
           </span>
-          <span className="text-mini text-muted-foreground font-mono">{formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}</span>
+          <span className="shrink-0 font-mono text-mini text-red-800/60 dark:text-red-200/60">{formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}</span>
         </div>
       ))}
       {warnings.length > 0 && (
-        <div className="border-2 border-[#ccaa33] bg-[#ccaa33]/10 px-2 py-1.5 flex items-center gap-2">
-          <span className="h-2 w-2 bg-[#ccaa33]" />
-          <span className="text-petite flex-1 truncate">
+        <div className="flex items-center gap-3 rounded-xl border border-amber-600/30 bg-amber-500/[0.08] px-4 py-3 text-amber-900 dark:text-amber-100">
+          <span className="h-2 w-2 shrink-0 rounded-full bg-amber-600" />
+          <span className="min-w-0 flex-1 truncate text-petite">
             <b>{warnings.length}</b> warning{warnings.length > 1 ? "s" : ""}: {warnings.map((w) => w.source).join(", ")}
           </span>
         </div>

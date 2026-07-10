@@ -1,17 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Open_Sans, JetBrains_Mono } from "next/font/google";
+import { Barlow, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
-const openSans = Open_Sans({
-  variable: "--font-sans",
+const barlow = Barlow({
+  variable: "--font-ui",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-geist-mono",
+  variable: "--font-code",
   subsets: ["latin"],
 });
 
@@ -33,10 +33,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F7F8FF" },
-    { media: "(prefers-color-scheme: dark)", color: "#131820" },
+    { media: "(prefers-color-scheme: light)", color: "#F2F0E9" },
+    { media: "(prefers-color-scheme: dark)", color: "#0C1719" },
   ],
 };
 
@@ -49,7 +48,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${openSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${barlow.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider

@@ -1,8 +1,17 @@
 "use client";
 
-import { Fragment, useState, useCallback, useEffect } from "react";
+import { Fragment, startTransition, useState } from "react";
+import { ArrowUpRight, RadioTower, ShieldCheck } from "lucide-react";
 import { useDashboardData } from "@/hooks/use-dashboard-data";
+import { getDashboardHealth } from "@/lib/dashboard-health";
 import { DashboardHeader } from "./header";
+import { CockpitMetrics, CockpitPosture, CockpitSummary } from "./cockpit-summary";
+import {
+  CockpitRail,
+  MobileCockpitNav,
+  VIEW_META,
+  type DashboardView,
+} from "./cockpit-navigation";
 import { AlertsSummaryWidget } from "./widgets/alerts-summary-widget";
 import { ServersWidget } from "./widgets/servers-widget";
 import { BackupsWidget } from "./widgets/backups-widget";
@@ -33,141 +42,113 @@ import { RawMetricsWidget } from "./widgets/raw-metrics-widget";
 import { VentilationWidget } from "./widgets/ventilation-widget";
 import { TemperatureWidget, HumidityWidget } from "./widgets/climate-widget";
 import {
-  ALL_CATEGORIES,
-  DEFAULT_ENABLED_CATEGORIES,
   DEFAULT_WIDGETS,
-  CATEGORY_LABELS,
   type LayoutMode,
   type WidgetCategory,
+  type WidgetConfig,
 } from "@/lib/widget-registry";
-import { cn } from "@/lib/utils";
 
-const CATEGORY_STORAGE_KEY = "cockpit:disabledCategories";
-const LAYOUT_STORAGE_KEY = "cockpit:layout";
+const SECTION_GRID = "grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-6";
+const OVERVIEW_CATEGORIES: WidgetCategory[] = ["sites", "infra", "money", "comms", "dev", "house", "personal"];
 
-// Energy/Ventilation are full-width charts; on the wall they get their own
-// 2-up band instead of joining the masonry flow.
-const BAND_IDS = new Set(["energy", "ventilation"]);
+// Overview is deliberately a signal layer, not a second rendering of every
+// chart. Each domain keeps its complete toolset in the dedicated view.
+const OVERVIEW_WIDGET_IDS: Partial<Record<WidgetCategory, string[]>> = {
+  sites: ["uptime-grid", "cityscreens", "domains"],
+  infra: ["servers", "backups", "services", "integrations"],
+  money: ["unbilled", "bank", "timeentries"],
+  comms: ["inbox", "mailroom"],
+  dev: ["agents", "projects"],
+  house: ["home-control"],
+  personal: ["sobriety"],
+};
 
-// Vertical: responsive grid that wraps into rows (good for phones). items-start
-// + auto column count up to a wall-display tier keeps tiles packed without the
-// equal-row-height empty bands.
-const GRID_CLS =
-  "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 3xl:grid-cols-8 4xl:grid-cols-12 gap-2 items-start";
-// Horizontal: widgets fill a column top-to-bottom then wrap rightward; the page
-// scrolls sideways. Fixed viewport height drives the column wrapping.
-const COLS_CLS =
-  "flex flex-col flex-wrap content-start gap-2 overflow-x-auto h-[calc(100vh-128px)] pb-2 [&>*]:w-[400px] [&>*]:shrink-0 [&>.energy-wide]:w-[820px] [&>.ventilation-wide]:w-[820px]";
-// Wall: width-driven CSS-columns masonry. Column WIDTH (not count) drives how
-// many columns appear, so the layout scales continuously to any display with no
-// breakpoint cap and no empty rows. Tiles never split across columns.
-const WALL_CLS = "[column-width:340px] [column-gap:0.5rem]";
+// Wallboard omits private health, bank balances, files, and write controls.
+const WALLBOARD_IDS = new Set([
+  "uptime-grid",
+  "cityscreens",
+  "domains",
+  "servers",
+  "backups",
+  "integrations",
+  "crons",
+  "services",
+  "inbox",
+  "mailroom",
+]);
 
-function LayoutToggle({ layout, onChange }: { layout: LayoutMode; onChange: (m: LayoutMode) => void }) {
-  const labels: Record<LayoutMode, string> = { grid: "Vertical", columns: "Horizontal", wall: "Wall" };
-  const titles: Record<LayoutMode, string> = {
-    grid: "Vertical (stack & scroll down)",
-    columns: "Horizontal (columns, scroll right)",
-    wall: "Wall (dense masonry for always-on display)",
-  };
+function SourceFreshnessNotice({ agentStale, uptimeStale }: { agentStale: boolean; uptimeStale: boolean }) {
+  if (!agentStale && !uptimeStale) return null;
+
   return (
-    <div className="flex shrink-0 border-2 border-border">
-      {(["grid", "columns", "wall"] as const).map((m) => (
-        <button
-          key={m}
-          onClick={() => onChange(m)}
-          title={titles[m]}
-          className={cn(
-            "px-2 py-0.5 text-mini font-bold uppercase tracking-wide transition-colors",
-            layout === m ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
-          )}
-        >
-          {labels[m]}
-        </button>
-      ))}
+    <div className="flex items-start gap-3 rounded-xl border border-red-600/30 bg-red-600/[0.08] px-4 py-3 text-red-800 dark:text-red-200">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-600/10">
+        <RadioTower className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-petite font-bold">Live telemetry is not trustworthy</p>
+        <p className="mt-0.5 text-tiny leading-relaxed text-red-800/75 dark:text-red-200/75">
+          {agentStale
+            ? "The cockpit agent has not delivered data inside its 15 minute window. Values below are retained for context, not presented as current."
+            : "The uptime feed is outside its 20 minute window. Site availability may be out of date."}
+        </p>
+      </div>
     </div>
   );
 }
 
-function CategoryFilter({
-  enabled,
-  onToggle,
+function SectionHeading({
+  category,
+  index,
+  count,
+  preview,
+  onOpen,
 }: {
-  enabled: Set<WidgetCategory>;
-  onToggle: (cat: WidgetCategory) => void;
+  category: WidgetCategory;
+  index: number;
+  count: number;
+  preview: boolean;
+  onOpen: () => void;
 }) {
+  const meta = VIEW_META[category];
   return (
-    <div className="flex flex-wrap gap-1">
-      {ALL_CATEGORIES.map((cat) => (
+    <div className="mb-3 flex items-end justify-between gap-4">
+      <div className="flex min-w-0 items-start gap-3">
+        <span className="mt-1 font-mono text-mini font-bold text-muted-foreground/60">{String(index + 1).padStart(2, "0")}</span>
+        <div className="min-w-0">
+          <h2 className="text-lg font-black tracking-[-0.035em]">{meta.label}</h2>
+          <p className="mt-0.5 text-petite text-muted-foreground">{meta.description}</p>
+        </div>
+      </div>
+      {preview && (
         <button
-          key={cat}
-          onClick={() => onToggle(cat)}
-          className={cn(
-            "px-2 py-0.5 text-mini font-bold uppercase tracking-wide border-2 transition-colors",
-            enabled.has(cat)
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-muted text-muted-foreground border-border hover:border-muted-foreground"
-          )}
+          type="button"
+          onClick={onOpen}
+          className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg px-2 text-petite font-bold text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
         >
-          {CATEGORY_LABELS[cat]}
+          All {count}
+          <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
-      ))}
+      )}
     </div>
   );
 }
 
 export function Dashboard() {
   const { data, loading, error, refresh } = useDashboardData();
-  const [enabledCategories, setEnabledCategories] = useState<Set<WidgetCategory>>(
-    new Set(DEFAULT_ENABLED_CATEGORIES)
-  );
-  const [hydrated, setHydrated] = useState(false);
-  const [layout, setLayout] = useState<LayoutMode>("grid");
+  const [view, setView] = useState<DashboardView>("overview");
+  const health = getDashboardHealth(data);
+  const viewMeta = VIEW_META[view];
+  const layout: LayoutMode = view === "wall" ? "wall" : "grid";
 
-  // Restore which tabs were active. We persist the *disabled* set so any
-  // category added in a later release still shows up by default.
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(CATEGORY_STORAGE_KEY);
-      if (raw) {
-        const disabled = new Set(JSON.parse(raw) as string[]);
-        setEnabledCategories(new Set(ALL_CATEGORIES.filter((c) => !disabled.has(c))));
-      }
-      const l = localStorage.getItem(LAYOUT_STORAGE_KEY);
-      if (l === "columns" || l === "grid" || l === "wall") setLayout(l);
-    } catch {
-      /* ignore malformed storage */
-    }
-    setHydrated(true);
-  }, []);
+  const changeView = (next: DashboardView) => {
+    startTransition(() => setView(next));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
-  // Persist on change (but not before the initial restore has run).
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      const disabled = ALL_CATEGORIES.filter((c) => !enabledCategories.has(c));
-      localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(disabled));
-      localStorage.setItem(LAYOUT_STORAGE_KEY, layout);
-    } catch {
-      /* storage unavailable */
-    }
-  }, [enabledCategories, layout, hydrated]);
-
-  const toggleCategory = useCallback((cat: WidgetCategory) => {
-    setEnabledCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(cat)) next.delete(cat);
-      else next.add(cat);
-      return next;
-    });
-  }, []);
-
-  // Render a single widget by id. Data-driven widgets are only invoked once
-  // `data` is present (see the visible-list filter below), so the non-null
-  // assertions are safe.
   const nodeFor = (id: string): React.ReactNode => {
     switch (id) {
-      case "alerts-summary": return <AlertsSummaryWidget alerts={data!.alerts} />;
+      case "alerts-summary": return <AlertsSummaryWidget alerts={data!.alerts} suppressHealthy={health.agentStale} />;
       case "uptime-grid": return <UptimeGridWidget uptime={data!.uptime} uptimeHistory={data!.uptimeHistory} />;
       case "cityscreens": return <CityScreensWidget displays={data!.cityscreens} />;
       case "domains": return <DomainsWidget domains={data!.domains} />;
@@ -202,72 +183,142 @@ export function Dashboard() {
     }
   };
 
-  // Widgets to render: enabled category + (self-fetching OR shared data loaded),
-  // ordered by importance.
-  const visible = DEFAULT_WIDGETS
-    .filter((w) => enabledCategories.has(w.category) && (w.selfFetch || data))
+  const availableWidgets = DEFAULT_WIDGETS
+    .filter((widget) => widget.selfFetch || data)
     .sort((a, b) => a.order - b.order);
 
-  const alertsWidgets = visible.filter((w) => w.category === "alerts");
-  const bandWidgets = visible.filter((w) => BAND_IDS.has(w.id));
-  const mainWidgets = visible.filter((w) => w.category !== "alerts" && !BAND_IDS.has(w.id));
+  const widgetsFor = (category: WidgetCategory, ids?: string[]) => {
+    const allowed = ids ? new Set(ids) : null;
+    return availableWidgets.filter((widget) => widget.category === category && (!allowed || allowed.has(widget.id)));
+  };
+
+  const renderWidgets = (widgets: WidgetConfig[]) => widgets.map((widget) => (
+    <Fragment key={widget.id}>{nodeFor(widget.id)}</Fragment>
+  ));
+
+  const renderDomainSection = (
+    category: WidgetCategory,
+    index: number,
+    options: { preview?: boolean; ids?: string[] } = {}
+  ) => {
+    const widgets = widgetsFor(category, options.ids);
+    const total = DEFAULT_WIDGETS.filter((widget) => widget.category === category).length;
+    if (widgets.length === 0) return null;
+
+    return (
+      <section key={category} aria-labelledby={`section-${category}`} className="cockpit-section">
+        <div id={`section-${category}`}>
+          <SectionHeading
+            category={category}
+            index={index}
+            count={total}
+            preview={options.preview ?? false}
+            onOpen={() => changeView(category)}
+          />
+        </div>
+        <div className={SECTION_GRID}>{renderWidgets(widgets)}</div>
+      </section>
+    );
+  };
+
+  const attention = (
+    <section aria-labelledby="attention-title" className="cockpit-section">
+      <div className="mb-3 flex items-center justify-between gap-4">
+        <div>
+          <p className="font-mono text-mini font-bold uppercase tracking-[0.16em] text-muted-foreground">Priority 00</p>
+          <h2 id="attention-title" className="mt-1 text-lg font-black tracking-[-0.035em]">Attention queue</h2>
+        </div>
+        <span className="rounded-full border border-border bg-card px-3 py-1 font-mono text-mini font-bold text-muted-foreground">
+          {health.attentionCount} signal{health.attentionCount === 1 ? "" : "s"}
+        </span>
+      </div>
+      <div className="space-y-3">
+        <SourceFreshnessNotice agentStale={health.agentStale} uptimeStale={health.uptimeStale} />
+        {data && <AlertsSummaryWidget alerts={data.alerts} suppressHealthy={health.agentStale || health.uptimeStale} />}
+        {data && health.attentionCount === 0 && (
+          <div className="flex items-center gap-3 rounded-xl border border-emerald-600/25 bg-emerald-600/[0.07] px-4 py-3 text-emerald-800 dark:text-emerald-200">
+            <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+            <p className="text-petite font-bold">No active exceptions. The queue is clear.</p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
 
   return (
-    <div className="min-h-screen bg-background">
-      <DashboardHeader
-        lastUpdated={data?.lastUpdated || null}
-        onRefresh={() => refresh()}
-        loading={loading}
-      />
+    <div className="min-h-screen bg-background lg:flex">
+      <CockpitRail view={view} onChange={changeView} tone={health.tone} />
 
-      {error && (
-        <div className="mx-2 mt-2 border-2 border-[#ff4444] bg-[#ff4444]/10 px-2 py-1.5 text-petite">
-          Failed to load: {error}
-        </div>
-      )}
+      <div className="min-w-0 flex-1">
+        <DashboardHeader
+          title={view === "overview" ? "Operations overview" : viewMeta.label}
+          description={viewMeta.description}
+          generatedAt={data?.generatedAt ?? null}
+          sourceUpdatedAt={data?.freshness.agent ?? null}
+          tone={health.tone}
+          onRefresh={() => refresh()}
+          loading={loading}
+        />
 
-      <main className={cn("p-2 space-y-2 mx-auto", layout === "grid" ? "max-w-[2400px]" : "max-w-none")}>
-        <div className="flex items-start justify-between gap-2">
-          <CategoryFilter enabled={enabledCategories} onToggle={toggleCategory} />
-          <LayoutToggle layout={layout} onChange={setLayout} />
-        </div>
+        <main className="mx-auto w-full max-w-[1720px] space-y-6 px-4 py-5 sm:px-6 sm:py-7 xl:px-8">
+          <MobileCockpitNav view={view} onChange={changeView} />
 
-        {layout === "wall" ? (
-          <div className="space-y-2">
-            {alertsWidgets.map((w) => (
-              <Fragment key={w.id}>{nodeFor(w.id)}</Fragment>
-            ))}
-            <div className={WALL_CLS}>
-              {mainWidgets.map((w) => (
-                <div key={w.id} className="break-inside-avoid mb-2">
-                  {nodeFor(w.id)}
-                </div>
+          {error && (
+            <div role="alert" className="rounded-xl border border-red-600/35 bg-red-600/[0.08] px-4 py-3 text-petite text-red-800 dark:text-red-200">
+              <span className="font-bold">Dashboard request failed.</span> {error}
+            </div>
+          )}
+
+          {loading && !data ? (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6" aria-label="Loading dashboard">
+              <div className="h-64 animate-pulse rounded-2xl bg-muted md:col-span-2 xl:col-span-2" />
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="h-48 animate-pulse rounded-2xl bg-muted xl:col-span-1" />
               ))}
             </div>
-            {bandWidgets.length > 0 && (
-              <div className="grid grid-cols-1 2xl:grid-cols-2 gap-2 items-start">
-                {bandWidgets.map((w) => (
-                  <Fragment key={w.id}>{nodeFor(w.id)}</Fragment>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className={layout === "columns" ? COLS_CLS : GRID_CLS}>
-            {visible.map((w) => (
-              <Fragment key={w.id}>{nodeFor(w.id)}</Fragment>
-            ))}
-          </div>
-        )}
+          ) : (
+            <div key={view} className="cockpit-view space-y-6">
+              {view === "wall" && <CockpitSummary data={data} />}
 
-        {loading && !data && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-24 bg-card border-2 border-border animate-pulse col-span-1 lg:col-span-2" />
-            ))}
-          </div>
-        )}
-      </main>
+              {view === "overview" && (
+                <>
+                  <section aria-labelledby="system-pulse-title" className="flex flex-col gap-6 xl:grid xl:grid-cols-6 xl:gap-x-3">
+                    <CockpitPosture data={data} className="order-1 xl:col-span-2" />
+                    <CockpitMetrics data={data} className="order-3 xl:order-2 xl:col-span-4" />
+                    <div className="order-2 border-t border-border/70 pt-6 xl:order-3 xl:col-span-6">{attention}</div>
+                  </section>
+                  {OVERVIEW_CATEGORIES.map((category, index) => renderDomainSection(category, index, {
+                    preview: true,
+                    ids: OVERVIEW_WIDGET_IDS[category],
+                  }))}
+                </>
+              )}
+
+              {view === "alerts" && attention}
+
+              {view !== "overview" && view !== "wall" && view !== "alerts" &&
+                renderDomainSection(view, 0)}
+
+              {view === "wall" && (
+                <>
+                  {attention}
+                  <section aria-labelledby="wallboard-title" className="cockpit-section">
+                    <div className="mb-4">
+                      <p className="font-mono text-mini font-bold uppercase tracking-[0.16em] text-muted-foreground">Shared display</p>
+                      <h2 id="wallboard-title" className="mt-1 text-lg font-black tracking-[-0.035em]">Operational matrix</h2>
+                    </div>
+                    <div className="[column-gap:0.75rem] [column-width:340px]">
+                      {availableWidgets.filter((widget) => WALLBOARD_IDS.has(widget.id)).map((widget) => (
+                        <div key={widget.id} className="mb-3 break-inside-avoid">{nodeFor(widget.id)}</div>
+                      ))}
+                    </div>
+                  </section>
+                </>
+              )}
+            </div>
+          )}
+        </main>
+      </div>
       <FileModal />
     </div>
   );

@@ -1,14 +1,11 @@
 import { NextRequest } from "next/server";
 import { runUptimeChecks } from "@/lib/uptime";
 import { processAlertNotifications } from "@/lib/alerts";
-import { config } from "@/lib/config";
+import { isMachineAuthorized, unauthorizedResponse } from "@/lib/api-auth";
 
 // Called by cron every 5 minutes
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader !== `Bearer ${config.apiKey}`) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (!isMachineAuthorized(request)) return unauthorizedResponse();
 
   const results = await runUptimeChecks();
   await processAlertNotifications();
@@ -16,10 +13,6 @@ export async function POST(request: NextRequest) {
   return Response.json({ ok: true, checked: results.length, results });
 }
 
-// Allow GET for manual trigger during development
 export async function GET() {
-  const results = await runUptimeChecks();
-  await processAlertNotifications();
-
-  return Response.json({ ok: true, checked: results.length, results });
+  return Response.json({ error: "Use authenticated POST" }, { status: 405 });
 }

@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { StatusDot, MetricValue } from "./status-indicator";
+import { StatusDot } from "./status-indicator";
 import { Server, HardDrive, Cpu, MemoryStick } from "lucide-react";
 import type { ServerHealth as ServerHealthType } from "@/types";
 import { cn } from "@/lib/utils";

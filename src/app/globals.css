@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-code);
+  --font-heading: var(--font-ui);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -42,172 +42,270 @@
   --color-sbxs-coral: var(--sbxs-coral);
   --color-sbxs-blue: var(--sbxs-blue);
   --color-sbxs-blue-light: var(--sbxs-blue-light);
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
-  --radius-xl: 0px;
-  --radius-2xl: 0px;
-  --radius-3xl: 0px;
-  --radius-4xl: 0px;
 
-  /* ---- Fluid type scale ----------------------------------------------------
-     Each clamp() floor == today's hardcoded mobile px (phone view is pixel
-     identical); the vw term grows the size up to a wall-display ceiling,
-     interpolated between 375px and 1920px viewport width. Dense table text
-     grows gently (~1.25x); hero numbers (2xl-4xl) grow aggressively. */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
+  --radius-3xl: 1.5rem;
 
-  /* sub-xs micro steps — replace the old arbitrary text-[Npx] utilities */
-  --text-nano:   clamp(0.4375rem, 0.405rem + 0.13vw, 0.5625rem);  /* 7  -> 9    */
-  --text-nano--line-height: 1.2;
-  --text-micro:  clamp(0.5rem,    0.468rem + 0.13vw, 0.625rem);   /* 8  -> 10   */
-  --text-micro--line-height: 1.2;
-  --text-mini:   clamp(0.5625rem, 0.530rem + 0.13vw, 0.6875rem);  /* 9  -> 11   */
-  --text-mini--line-height: 1.25;
-  --text-tiny:   clamp(0.625rem,  0.585rem + 0.16vw, 0.78125rem); /* 10 -> 12.5 */
-  --text-tiny--line-height: 1.3;
-  --text-petite: clamp(0.6875rem, 0.647rem + 0.16vw, 0.84375rem); /* 11 -> 13.5 */
-  --text-petite--line-height: 1.3;
+  /* The cockpit used to render operational text as small as 7px. These
+     aliases preserve existing widget utilities with a readable floor. */
+  --text-nano: clamp(0.625rem, 0.6rem + 0.08vw, 0.6875rem);
+  --text-nano--line-height: 1.35;
+  --text-micro: clamp(0.6875rem, 0.65rem + 0.1vw, 0.75rem);
+  --text-micro--line-height: 1.35;
+  --text-mini: clamp(0.6875rem, 0.65rem + 0.12vw, 0.78125rem);
+  --text-mini--line-height: 1.35;
+  --text-tiny: clamp(0.75rem, 0.7rem + 0.13vw, 0.84375rem);
+  --text-tiny--line-height: 1.4;
+  --text-petite: clamp(0.8125rem, 0.76rem + 0.14vw, 0.9375rem);
+  --text-petite--line-height: 1.45;
+  --text-xs: clamp(0.8125rem, 0.76rem + 0.15vw, 0.9375rem);
+  --text-xs--line-height: 1.45;
+  --text-sm: clamp(0.875rem, 0.81rem + 0.18vw, 1rem);
+  --text-sm--line-height: 1.5;
+  --text-base: clamp(1rem, 0.94rem + 0.18vw, 1.125rem);
+  --text-base--line-height: 1.5;
+  --text-lg: clamp(1.125rem, 1.05rem + 0.24vw, 1.3125rem);
+  --text-xl: clamp(1.25rem, 1.14rem + 0.34vw, 1.5rem);
+  --text-2xl: clamp(1.5rem, 1.32rem + 0.56vw, 1.9375rem);
+  --text-3xl: clamp(1.875rem, 1.58rem + 0.9vw, 2.625rem);
+  --text-4xl: clamp(2.25rem, 1.82rem + 1.35vw, 3.375rem);
 
-  /* override the stock named scale so existing text-xs/sm/... go fluid too */
-  --text-xs:   clamp(0.75rem,  0.701rem + 0.19vw, 0.9375rem);     /* 12 -> 15   */
-  --text-xs--line-height: 1.35;
-  --text-sm:   clamp(0.875rem, 0.818rem + 0.23vw, 1.09375rem);    /* 14 -> 17.5 */
-  --text-sm--line-height: 1.4;
-  --text-base: clamp(1rem,     0.951rem + 0.19vw, 1.1875rem);     /* 16 -> 19   */
-  --text-lg:   clamp(1.125rem, 1.060rem + 0.26vw, 1.375rem);      /* 18 -> 22   */
-  --text-xl:   clamp(1.25rem,  1.151rem + 0.39vw, 1.625rem);      /* 20 -> 26   */
-  --text-2xl:  clamp(1.5rem,   1.337rem + 0.65vw, 2.125rem);      /* 24 -> 34   */
-  --text-3xl:  clamp(1.875rem, 1.612rem + 1.05vw, 2.875rem);      /* 30 -> 46   */
-  --text-4xl:  clamp(2.25rem,  1.864rem + 1.55vw, 3.75rem);       /* 36 -> 60   */
-
-  /* ---- Wall-display breakpoints (Tailwind core stops at 2xl = 1536px) ---- */
   --breakpoint-3xl: 1920px;
   --breakpoint-4xl: 2560px;
 }
 
-/* SBXS brand colors - retro cockpit */
 :root {
-  --sbxs-coral: #fe644d;
-  --sbxs-blue: #243949;
-  --sbxs-blue-light: #517FA4;
-
-  --background: #e8e8e0;
-  --foreground: #1a1a1a;
-  --card: #f0f0e8;
-  --card-foreground: #1a1a1a;
-  --popover: #f0f0e8;
-  --popover-foreground: #1a1a1a;
-  --primary: #243949;
-  --primary-foreground: #f0f0e8;
-  --secondary: #d8d8d0;
-  --secondary-foreground: #243949;
-  --muted: #d8d8d0;
-  --muted-foreground: #666660;
-  --accent: #d8d8d0;
-  --accent-foreground: #243949;
-  --destructive: #cc3333;
-  --border: #b0b0a8;
-  --input: #b0b0a8;
-  --ring: #517FA4;
-  --chart-1: #fe644d;
-  --chart-2: #517FA4;
-  --chart-3: #243949;
-  --chart-4: #33aa55;
-  --chart-5: #cc9900;
-  --radius: 0px;
-  --sidebar: #243949;
-  --sidebar-foreground: #f0f0e8;
-  --sidebar-primary: #fe644d;
+  --sbxs-coral: #f15f48;
+  --sbxs-blue: #153b3e;
+  --sbxs-blue-light: #487f83;
+  --background: #f2f0e9;
+  --foreground: #172320;
+  --card: #fbfaf6;
+  --card-foreground: #172320;
+  --popover: #fffefb;
+  --popover-foreground: #172320;
+  --primary: #153b3e;
+  --primary-foreground: #ffffff;
+  --secondary: #e5e9e5;
+  --secondary-foreground: #183436;
+  --muted: #e8e7e0;
+  --muted-foreground: #63706b;
+  --accent: #e0e8e5;
+  --accent-foreground: #153b3e;
+  --destructive: #bd382e;
+  --border: #d5d6cf;
+  --input: #c7cbc4;
+  --ring: #3f777b;
+  --chart-1: #e6533d;
+  --chart-2: #3f7a84;
+  --chart-3: #237653;
+  --chart-4: #a46b08;
+  --chart-5: #a3455b;
+  --radius: 0.75rem;
+  --sidebar: #11282c;
+  --sidebar-foreground: #f7f5ef;
+  --sidebar-primary: #f15f48;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #2d4a5e;
-  --sidebar-accent-foreground: #f0f0e8;
-  --sidebar-border: rgba(255,255,255,0.15);
-  --sidebar-ring: #517FA4;
+  --sidebar-accent: #1a383c;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #f15f48;
+  --grid-line: rgba(21, 59, 62, 0.035);
 }
 
 .dark {
-  --background: #0c1018;
-  --foreground: #d0d0c8;
-  --card: #141c28;
-  --card-foreground: #d0d0c8;
-  --popover: #141c28;
-  --popover-foreground: #d0d0c8;
-  --primary: #fe644d;
-  --primary-foreground: #0c1018;
-  --secondary: #1a2636;
-  --secondary-foreground: #d0d0c8;
-  --muted: #1a2636;
-  --muted-foreground: #707880;
-  --accent: #1a2636;
-  --accent-foreground: #d0d0c8;
-  --destructive: #ff4444;
-  --border: #2a3648;
-  --input: #2a3648;
-  --ring: #fe644d;
-  --chart-1: #fe644d;
-  --chart-2: #5599cc;
-  --chart-3: #44cc66;
-  --chart-4: #ccaa33;
-  --chart-5: #aa66cc;
-  --sidebar: #0a0e14;
-  --sidebar-foreground: #d0d0c8;
-  --sidebar-primary: #fe644d;
+  --background: #0c1719;
+  --foreground: #e7ece8;
+  --card: #122326;
+  --card-foreground: #e7ece8;
+  --popover: #15282b;
+  --popover-foreground: #e7ece8;
+  --primary: #f15f48;
+  --primary-foreground: #ffffff;
+  --secondary: #1a3033;
+  --secondary-foreground: #e7ece8;
+  --muted: #1a3033;
+  --muted-foreground: #97a9a4;
+  --accent: #20383b;
+  --accent-foreground: #f3f6f3;
+  --destructive: #f06459;
+  --border: #294144;
+  --input: #365054;
+  --ring: #f15f48;
+  --chart-1: #f36b55;
+  --chart-2: #69a7b1;
+  --chart-3: #54b985;
+  --chart-4: #d6a64a;
+  --chart-5: #d47c92;
+  --sidebar: #081214;
+  --sidebar-foreground: #eef3ef;
+  --sidebar-primary: #f15f48;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1a2636;
-  --sidebar-accent-foreground: #d0d0c8;
-  --sidebar-border: #2a3648;
-  --sidebar-ring: #fe644d;
+  --sidebar-accent: #193034;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #263d41;
+  --sidebar-ring: #f15f48;
+  --grid-line: rgba(218, 236, 230, 0.028);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    border-radius: 0 !important;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+
   html {
     @apply font-sans;
+    min-width: 320px;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(circle at 8% -10%, color-mix(in srgb, var(--sbxs-coral) 9%, transparent), transparent 32rem),
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-attachment: fixed;
+    background-size: auto, 32px 32px, 32px 32px;
+    font-feature-settings: "ss01" 1, "cv02" 1, "cv03" 1;
+    text-rendering: optimizeLegibility;
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--sbxs-coral) 28%, transparent);
   }
 }
 
-/* Energy widget — vertical battery animations (square "energy packets") */
+.cockpit-panel,
+.cockpit-metric,
+.cockpit-posture {
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.46) inset,
+    0 10px 32px rgba(17, 40, 44, 0.045);
+  backdrop-filter: blur(8px);
+}
+
+.cockpit-panel {
+  border-radius: 0.875rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.cockpit-panel:hover {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.5) inset,
+    0 14px 38px rgba(17, 40, 44, 0.07);
+}
+
+.cockpit-metric,
+.cockpit-posture {
+  border-radius: 1rem;
+  padding: 1rem;
+}
+
+.cockpit-metric {
+  min-height: 12rem;
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.cockpit-metric:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--primary) 24%, var(--border));
+  box-shadow: 0 16px 40px rgba(17, 40, 44, 0.08);
+}
+
+.cockpit-posture {
+  min-height: 16rem;
+  padding: 1.25rem;
+}
+
+.cockpit-section + .cockpit-section {
+  border-top: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  padding-top: 1.5rem;
+}
+
+@keyframes cockpit-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cockpit-view > * {
+  animation: cockpit-enter 360ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.cockpit-view > *:nth-child(2) { animation-delay: 40ms; }
+.cockpit-view > *:nth-child(3) { animation-delay: 80ms; }
+.cockpit-view > *:nth-child(4) { animation-delay: 120ms; }
+.cockpit-view > *:nth-child(5) { animation-delay: 160ms; }
+
+/* Energy widget animations */
 @keyframes batt-rise {
-  0%   { transform: translateY(0) scale(0.7); opacity: 0; }
-  20%  { opacity: 0.95; }
+  0% { transform: translateY(0) scale(0.7); opacity: 0; }
+  20% { opacity: 0.95; }
   100% { transform: translateY(-64px) scale(1); opacity: 0; }
 }
+
 @keyframes batt-fall {
-  0%   { transform: translateY(-64px) scale(1); opacity: 0; }
-  20%  { opacity: 0.9; }
+  0% { transform: translateY(-64px) scale(1); opacity: 0; }
+  20% { opacity: 0.9; }
   100% { transform: translateY(0) scale(0.7); opacity: 0; }
 }
+
 @keyframes batt-glow {
   0%, 100% { filter: brightness(1); }
-  50%      { filter: brightness(1.3); }
+  50% { filter: brightness(1.3); }
 }
+
 .batt-glow { animation: batt-glow 1.8s ease-in-out infinite; }
 .batt-packet { animation-timing-function: linear; animation-iteration-count: infinite; }
 
-/* Energy widget — live pulse dot */
-@keyframes live-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+@keyframes live-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 .live-dot { animation: live-pulse 1.4s ease-in-out infinite; }
 
-/* Energy widget — refresh countdown bar (depletes over one refresh interval) */
 @keyframes refresh-countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
-/* Energy widget — "blip" the live dot once per refresh tick */
-@keyframes energy-blip { 0% { transform: scale(1); opacity: 1; } 35% { transform: scale(2); opacity: 0.4; } 100% { transform: scale(1); opacity: 1; } }
-.energy-blip { animation: energy-blip 0.5s ease-out; }
-
-/* Energy widget — heartbeat: bright on new data, fades until the next tick */
-@keyframes energy-heartbeat {
-  0%   { opacity: 1; transform: scale(1.9); box-shadow: 0 0 6px 2px rgba(34,197,94,0.8); }
-  12%  { opacity: 1; transform: scale(1); box-shadow: 0 0 4px 1px rgba(34,197,94,0.6); }
-  100% { opacity: 0.18; transform: scale(1); box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+@keyframes energy-blip {
+  0% { transform: scale(1); opacity: 1; }
+  35% { transform: scale(2); opacity: 0.4; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
-/* Energy widget — flow diagram animated arrows */
+.energy-blip { animation: energy-blip 0.5s ease-out; }
+
+@keyframes energy-heartbeat {
+  0% { opacity: 1; transform: scale(1.9); box-shadow: 0 0 6px 2px rgba(34, 197, 94, 0.8); }
+  12% { opacity: 1; transform: scale(1); box-shadow: 0 0 4px 1px rgba(34, 197, 94, 0.6); }
+  100% { opacity: 0.18; transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
 @keyframes flow-fwd { to { stroke-dashoffset: -20; } }
 @keyframes flow-rev { to { stroke-dashoffset: 20; } }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .cockpit-metric { padding: 1.125rem; }
+  .cockpit-posture { padding: 1.5rem; }
+}

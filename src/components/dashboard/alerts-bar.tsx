@@ -1,7 +1,6 @@
 "use client";
 
 import { AlertTriangle, XCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { Alert } from "@/types";
 import { formatDistanceToNow } from "date-fns";
 

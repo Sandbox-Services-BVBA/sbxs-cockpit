@@ -28,9 +28,8 @@ function buildMilestones(): Milestone[] {
 
 const MILESTONES = buildMilestones();
 
-function getStreakInfo(startDate: string) {
+function getStreakInfo(startDate: string, now: number) {
   const start = new Date(startDate).getTime();
-  const now = Date.now();
   const elapsedMs = now - start;
   const elapsedHours = elapsedMs / 3600000;
 
@@ -85,7 +84,7 @@ function ProgressRing({ progress }: { progress: number }) {
 }
 
 function LiveRing({ startDate }: { startDate: string }) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -106,7 +105,7 @@ function LiveRing({ startDate }: { startDate: string }) {
   const remMins = Math.floor((remainingMs % 3600000) / 60000);
   const remSecs = Math.floor((remainingMs % 60000) / 1000);
 
-  const { current, next } = getStreakInfo(startDate);
+  const { current, next } = getStreakInfo(startDate, now);
 
   return (
     <div className="flex flex-col items-center gap-2">

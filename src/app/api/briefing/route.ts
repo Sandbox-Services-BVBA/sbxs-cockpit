@@ -2,13 +2,11 @@ import { NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { config } from "@/lib/config";
+import { isMachineAuthorized, unauthorizedResponse } from "@/lib/api-auth";
 import type { ServerHealth, Alert, UptimeCheck } from "@/types";
 
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader !== `Bearer ${config.apiKey}`) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (!isMachineAuthorized(request)) return unauthorizedResponse();
 
   const briefing = await buildBriefing();
   await sendTelegramMessage(briefing);
@@ -16,10 +14,8 @@ export async function POST(request: NextRequest) {
   return Response.json({ ok: true, briefing });
 }
 
-// GET for manual testing
 export async function GET() {
-  const briefing = await buildBriefing();
-  return Response.json({ ok: true, briefing });
+  return Response.json({ error: "Use authenticated POST" }, { status: 405 });
 }
 
 async function buildBriefing(): Promise<string> {

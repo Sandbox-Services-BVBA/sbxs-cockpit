@@ -2,7 +2,6 @@
 
 import useSWR from "swr";
 import { WidgetTile } from "../widget-tile";
-import { cn } from "@/lib/utils";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -31,17 +30,16 @@ function DayBar({ value, max }: { value: number; max: number }) {
 
 function WeekChart({ daily }: { daily: { date: string; visitors: number }[] }) {
   const max = Math.max(...daily.map(d => d.visitors), 1);
-  const days = ["M", "T", "W", "T", "F", "S", "S"];
 
   return (
     <div className="space-y-0.5">
       <div className="flex gap-px">
-        {daily.map((d, i) => (
+        {daily.map((d) => (
           <DayBar key={d.date} value={d.visitors} max={max} />
         ))}
       </div>
       <div className="flex gap-px">
-        {daily.map((d, i) => {
+        {daily.map((d) => {
           const dayName = new Date(d.date).toLocaleDateString("en", { weekday: "short" }).slice(0, 2);
           return (
             <div key={d.date} className="flex-1 text-center text-nano font-mono text-muted-foreground">

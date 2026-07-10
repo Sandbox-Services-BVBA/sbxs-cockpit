@@ -92,8 +92,6 @@ export function UptimeSection({
     );
   }
 
-  const allUp = uptime.every((u) => u.is_up);
-
   return (
     <section>
       <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">

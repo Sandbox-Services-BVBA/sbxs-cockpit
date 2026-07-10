@@ -2,14 +2,12 @@ import { NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
 import { createAlert, resolveAlerts } from "@/lib/alerts";
 import { config } from "@/lib/config";
+import { isMachineAuthorized, unauthorizedResponse } from "@/lib/api-auth";
 import type { StatusPayload } from "@/types";
 
 export async function POST(request: NextRequest) {
   // Authenticate
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader !== `Bearer ${config.apiKey}`) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (!isMachineAuthorized(request)) return unauthorizedResponse();
 
   const payload: StatusPayload = await request.json();
   const db = getDb();

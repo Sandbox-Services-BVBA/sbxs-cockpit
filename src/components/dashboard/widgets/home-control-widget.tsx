@@ -4,7 +4,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { WidgetTile } from "../widget-tile";
 import { cn } from "@/lib/utils";
-import { Guitar, Sun, Sunset, Moon, CloudSun, Power, Monitor } from "lucide-react";
+import { Guitar, Sun, Sunset, Moon, CloudSun, Power, Monitor, Lamp } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -38,6 +38,7 @@ const SCENE_ICONS: Record<string, typeof Guitar> = {
   "bright-day-work": Sun,
   "calm-day-work": CloudSun,
   "all-off": Power,
+  "hoeklamp-only": Lamp,
 };
 
 function rgbCss(rgb: [number, number, number] | null) {

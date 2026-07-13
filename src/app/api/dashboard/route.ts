@@ -163,6 +163,7 @@ export async function GET() {
     mailroom: getKv("mailroom"),
     unbilled: getKv("unbilled"),
     timeentries: getKv("timeentries"),
+    aiUsage: getKv("ai_usage"),
     generatedAt,
     lastUpdated: generatedAt,
     freshness,

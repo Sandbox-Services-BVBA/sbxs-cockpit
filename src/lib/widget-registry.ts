@@ -109,6 +109,7 @@ export const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "agents", title: "Agents", category: "dev", size: "md", order: 17, selfFetch: true },
   { id: "file-activity", title: "File Activity", category: "dev", size: "lg", order: 18, selfFetch: true },
   { id: "projects", title: "Recent Projects", category: "dev", size: "sm", order: 19 },
+  { id: "ai-usage", title: "AI Usage", category: "dev", size: "sm", order: 19.5 },
   { id: "file-explorer", title: "Files", category: "dev", size: "sm", order: 20, selfFetch: true },
 
   // House — energy / ventilation / lights

@@ -33,6 +33,7 @@ import { BankWidget } from "./widgets/bank-widget";
 import { FileActivityWidget } from "./widgets/file-activity-widget";
 import { ServicesWidget } from "./widgets/services-status-widget";
 import { AgentsWidget } from "./widgets/agents-widget";
+import { AiUsageWidget } from "./widgets/ai-usage-widget";
 import { FileTreeWidget, FileModal } from "./widgets/file-explorer-widget";
 import { HomeControlWidget } from "./widgets/home-control-widget";
 import { EnergyWidget } from "./widgets/energy-widget";
@@ -58,7 +59,7 @@ const OVERVIEW_WIDGET_IDS: Partial<Record<WidgetCategory, string[]>> = {
   infra: ["servers", "backups", "services", "integrations"],
   money: ["unbilled", "bank", "timeentries"],
   comms: ["inbox", "mailroom"],
-  dev: ["agents", "projects"],
+  dev: ["agents", "projects", "ai-usage"],
   house: ["home-control"],
   personal: ["sobriety"],
 };
@@ -165,6 +166,7 @@ export function Dashboard() {
       case "inbox": return <InboxWidget inboxes={data!.inboxes} />;
       case "mailroom": return <MailroomWidget mailroom={data!.mailroom} />;
       case "agents": return <AgentsWidget />;
+      case "ai-usage": return <AiUsageWidget aiUsage={data?.aiUsage} />;
       case "file-activity": return <FileActivityWidget layout={layout} />;
       case "projects": return <ProjectsWidget projects={data!.projects} />;
       case "file-explorer": return <FileTreeWidget layout={layout} />;

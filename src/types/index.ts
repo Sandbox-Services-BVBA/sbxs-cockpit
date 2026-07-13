@@ -99,6 +99,24 @@ export interface Service {
   last_beat: string | null; // from file_changes, enriched server-side
 }
 
+export interface AiProviderUsage {
+  ok: boolean;
+  error?: string | null;
+  plan?: string | null;
+  session_pct: number | null;
+  session_resets_at: string | null;
+  weekly_pct: number | null;
+  weekly_resets_at: string | null;
+  weekly_model_pct?: number | null;
+  weekly_model_name?: string | null;
+  captured_at: string | null;
+}
+
+export interface AiUsage {
+  claude: AiProviderUsage | null;
+  codex: AiProviderUsage | null;
+}
+
 export interface FileChange {
   id: number;
   path: string;

@@ -4,7 +4,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { WidgetTile } from "../widget-tile";
 import { cn } from "@/lib/utils";
-import { Guitar, Sun, Sunset, Moon, CloudSun, Power, Monitor, Lamp } from "lucide-react";
+import { Guitar, Sun, Sunset, Sunrise, Moon, CloudSun, Power, Monitor, Lamp, TreePine } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -19,6 +19,7 @@ interface HomeLight {
 interface HomeSwitch {
   id: string;
   name: string;
+  area?: string;
   available: boolean;
   on: boolean;
 }
@@ -33,6 +34,7 @@ interface HomeState {
 
 const SCENE_ICONS: Record<string, typeof Guitar> = {
   guitar: Guitar,
+  "morning-work": Sunrise,
   "evening-work": Sunset,
   "night-work": Moon,
   "bright-day-work": Sun,
@@ -88,7 +90,9 @@ export function HomeControlWidget() {
 
   const scenes = data?.scenes ?? [];
   const lights = data?.lights ?? [];
-  const switches = data?.switches ?? [];
+  const allSwitches = data?.switches ?? [];
+  const switches = allSwitches.filter((sw) => (sw.area ?? "office") === "office");
+  const outdoor = allSwitches.filter((sw) => sw.area === "buiten");
   const active = data?.activeScene ?? null;
 
   return (
@@ -152,6 +156,34 @@ export function HomeControlWidget() {
             );
           })}
         </div>
+
+        {/* Buiten — garden switches, outside the office scenes */}
+        {outdoor.length > 0 && (
+          <div className="space-y-0.5 border-t border-border pt-1">
+            <div className="flex items-center gap-1 text-mini font-bold uppercase tracking-wide text-muted-foreground">
+              <TreePine className="h-2.5 w-2.5" />
+              Buiten
+            </div>
+            {outdoor.map((sw) => {
+              const key = `switch:${sw.id}`;
+              return (
+                <button
+                  key={sw.id}
+                  disabled={busy !== null || !sw.available}
+                  onClick={() => run(key, () => post("switch", { id: sw.id, on: !sw.on }))}
+                  className={cn(
+                    "flex w-full items-center gap-2 px-1 py-0.5 hover:bg-muted/50 disabled:opacity-40",
+                    busy === key && "opacity-50"
+                  )}
+                >
+                  <span className={cn("h-1.5 w-1.5 shrink-0", sw.on ? "bg-emerald-500" : "bg-zinc-500")} />
+                  <span className="text-petite truncate flex-1 text-left">{sw.name}</span>
+                  <span className="text-mini font-mono text-muted-foreground">{sw.on ? "ON" : "OFF"}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Light status (read-only at-a-glance) */}
         <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 border-t border-border pt-1">

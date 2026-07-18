@@ -5,7 +5,7 @@ import { ArrowUpRight, RadioTower, ShieldCheck } from "lucide-react";
 import { useDashboardData } from "@/hooks/use-dashboard-data";
 import { getDashboardHealth } from "@/lib/dashboard-health";
 import { DashboardHeader } from "./header";
-import { CockpitMetrics, CockpitPosture, CockpitSummary } from "./cockpit-summary";
+import { CockpitSummary } from "./cockpit-summary";
 import {
   CockpitRail,
   MobileCockpitNav,
@@ -45,19 +45,6 @@ import {
 } from "@/lib/widget-registry";
 
 const SECTION_GRID = "grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-6";
-const OVERVIEW_CATEGORIES: WidgetCategory[] = ["sites", "infra", "money", "comms", "dev", "house", "personal"];
-
-// Overview is deliberately a signal layer, not a second rendering of every
-// chart. Each domain keeps its complete toolset in the dedicated view.
-const OVERVIEW_WIDGET_IDS: Partial<Record<WidgetCategory, string[]>> = {
-  sites: ["uptime-grid", "cityscreens", "domains"],
-  infra: ["servers", "backups", "services", "integrations"],
-  money: ["unbilled", "bank", "timeentries"],
-  comms: ["inbox", "mailroom"],
-  dev: ["agents", "projects", "ai-usage"],
-  house: ["home-control"],
-  personal: ["sobriety"],
-};
 
 // Wallboard omits private health, bank balances, files, and write controls.
 const WALLBOARD_IDS = new Set([
@@ -132,7 +119,7 @@ function SectionHeading({
 
 export function Dashboard() {
   const { data, loading, error, refresh } = useDashboardData();
-  const [view, setView] = useState<DashboardView>("overview");
+  const [view, setView] = useState<DashboardView>("house");
   const health = getDashboardHealth(data);
   const viewMeta = VIEW_META[view];
   const layout: LayoutMode = view === "wall" ? "wall" : "grid";
@@ -241,7 +228,7 @@ export function Dashboard() {
 
       <div className="min-w-0 flex-1">
         <DashboardHeader
-          title={view === "overview" ? "Operations overview" : viewMeta.label}
+          title={viewMeta.label}
           description={viewMeta.description}
           generatedAt={data?.generatedAt ?? null}
           sourceUpdatedAt={data?.freshness.agent ?? null}
@@ -270,26 +257,11 @@ export function Dashboard() {
             <div key={view} className="cockpit-view space-y-6">
               {view === "wall" && <CockpitSummary data={data} />}
 
-              {view === "overview" && (
-                <>
-                  <section aria-labelledby="system-pulse-title" className="flex flex-col gap-6 xl:grid xl:grid-cols-6 xl:gap-x-3">
-                    <CockpitPosture data={data} className="order-1 xl:col-span-2" />
-                    <CockpitMetrics data={data} className="order-3 xl:order-2 xl:col-span-4" />
-                    <div className="order-2 border-t border-border/70 pt-6 xl:order-3 xl:col-span-6">{attention}</div>
-                  </section>
-                  {OVERVIEW_CATEGORIES.map((category, index) => renderDomainSection(category, index, {
-                    preview: true,
-                    ids: OVERVIEW_WIDGET_IDS[category],
-                  }))}
-                </>
-              )}
-
               {view === "alerts" && attention}
 
               {view === "house" && <HouseConsole />}
 
-              {view !== "overview" && view !== "wall" && view !== "alerts" && view !== "house" &&
-                renderDomainSection(view, 0)}
+              {view !== "wall" && view !== "alerts" && view !== "house" && renderDomainSection(view, 0)}
 
               {view === "wall" && (
                 <>

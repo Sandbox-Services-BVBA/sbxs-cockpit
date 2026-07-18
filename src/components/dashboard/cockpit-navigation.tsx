@@ -18,10 +18,9 @@ import { cn } from "@/lib/utils";
 import type { CockpitTone } from "@/lib/dashboard-health";
 import type { WidgetCategory } from "@/lib/widget-registry";
 
-export type DashboardView = "overview" | "wall" | WidgetCategory;
+export type DashboardView = "wall" | WidgetCategory;
 
 export const VIEW_META: Record<DashboardView, { label: string; description: string }> = {
-  overview: { label: "Overview", description: "Priority signals across the whole operation" },
   alerts: { label: "Attention", description: "Active incidents, warnings, and stale sources" },
   sites: { label: "Client sites", description: "Availability, domains, screens, and traffic" },
   infra: { label: "Infrastructure", description: "Servers, services, backups, and integrations" },
@@ -33,15 +32,15 @@ export const VIEW_META: Record<DashboardView, { label: string; description: stri
   wall: { label: "Wallboard", description: "A calm, non-sensitive operations display" },
 };
 
+// Home leads: it is the view Bob actually lives in.
 const primaryItems: { id: DashboardView; icon: typeof Gauge }[] = [
-  { id: "overview", icon: Gauge },
+  { id: "house", icon: House },
   { id: "alerts", icon: Activity },
   { id: "sites", icon: Globe2 },
   { id: "infra", icon: ServerCog },
   { id: "money", icon: WalletCards },
   { id: "comms", icon: Inbox },
   { id: "dev", icon: Code2 },
-  { id: "house", icon: House },
   { id: "personal", icon: HeartPulse },
 ];
 

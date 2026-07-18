@@ -86,6 +86,38 @@ export function sumBy<T>(items: T[], pick: (item: T) => number | null | undefine
   return items.reduce((total, item) => total + (pick(item) ?? 0), 0);
 }
 
+// ---- Money -----------------------------------------------------------------
+
+export interface SummaryPoint {
+  d: string;
+  kosten: number; // indicative € for electricity that day; negative = net earner
+}
+
+export interface EnergyCost {
+  power: number; // € electricity (net of injection revenue)
+  gas: number;
+  water: number;
+  total: number;
+}
+
+// What the period actually cost. Electricity comes from the daily summary the
+// bridge already prices; gas and water carry their own € per day. All three are
+// indicative — tariffs are flat-rate approximations, not a real invoice.
+export function energyCost(
+  summary: SummaryPoint[] | undefined,
+  gasEur: number,
+  waterEur: number,
+  range: Range
+): EnergyCost {
+  const power = sumBy(pointsInRange(summary, range), (p) => p.kosten);
+  return {
+    power: Math.round(power * 100) / 100,
+    gas: Math.round(gasEur * 100) / 100,
+    water: Math.round(waterEur * 100) / 100,
+    total: Math.round((power + gasEur + waterEur) * 100) / 100,
+  };
+}
+
 // ---- Grid + solar + house totals for the range -----------------------------
 
 export interface PeriodTotals {

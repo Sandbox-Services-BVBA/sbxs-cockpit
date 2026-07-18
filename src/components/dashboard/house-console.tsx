@@ -5,7 +5,6 @@ import useSWR from "swr";
 import Link from "next/link";
 import { BarChart3, BatteryCharging, Droplet, Flame, Lightbulb, Monitor, Thermometer, Wind, Zap } from "lucide-react";
 import { HouseFlow } from "@/components/energy/sections/house-flow";
-import { PowerNow } from "@/components/energy/sections/power-now";
 import { EnergySection } from "@/components/energy/sections/energy-section";
 import { Batteries } from "@/components/energy/sections/batteries";
 import { Gas } from "@/components/energy/sections/gas";
@@ -26,7 +25,7 @@ const LIVE_MS = 3000;
 // Period = "what did we use" (totals and bar charts over the selected range).
 const LIVE_NAV = [
   { id: "huis", label: "Huis", icon: Zap },
-  { id: "vermogen", label: "Vermogen", icon: BarChart3 },
+  { id: "verloop", label: "Verloop", icon: BarChart3 },
   { id: "batterij", label: "Batterij", icon: BatteryCharging },
   { id: "klimaat", label: "Klimaat", icon: Thermometer },
   { id: "ventilatie", label: "Ventilatie", icon: Wind },
@@ -108,9 +107,6 @@ export function HouseConsole() {
 
           {isLive ? (
             <>
-              <div id="vermogen" className="scroll-mt-40">
-                <PowerNow live={live} tick={tick} intervalMs={LIVE_MS} />
-              </div>
               <div id="verloop" className="scroll-mt-40">
                 <EnergySection range={range} />
               </div>

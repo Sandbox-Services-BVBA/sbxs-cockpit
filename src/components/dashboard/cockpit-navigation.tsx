@@ -28,7 +28,7 @@ export const VIEW_META: Record<DashboardView, { label: string; description: stri
   money: { label: "Finance", description: "Billing, cash position, and recorded time" },
   comms: { label: "Communications", description: "Inbox load and automated mail processing" },
   dev: { label: "Development", description: "Active agents, projects, files, and activity" },
-  house: { label: "Home", description: "Energy, climate, ventilation, and office control" },
+  house: { label: "Home", description: "Live power, energy, gas, water, climate, ventilation, and office control" },
   personal: { label: "Personal", description: "Private health and asset signals" },
   wall: { label: "Wallboard", description: "A calm, non-sensitive operations display" },
 };

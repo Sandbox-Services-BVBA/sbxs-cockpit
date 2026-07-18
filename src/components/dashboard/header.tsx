@@ -1,8 +1,7 @@
 "use client";
 
-import { RefreshCw, Moon, Sun, Monitor, Zap } from "lucide-react";
+import { RefreshCw, Moon, Sun, Monitor } from "lucide-react";
 import { useTheme } from "next-themes";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { CockpitTone } from "@/lib/dashboard-health";
 
@@ -70,14 +69,6 @@ export function DashboardHeader({
               {sourceLabel}
             </p>
           </div>
-          <Link
-            href="/energy"
-            title="Open the detailed energy console"
-            className="hidden min-h-10 items-center gap-2 rounded-xl border border-border bg-card px-3 text-petite font-bold shadow-sm transition-colors hover:border-primary/30 hover:bg-accent sm:flex"
-          >
-            <Zap className="h-4 w-4 text-amber-600" aria-hidden="true" />
-            <span>Energy</span>
-          </Link>
           <button
             type="button"
             onClick={onRefresh}

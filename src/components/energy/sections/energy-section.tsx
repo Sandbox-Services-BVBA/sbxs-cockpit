@@ -33,7 +33,7 @@ function totals(bars: EnergyBar[]) {
 
 function Total({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) {
   return (
-    <div className="border-2 border-border px-2.5 py-2">
+    <div className="rounded-xl border border-border px-2.5 py-2">
       <div className="text-tiny font-bold uppercase tracking-widest text-muted-foreground">{label}</div>
       <div className="mt-1 text-xl font-bold tabular-nums leading-none sm:text-2xl" style={{ color }}>
         {value}
@@ -47,7 +47,7 @@ function BarTooltip({ active, payload, bucket }: { active?: boolean; payload?: A
   if (!active || !payload?.[0]) return null;
   const b = payload[0].payload;
   return (
-    <div className="space-y-0.5 border border-border bg-popover px-2 py-1 text-petite shadow-lg">
+    <div className="space-y-0.5 rounded-lg border border-border bg-popover px-2 py-1 text-petite shadow-lg">
       <div className="font-bold capitalize text-muted-foreground">{bucketSpanLabel(b.t, bucket)}</div>
       <div style={{ color: EC.solar }}>Opwek {fmtKwh(b.opwek, 2)} kWh</div>
       <div style={{ color: EC.house }}>Verbruik {fmtKwh(b.verbruik, 2)} kWh</div>
@@ -64,7 +64,7 @@ function LivePowerTooltip({ active, payload }: { active?: boolean; payload?: Arr
   const d = payload[0].payload;
   const time = new Date(d.t * 1000).toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" });
   return (
-    <div className="space-y-0.5 border border-border bg-popover px-2 py-1 text-petite shadow-lg">
+    <div className="space-y-0.5 rounded-lg border border-border bg-popover px-2 py-1 text-petite shadow-lg">
       <div className="font-bold text-muted-foreground">{time}</div>
       <div style={{ color: EC.solar }}>Zon {fmtW(d.solar_w)}</div>
       <div style={{ color: gridColor(d.gridD) }}>Net {fmtSigned(d.gridD)}</div>

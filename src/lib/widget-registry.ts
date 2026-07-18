@@ -112,14 +112,8 @@ export const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "ai-usage", title: "AI Usage", category: "dev", size: "sm", order: 19.5 },
   { id: "file-explorer", title: "Files", category: "dev", size: "sm", order: 20, selfFetch: true },
 
-  // House — energy / ventilation / lights
-  { id: "energy", title: "Energie", category: "house", size: "xl", order: 21, selfFetch: true },
-  { id: "gas", title: "Gas", category: "house", size: "xl", order: 22, selfFetch: true },
-  { id: "water", title: "Water", category: "house", size: "xl", order: 22.5, selfFetch: true },
-  { id: "ventilation", title: "Ventilatie", category: "house", size: "xl", order: 23, selfFetch: true },
-  { id: "temperature", title: "Temperatuur", category: "house", size: "xl", order: 24, selfFetch: true },
-  { id: "humidity", title: "Vocht", category: "house", size: "xl", order: 25, selfFetch: true },
-  { id: "raw-metrics", title: "Live metrics", category: "house", size: "lg", order: 26, selfFetch: true },
+  // House — the Home view renders the full console (energy, gas, water,
+  // climate, ventilation, office) itself, so only the overview teaser lives here.
   { id: "home-control", title: "Office", category: "house", size: "md", order: 27, selfFetch: true },
 
   // Personal — off by default

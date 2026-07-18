@@ -36,12 +36,7 @@ import { AgentsWidget } from "./widgets/agents-widget";
 import { AiUsageWidget } from "./widgets/ai-usage-widget";
 import { FileTreeWidget, FileModal } from "./widgets/file-explorer-widget";
 import { HomeControlWidget } from "./widgets/home-control-widget";
-import { EnergyWidget } from "./widgets/energy-widget";
-import { GasWidget } from "./widgets/gas-widget";
-import { WaterWidget } from "./widgets/water-widget";
-import { RawMetricsWidget } from "./widgets/raw-metrics-widget";
-import { VentilationWidget } from "./widgets/ventilation-widget";
-import { TemperatureWidget, HumidityWidget } from "./widgets/climate-widget";
+import { HouseConsole } from "./house-console";
 import {
   DEFAULT_WIDGETS,
   type LayoutMode,
@@ -127,7 +122,7 @@ function SectionHeading({
           onClick={onOpen}
           className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg px-2 text-petite font-bold text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
         >
-          All {count}
+          {count > 1 ? `All ${count}` : "Open"}
           <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       )}
@@ -170,13 +165,6 @@ export function Dashboard() {
       case "file-activity": return <FileActivityWidget layout={layout} />;
       case "projects": return <ProjectsWidget projects={data!.projects} />;
       case "file-explorer": return <FileTreeWidget layout={layout} />;
-      case "energy": return <EnergyWidget layout={layout} />;
-      case "gas": return <GasWidget layout={layout} />;
-      case "water": return <WaterWidget layout={layout} />;
-      case "ventilation": return <VentilationWidget layout={layout} />;
-      case "temperature": return <TemperatureWidget layout={layout} />;
-      case "humidity": return <HumidityWidget layout={layout} />;
-      case "raw-metrics": return <RawMetricsWidget />;
       case "home-control": return <HomeControlWidget />;
       case "sobriety": return <SobrietyWidget />;
       case "weight": return <WeightWidget />;
@@ -298,7 +286,9 @@ export function Dashboard() {
 
               {view === "alerts" && attention}
 
-              {view !== "overview" && view !== "wall" && view !== "alerts" &&
+              {view === "house" && <HouseConsole />}
+
+              {view !== "overview" && view !== "wall" && view !== "alerts" && view !== "house" &&
                 renderDomainSection(view, 0)}
 
               {view === "wall" && (

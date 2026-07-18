@@ -37,7 +37,7 @@ function Cell({ index, b }: { index: number; b: Battery }) {
     <div className="flex flex-col items-center gap-1.5">
       <div className="flex flex-col items-center">
         <div className="h-2 w-6 bg-border" />
-        <div className="relative h-28 w-14 overflow-hidden border-2 border-border bg-muted/30">
+        <div className="relative h-28 w-14 overflow-hidden rounded-lg border border-border bg-muted/30">
           <div
             className={cn("absolute inset-x-0 bottom-0 transition-[height] duration-700 ease-out", charging && "batt-glow")}
             style={{ height: `${pct}%`, background: b.online ? EC.battery : "#71717a" }}
@@ -84,7 +84,7 @@ function BatTooltip({ active, payload }: ChartTip) {
   const d = payload[0].payload;
   const time = new Date(d.t * 1000).toLocaleString("nl-BE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   return (
-    <div className="space-y-0.5 border border-border bg-popover px-2 py-1 text-petite shadow-lg">
+    <div className="space-y-0.5 rounded-lg border border-border bg-popover px-2 py-1 text-petite shadow-lg">
       <div className="font-bold text-muted-foreground">{time}</div>
       <div style={{ color: EC.battery }}>{d.bat == null ? "—" : d.bat >= 0 ? `Laden ${fmtW(d.bat)}` : `Ontladen ${fmtW(-d.bat)}`}</div>
       <div style={{ color: EC.battery }}>Lading {d.stored_kwh == null ? "—" : `${fmtKwh(d.stored_kwh)} kWh`}</div>
@@ -122,7 +122,7 @@ export function Batteries({ live, range }: { live: Live; range: Range }) {
     >
       <div className="grid gap-4 lg:grid-cols-[auto_1fr] lg:items-center">
         {/* Battery cells */}
-        <div className="flex items-start justify-center gap-6 border-2 border-border px-4 py-4 sm:gap-8">
+        <div className="flex items-start justify-center gap-6 rounded-xl border border-border px-4 py-4 sm:gap-8">
           {live.batteries.map((b, i) => (
             <Cell key={b.ip} index={i + 1} b={b} />
           ))}

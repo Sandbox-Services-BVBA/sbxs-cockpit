@@ -80,7 +80,7 @@ function WaterTooltip({ active, payload, monthly }: { active?: boolean; payload?
     : new Date(p.d).toLocaleDateString("nl-BE", { weekday: "short", day: "numeric", month: "short" });
   const color = !monthly && p.well ? WELL : WATER;
   return (
-    <div className="space-y-0.5 border border-border bg-popover px-2 py-1 text-petite shadow-lg">
+    <div className="space-y-0.5 rounded-lg border border-border bg-popover px-2 py-1 text-petite shadow-lg">
       <div className="font-bold capitalize text-muted-foreground">{label}</div>
       <div className="flex items-center gap-2" style={{ color }}>
         <span className="inline-block h-1.5 w-3" style={{ background: color }} />
@@ -137,7 +137,7 @@ function WellDayStrip({ onChanged }: { onChanged: () => void }) {
   }
 
   return (
-    <div className="border-2 border-border px-3 py-2">
+    <div className="rounded-xl border border-border px-3 py-2">
       <div className="mb-1.5 flex items-center gap-2 text-tiny font-bold uppercase tracking-widest text-muted-foreground">
         <Waves className="h-4 w-4" style={{ color: WELL }} />
         Putpomp-dagen
@@ -152,7 +152,7 @@ function WellDayStrip({ onChanged }: { onChanged: () => void }) {
               onClick={() => toggle(c.d)}
               disabled={busy != null}
               className={cn(
-                "flex min-w-[3.1rem] flex-col items-center border-2 px-1.5 py-1 leading-tight transition-colors disabled:opacity-60",
+                "flex min-w-[3.1rem] flex-col items-center rounded-lg border px-1.5 py-1 leading-tight transition-colors disabled:opacity-60",
                 on ? "border-transparent text-white" : "border-border text-muted-foreground hover:text-foreground"
               )}
               style={on ? { background: WELL } : undefined}
@@ -250,7 +250,7 @@ export function Water({ range }: { range: Range }) {
           </div>
 
           {cmp && (
-            <div className="border-2 px-3 py-2 text-petite" style={{ borderColor: WELL }}>
+            <div className="rounded-xl border px-3 py-2 text-petite" style={{ borderColor: WELL }}>
               <b style={{ color: WELL }}>Putwater-effect:</b> gem. <b>{fmt(cmp.wellAvg, 0)} L/dag</b> met pomp aan ({cmp.nWell}d) tegenover{" "}
               <b>{fmt(cmp.cityAvg, 0)} L/dag</b> zonder ({cmp.nCity}d)
               {cmp.saved > 0 ? (

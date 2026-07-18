@@ -3,9 +3,9 @@
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
-// Shared building blocks for the Energy page. Square-cornered, 2px borders —
-// the cockpit house style — but laid out roomy and HomeWizard-like rather than
-// dense like the legacy widget tiles.
+// Shared building blocks for the Home console. Same panel language as the rest
+// of the cockpit (see .cockpit-panel), but laid out roomy and HomeWizard-like
+// rather than dense like the compact widget tiles.
 
 export function Section({
   id,
@@ -23,15 +23,15 @@ export function Section({
   className?: string;
 }) {
   return (
-    <section id={id} className={cn("scroll-mt-20 border-2 border-border bg-card", className)}>
-      <header className="flex items-center justify-between gap-3 border-b-2 border-border px-3 py-2 sm:px-4">
-        <h2 className="flex items-center gap-2 text-tiny font-bold uppercase tracking-widest text-muted-foreground">
+    <section id={id} className={cn("cockpit-panel scroll-mt-28 overflow-hidden", className)}>
+      <header className="flex min-h-11 items-center justify-between gap-3 border-b border-border/65 px-4 py-2.5">
+        <h2 className="flex items-center gap-2 text-tiny font-bold uppercase tracking-[0.16em] text-muted-foreground">
           {Icon && <Icon className="h-4 w-4" />}
           {title}
         </h2>
         {right && <div className="flex items-center gap-2 text-tiny text-muted-foreground">{right}</div>}
       </header>
-      <div className="p-3 sm:p-4">{children}</div>
+      <div className="px-4 py-3.5">{children}</div>
     </section>
   );
 }
@@ -58,7 +58,7 @@ export function Metric({
 }) {
   return (
     <div
-      className={cn("flex flex-col justify-between border-2 border-border px-3 py-3", className)}
+      className={cn("flex flex-col justify-between rounded-xl border border-border/80 bg-background/40 px-3 py-3", className)}
       style={hero && color ? { boxShadow: `inset 0 0 0 2px ${color}` } : undefined}
     >
       <div className="flex items-center gap-1.5 text-tiny font-bold uppercase tracking-widest text-muted-foreground">
@@ -79,10 +79,10 @@ export function Verdict({ text, good }: { text: string; good: boolean }) {
   const color = good ? "#22c55e" : "#ef4444";
   return (
     <div
-      className="flex items-center gap-2.5 border-2 px-3 py-2 text-sm font-bold sm:text-base"
+      className="flex items-center gap-2.5 rounded-xl border px-3 py-2 text-sm font-bold sm:text-base"
       style={{ borderColor: color, color: good ? "#16a34a" : "#ef4444" }}
     >
-      <span className="inline-block h-2.5 w-2.5 shrink-0" style={{ background: color }} />
+      <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color }} />
       {text}
     </div>
   );
@@ -115,13 +115,13 @@ export function Segmented<T extends string | number>({
   className?: string;
 }) {
   return (
-    <div className={cn("flex", className)}>
+    <div className={cn("flex overflow-hidden rounded-lg", className)}>
       {options.map((o, i) => (
         <button
           key={String(o.value)}
           onClick={() => onChange(o.value)}
           className={cn(
-            "border-2 px-2.5 py-1 text-tiny font-bold uppercase tracking-wide transition-colors",
+            "border px-2.5 py-1 text-tiny font-bold uppercase tracking-wide transition-colors",
             i > 0 && "border-l-0",
             value === o.value
               ? "border-primary bg-primary text-primary-foreground"

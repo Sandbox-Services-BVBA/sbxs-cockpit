@@ -1,9 +1,7 @@
-import { EnergyPage } from "@/components/energy/energy-page";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "Energie — SBXS Cockpit",
-};
-
+// The energy console now lives inside the dashboard's Home view. This route is
+// kept only so old bookmarks and the installed PWA land in the right place.
 export default function Page() {
-  return <EnergyPage />;
+  redirect("/");
 }

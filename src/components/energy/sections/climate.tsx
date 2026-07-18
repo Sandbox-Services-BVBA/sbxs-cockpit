@@ -81,7 +81,7 @@ function ClimateTooltip({ active, payload, unit }: { active?: boolean; payload?:
   const time = t ? new Date(t * 1000).toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" }) : "";
   const rows = [...payload].filter((e) => e.value != null).sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
   return (
-    <div className="space-y-0.5 border border-border bg-popover px-2 py-1 text-petite shadow-lg">
+    <div className="space-y-0.5 rounded-lg border border-border bg-popover px-2 py-1 text-petite shadow-lg">
       <div className="font-bold text-muted-foreground">{time}</div>
       {rows.map((e) => (
         <div key={e.name} className="flex items-center gap-2" style={{ color: e.color }}>
@@ -139,7 +139,7 @@ export function Climate({ range }: { range: Range }) {
             {indoor.map((s) => {
               const v = latest(s, metric);
               return (
-                <div key={s.room} className="border-2 border-border px-2.5 py-2">
+                <div key={s.room} className="rounded-xl border border-border px-2.5 py-2">
                   <div className="flex items-center gap-1 text-tiny font-bold uppercase tracking-wide text-muted-foreground">
                     <span className="inline-block h-2 w-2" style={{ background: colorFor(s.room) }} />
                     {s.room}
@@ -152,7 +152,7 @@ export function Climate({ range }: { range: Range }) {
               );
             })}
             {outdoor && (
-              <div className="border-2 border-dashed border-border px-2.5 py-2">
+              <div className="rounded-xl border border-dashed border-border px-2.5 py-2">
                 <div className="flex items-center gap-1 text-tiny font-bold uppercase tracking-wide" style={{ color: OUTDOOR_COLOR }}>
                   <Droplets className="h-3 w-3" />
                   {outdoor.room}

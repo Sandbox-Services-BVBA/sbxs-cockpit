@@ -59,7 +59,7 @@ export function PowerNow({ live, tick, intervalMs }: { live: Live; tick: number;
           </div>
 
           {/* Flow diagram */}
-          <div className="border-2 border-border p-2">
+          <div className="rounded-xl border border-border p-2">
             <FlowDiagram live={live} />
           </div>
         </div>

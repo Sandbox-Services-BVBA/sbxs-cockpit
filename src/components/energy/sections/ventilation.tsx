@@ -175,7 +175,7 @@ export function Ventilation({ range }: { range: Range }) {
         </div>
 
         {/* Smart cooling automation */}
-        <div className={cn("flex items-center justify-between gap-3 border-2 px-3 py-2.5", auto?.engaged ? "border-[#06b6d4] bg-[#06b6d4]/10" : autoOn ? "border-[#06b6d4]/50" : "border-border")}>
+        <div className={cn("flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5", auto?.engaged ? "border-[#06b6d4] bg-[#06b6d4]/10" : autoOn ? "border-[#06b6d4]/50" : "border-border")}>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-tiny font-bold uppercase tracking-widest text-muted-foreground">
               <Wind className="h-3.5 w-3.5" style={{ color: "#06b6d4" }} />
@@ -191,7 +191,7 @@ export function Ventilation({ range }: { range: Range }) {
           <button
             onClick={toggleAuto}
             disabled={busy !== null}
-            className={cn("shrink-0 border-2 px-5 py-2 text-petite font-bold uppercase tracking-wide transition-colors", autoOn ? "border-[#06b6d4] bg-[#06b6d4]/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground", busy === "auto" && "opacity-50")}
+            className={cn("shrink-0 rounded-lg border px-5 py-2 text-petite font-bold uppercase tracking-wide transition-colors", autoOn ? "border-[#06b6d4] bg-[#06b6d4]/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground", busy === "auto" && "opacity-50")}
           >
             {autoOn ? "Aan" : "Uit"}
           </button>
@@ -209,7 +209,7 @@ export function Ventilation({ range }: { range: Range }) {
                     key={m.key}
                     disabled={busy !== null || autoOn}
                     onClick={() => control({ mode: m.key }, key)}
-                    className={cn("border-2 px-1 py-2 text-tiny font-bold uppercase tracking-wide transition-colors", activeKey === m.key ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground", busy === key && "opacity-50")}
+                    className={cn("rounded-lg border px-1 py-2 text-tiny font-bold uppercase tracking-wide transition-colors", activeKey === m.key ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground", busy === key && "opacity-50")}
                   >
                     {m.label}
                   </button>
@@ -227,7 +227,7 @@ export function Ventilation({ range }: { range: Range }) {
                     key={bp.key}
                     disabled={busy !== null || autoOn}
                     onClick={() => control({ bypass: bp.key }, key)}
-                    className={cn("border-2 px-1 py-2 text-tiny font-bold uppercase tracking-wide transition-colors", live.bypass_mode === bp.key ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground", busy === key && "opacity-50")}
+                    className={cn("rounded-lg border px-1 py-2 text-tiny font-bold uppercase tracking-wide transition-colors", live.bypass_mode === bp.key ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground", busy === key && "opacity-50")}
                   >
                     {bp.label}
                   </button>

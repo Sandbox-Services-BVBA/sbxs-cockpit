@@ -18,13 +18,13 @@ export function TimeframeBar({
   const showNav = range.mode !== "live";
   return (
     <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-between">
-      <div className="flex">
+      <div className="flex overflow-hidden rounded-lg">
         {TF_OPTIONS.map((o, i) => (
           <button
             key={o.value}
             onClick={() => onMode(o.value)}
             className={cn(
-              "border-2 px-3 py-1 text-tiny font-bold uppercase tracking-wide transition-colors sm:px-4",
+              "border px-3 py-1 text-tiny font-bold uppercase tracking-wide transition-colors sm:px-4",
               i > 0 && "border-l-0",
               range.mode === o.value
                 ? "border-primary bg-primary text-primary-foreground"
@@ -40,7 +40,7 @@ export function TimeframeBar({
         {showNav && (
           <button
             onClick={() => onStep(-1)}
-            className="border-2 border-border p-1 text-muted-foreground hover:text-foreground"
+            className="rounded-lg border border-border p-1 text-muted-foreground transition-colors hover:text-foreground"
             aria-label="Vorige periode"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -53,7 +53,7 @@ export function TimeframeBar({
           <button
             onClick={() => onStep(1)}
             disabled={range.canNext}
-            className="border-2 border-border p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+            className="rounded-lg border border-border p-1 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
             aria-label="Volgende periode"
           >
             <ChevronRight className="h-4 w-4" />

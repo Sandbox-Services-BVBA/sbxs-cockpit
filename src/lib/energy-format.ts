@@ -19,6 +19,12 @@ export const EC = {
 export const GRID_DEADBAND = 40;
 export const gd = (w: number) => (Math.abs(w) < GRID_DEADBAND ? 0 : w);
 
+// A reading can still hop just outside the deadband for a tick or two while
+// genuinely hovering near zero. useStablePower only "commits" to showing a
+// real afname/injectie number once the same side of zero has held for this
+// long; re-settling to 0 is immediate, no hold needed.
+export const GRID_HOLD_MS = 5000;
+
 // Grid colour: red when drawing from grid (>= 0), pink when injecting (< 0).
 export const gridColor = (w: number) => (w >= 0 ? EC.import : EC.export);
 
@@ -109,9 +115,10 @@ export interface SummaryData {
 }
 
 // ---- Plain-language verdict (the novice "tell me in words") -----------------
-export function statusLine(live: Live): { text: string; good: boolean } {
-  const buying = gd(live.grid_w) > 0;
-  const selling = gd(live.grid_w) < 0;
+export function statusLine(live: Live, stableGrid?: number): { text: string; good: boolean } {
+  const grid = stableGrid ?? gd(live.grid_w);
+  const buying = grid > 0;
+  const selling = grid < 0;
   const charging = live.bat_w < -60;
   const discharging = live.bat_w > 60;
   const sun = live.solar_w > 120;

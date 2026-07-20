@@ -2,9 +2,7 @@
 // place on the diagram. Sensor names come from energy-monitor as free text, so
 // matching is case-insensitive on a substring rather than an exact key.
 //
-// Floors, top to bottom: attic (office), middle (3 rooms), ground (living).
-// There is currently no sensor in the attic office — the slot renders as a
-// placeholder rather than borrowing another room's reading.
+// Floors, top to bottom: attic (bureau), middle (3 rooms), ground (living).
 
 export type FloorId = "attic" | "middle" | "ground";
 
@@ -16,7 +14,7 @@ export interface RoomSlot {
 }
 
 export const ROOM_SLOTS: RoomSlot[] = [
-  { id: "kantoor", label: "Kantoor", floor: "attic", match: null },
+  { id: "bureau", label: "Bureau", floor: "attic", match: "bureau" },
   { id: "babykamer", label: "Babykamer", floor: "middle", match: "baby" },
   { id: "badkamer", label: "Badkamer", floor: "middle", match: "bad" },
   { id: "slaapkamer", label: "Slaapkamer", floor: "middle", match: "slaap" },

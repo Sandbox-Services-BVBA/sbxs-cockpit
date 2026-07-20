@@ -3,7 +3,8 @@
 import useSWR from "swr";
 import { Zap } from "lucide-react";
 import { Section, Verdict, LivePulse } from "../ui";
-import { EC, fmtEur, fmtKwh, fmtW, gd, gridColor, statusLine, type Battery, type HistPoint, type Live } from "@/lib/energy-format";
+import { EC, fmtEur, fmtKwh, fmtSigned, fmtW, GRID_HOLD_MS, gd, gridColor, statusLine, type Battery, type HistPoint, type Live } from "@/lib/energy-format";
+import { useStablePower } from "@/hooks/use-stable-power";
 import {
   batteryEnergy,
   daysToCover,
@@ -81,6 +82,12 @@ export function HouseFlow({
     { refreshInterval: 60000, keepPreviousData: true }
   );
 
+  // Grid power hunts ±20-50W around zero while the battery balances it; hold
+  // the sign steady for GRID_HOLD_MS before trusting it, so a tick-to-tick
+  // flicker across the deadband boundary doesn't flip the tile every second.
+  const rawGrid = live ? gd(live.grid_w) : 0;
+  const grid = useStablePower(rawGrid, tick ?? 0, GRID_HOLD_MS);
+
   const gasDays = pointsInRange(gas?.points, range);
   const waterDays = pointsInRange(water?.points, range);
   const gasM3 = sumBy(gasDays, (p) => p.m3);
@@ -99,7 +106,6 @@ export function HouseFlow({
   let houseSub: string;
 
   if (isLive && live) {
-    const grid = gd(live.grid_w);
     const flowLpm = water?.flow_lpm ?? 0;
     const todayGas = gasDays.length ? gasDays[gasDays.length - 1].m3 : 0;
     const todayWater = waterDays.length ? waterDays[waterDays.length - 1].liter : 0;
@@ -112,6 +118,7 @@ export function HouseFlow({
         color: grid === 0 ? EC.house : gridColor(grid),
         flow: grid,
         magnitude: Math.abs(grid),
+        sub: grid !== rawGrid ? `ruw ${fmtSigned(rawGrid)}` : undefined,
       },
       {
         key: "gas",
@@ -189,7 +196,7 @@ export function HouseFlow({
     houseSub = t.selfPct != null ? `${t.selfPct}% zelf opgewekt` : "verbruik";
   }
 
-  const status = isLive && live ? statusLine(live) : null;
+  const status = isLive && live ? statusLine(live, grid) : null;
 
   return (
     <Section
@@ -446,9 +453,9 @@ function HouseBody({ climate, value, unit, sub }: { climate: HouseClimate | null
         <RoomLabel
           x={mid}
           y={roofTop + 74}
-          label="Kantoor · zolder"
-          reading={climate.rooms.kantoor}
-          noSensor={!climate.rooms.kantoor}
+          label="Bureau · zolder"
+          reading={climate.rooms.bureau}
+          noSensor={!climate.rooms.bureau}
           showClimate
         />
       )}

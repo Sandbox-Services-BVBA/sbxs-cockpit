@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { HouseFlow } from "./sections/house-flow";
 import { buildRange } from "@/lib/energy-range";
-import { EC, fmtW, gd, statusLine, type Live } from "@/lib/energy-format";
+import { EC, fmtSigned, fmtW, GRID_HOLD_MS, gd, statusLine, type Live } from "@/lib/energy-format";
+import { useStablePower } from "@/hooks/use-stable-power";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const LIVE_MS = 3000;
@@ -46,8 +47,9 @@ export function KitchenDisplay() {
     return () => clearInterval(id);
   }, []);
 
-  const status = live ? statusLine(live) : null;
-  const grid = live ? gd(live.grid_w) : 0;
+  const rawGrid = live ? gd(live.grid_w) : 0;
+  const grid = useStablePower(rawGrid, tick, GRID_HOLD_MS);
+  const status = live ? statusLine(live, grid) : null;
   const rooms = (climate?.series ?? [])
     .map((s) => {
       const last = [...s.points].reverse().find((p) => p.temp != null);
@@ -91,6 +93,7 @@ export function KitchenDisplay() {
               label={grid === 0 ? "Net in balans" : grid > 0 ? "Van het net" : "Naar het net"}
               value={fmtW(Math.abs(grid))}
               color={grid === 0 ? EC.house : grid > 0 ? EC.import : EC.export}
+              sub={grid !== rawGrid ? `ruw ${fmtSigned(rawGrid)}` : undefined}
             />
             <BigStat
               label="Batterij"

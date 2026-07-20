@@ -74,6 +74,12 @@ const BYPASS = [
   { key: "open", label: "Open" },
   { key: "closed", label: "Dicht" },
 ];
+const BYPASS_LABEL: Record<string, string> = {
+  open: "open",
+  closed: "dicht",
+  opening: "opent...",
+  closing: "sluit...",
+};
 
 export function Ventilation({ range }: { range: Range }) {
   const [tick, setTick] = useState(0);
@@ -91,14 +97,31 @@ export function Ventilation({ range }: { range: Range }) {
   });
   const xFmt = ventTimeFmt(range.bucket);
 
-  const control = async (body: Record<string, string>, key: string) => {
+  // Optimistically patches the shared "/api/ventilation" cache (the house
+  // hero reads the exact same SWR key, so it updates in the same tick — no
+  // waiting for the next 10s poll, and no waiting for the physical actuator
+  // to catch up). `patch` should only claim what we actually know changed:
+  // for bypass that's the real "opening"/"closing" transitional state, not a
+  // guess at the settled end state.
+  const control = async (body: Record<string, string>, key: string, patch: Partial<VentLive>) => {
     setBusy(key);
     setMsg(null);
     try {
-      const r = await fetch("/api/ventilation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const j = await r.json().catch(() => ({}));
-      if (j && j.ok === false) setMsg(j.error ? `Bediening mislukt: ${j.error}` : "Bediening mislukt");
-      await mutate();
+      await mutate(
+        fetch("/api/ventilation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+          .then(async (r) => {
+            const j = await r.json().catch(() => ({}));
+            if (j && j.ok === false) setMsg(j.error ? `Bediening mislukt: ${j.error}` : "Bediening mislukt");
+            return fetcher("/api/ventilation");
+          }),
+        {
+          // The buttons this feeds only render once `live` is already loaded
+          // (see the `!live` early return below), so it's safe here even
+          // though the type is nominally optional.
+          optimisticData: () => ({ ...(live as VentLive), ...patch }),
+          rollbackOnError: true,
+        }
+      );
     } finally {
       setBusy(null);
     }
@@ -138,7 +161,13 @@ export function Ventilation({ range }: { range: Range }) {
     <Section
       title="Ventilatie — sturing"
       icon={Wind}
-      right={<LivePulse intervalMs={REFRESH_MS} tick={tick} label={`${live.fan_control === "wall" ? "klok" : "modbus"} · bypass ${live.bypass}`} />}
+      right={
+        <LivePulse
+          intervalMs={REFRESH_MS}
+          tick={tick}
+          label={`${live.fan_control === "wall" ? "klok" : "modbus"} · bypass ${BYPASS_LABEL[live.bypass] ?? live.bypass}`}
+        />
+      }
     >
       <div className="space-y-4">
         {/* The live flow picture (outside <-> core <-> house, bypass valve,
@@ -195,7 +224,13 @@ export function Ventilation({ range }: { range: Range }) {
                   <button
                     key={m.key}
                     disabled={busy !== null || autoOn}
-                    onClick={() => control({ mode: m.key }, key)}
+                    onClick={() =>
+                      control(
+                        { mode: m.key },
+                        key,
+                        m.key === "wall" ? { fan_control: "wall" } : { fan_control: "modbus", fan_mode: m.key }
+                      )
+                    }
                     className={cn("rounded-lg border px-1 py-2 text-tiny font-bold uppercase tracking-wide transition-colors", activeKey === m.key ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground", busy === key && "opacity-50")}
                   >
                     {m.label}
@@ -213,7 +248,17 @@ export function Ventilation({ range }: { range: Range }) {
                   <button
                     key={bp.key}
                     disabled={busy !== null || autoOn}
-                    onClick={() => control({ bypass: bp.key }, key)}
+                    onClick={() =>
+                      control(
+                        { bypass: bp.key },
+                        key,
+                        bp.key === "open"
+                          ? { bypass_mode: "open", bypass: "opening" }
+                          : bp.key === "closed"
+                            ? { bypass_mode: "closed", bypass: "closing" }
+                            : { bypass_mode: "auto" }
+                      )
+                    }
                     className={cn("rounded-lg border px-1 py-2 text-tiny font-bold uppercase tracking-wide transition-colors", live.bypass_mode === bp.key ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground", busy === key && "opacity-50")}
                   >
                     {bp.label}

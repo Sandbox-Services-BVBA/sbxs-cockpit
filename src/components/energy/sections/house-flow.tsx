@@ -30,6 +30,17 @@ const OUTSIDE = "#64748b";
 const VENT_IN = "#0891b2";
 const VENT_OUT = "#9333ea";
 
+// The physical damper reports 4 states, not 2 — collapsing "opening" into
+// "open" is exactly what made this unclear before. `pending` marks the two
+// transitional states so the badge can look visibly "in progress" rather than
+// silently jumping between two static labels.
+function bypassState(raw: string): { text: string; open: boolean; pending: boolean } {
+  if (raw === "open") return { text: "bypass open", open: true, pending: false };
+  if (raw === "opening") return { text: "bypass opent…", open: true, pending: true };
+  if (raw === "closing") return { text: "bypass sluit…", open: false, pending: true };
+  return { text: "bypass dicht", open: false, pending: false };
+}
+
 interface GasPoint { d: string; m3: number; kwh: number; eur: number }
 interface WaterPoint { d: string; m3: number; liter: number; eur: number }
 interface VentLive {
@@ -314,7 +325,7 @@ interface EnergyCostShape {
 
 // minY < 0 gives headroom above the roofline for the two ventilation pipes,
 // without touching a single existing coordinate below y=0.
-const VB = { w: 1080, h: 536, minY: -150 };
+const VB = { w: 1080, h: 536, minY: -165 };
 const HOUSE = { x0: 350, x1: 730, roofTop: 40, eaves: 178, midEnd: 336, groundEnd: 492 };
 const SUPPLY_X = 132;
 const ASSET_X = 946;
@@ -323,11 +334,14 @@ const WALL_Y: Record<string, number> = { net: 240, gas: 316, water: 432 };
 const GROUND_Y = 500;
 // Where the two roof pipes meet the roof slope, and where their cards float
 // above it. Which side is "in" vs "out" is arbitrary — the pipes are drawn
-// symmetrically and only the label/colour tell them apart.
+// symmetrically and only the label/colour tell them apart. Both cards share
+// one height (134, tall enough for the bypass badge) so their tops line up
+// even though only the intake card uses the badge row.
 const VENT_ROOF_Y = 118;
 const VENT_IN_X = 420;
 const VENT_OUT_X = 660;
 const VENT_CARD_Y = -78;
+const VENT_CARD_H = 134;
 
 function HouseDiagram({
   supplies,
@@ -360,7 +374,6 @@ function HouseDiagram({
   const ventWeight = (m: number) => (m < 10 ? 1.5 : Math.max(2.5, Math.min(9, m / 40)));
   const mid = (HOUSE.x0 + HOUSE.x1) / 2;
   const packs = batteries.slice(0, 2);
-  const bypassOpen = vent ? vent.bypass === "open" || vent.bypass === "opening" : false;
 
   return (
     <svg
@@ -412,7 +425,7 @@ function HouseDiagram({
           {/* Fresh air down into the roof */}
           <Connector
             x1={VENT_IN_X}
-            y1={VENT_CARD_Y + 54}
+            y1={VENT_CARD_Y + VENT_CARD_H / 2}
             x2={VENT_IN_X}
             y2={VENT_ROOF_Y}
             color={VENT_IN}
@@ -425,7 +438,7 @@ function HouseDiagram({
             x1={VENT_OUT_X}
             y1={VENT_ROOF_Y}
             x2={VENT_OUT_X}
-            y2={VENT_CARD_Y + 54}
+            y2={VENT_CARD_Y + VENT_CARD_H / 2}
             color={VENT_OUT}
             weight={ventWeight(vent.extract_airflow_m3h)}
             flow={vent.extract_airflow_m3h}
@@ -459,7 +472,7 @@ function HouseDiagram({
             flow={vent.supply_airflow_m3h}
             preset={vent.supply_preset_m3h}
             color={VENT_IN}
-            tag={`bypass ${bypassOpen ? "open" : "dicht"}`}
+            bypass={vent.bypass}
           />
           <VentCard
             x={VENT_OUT_X}
@@ -740,7 +753,7 @@ function VentCard({
   flow,
   preset,
   color,
-  tag,
+  bypass,
 }: {
   x: number;
   y: number;
@@ -749,14 +762,15 @@ function VentCard({
   flow: number;
   preset: number;
   color: string;
-  tag?: string;
+  bypass?: string;
 }) {
   const w = 190;
-  const h = 108;
+  const h = VENT_CARD_H;
   const top = y - h / 2;
   const barW = w - 32;
   const barX = x - barW / 2;
   const pct = preset > 0 ? Math.max(0, Math.min(100, (flow / preset) * 100)) : 0;
+  const bp = bypass ? bypassState(bypass) : null;
 
   return (
     <g>
@@ -773,8 +787,38 @@ function VentCard({
       <rect x={barX} y={top + 64} width={barW} height={10} rx={5} fill="var(--muted)" stroke="var(--border)" strokeWidth={1} />
       <rect x={barX} y={top + 64} width={(barW * pct) / 100} height={10} rx={5} fill={color} />
       <text x={x} y={top + 92} textAnchor="middle" fontSize="10.5" fontWeight={600} fill="var(--muted-foreground)">
-        {Math.round(flow)} m³/h{tag ? ` · ${tag}` : ""}
+        {Math.round(flow)} m³/h
       </text>
+      {/* A filled pill when settled-open, a hollow dashed one mid-transition,
+          and a muted outline when closed — three distinct looks so the state
+          reads at a glance instead of from small text alone. */}
+      {bp && (
+        <>
+          <rect
+            x={x - (w - 28) / 2}
+            y={top + 102}
+            width={w - 28}
+            height={24}
+            rx={12}
+            fill={bp.pending ? "none" : bp.open ? color : "transparent"}
+            stroke={color}
+            strokeWidth={bp.pending ? 2 : 1.5}
+            strokeDasharray={bp.pending ? "3 4" : undefined}
+            opacity={bp.pending ? 0.9 : bp.open ? 1 : 0.5}
+          />
+          <text
+            x={x}
+            y={top + 118}
+            textAnchor="middle"
+            fontSize="11"
+            fontWeight={800}
+            letterSpacing="0.3"
+            fill={bp.open && !bp.pending ? "#fff" : color}
+          >
+            {bp.text.toUpperCase()}
+          </text>
+        </>
+      )}
     </g>
   );
 }
@@ -834,7 +878,7 @@ function HouseStack({
   houseUnit: string;
   houseSub: string;
 }) {
-  const bypassOpen = vent ? vent.bypass === "open" || vent.bypass === "opening" : false;
+  const bp = vent ? bypassState(vent.bypass) : null;
   const cards = [solar, ...supplies];
   return (
     <div className="space-y-2">
@@ -872,16 +916,26 @@ function HouseStack({
         ))}
       </div>
 
-      {vent && (
+      {vent && bp && (
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-xl border px-2.5 py-2" style={{ borderColor: VENT_IN }}>
             <p className="text-mini font-bold uppercase tracking-wide text-muted-foreground">Ventilatie in</p>
             <p className="mt-0.5 text-xl font-bold tabular-nums leading-tight" style={{ color: VENT_IN }}>
               {vent.supply_temp_c.toLocaleString("nl-BE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}°C
             </p>
-            <p className="mt-0.5 text-mini text-muted-foreground">
-              {Math.round(vent.supply_airflow_m3h)} m³/h · bypass {bypassOpen ? "open" : "dicht"}
-            </p>
+            <p className="mt-0.5 text-mini text-muted-foreground">{Math.round(vent.supply_airflow_m3h)} m³/h</p>
+            <span
+              className="mt-1.5 inline-block rounded-full border px-2 py-0.5 text-mini font-extrabold uppercase tracking-wide"
+              style={{
+                borderColor: VENT_IN,
+                borderStyle: bp.pending ? "dashed" : "solid",
+                background: !bp.pending && bp.open ? VENT_IN : "transparent",
+                color: !bp.pending && bp.open ? "#fff" : VENT_IN,
+                opacity: bp.pending ? 0.9 : bp.open ? 1 : 0.6,
+              }}
+            >
+              {bp.text}
+            </span>
           </div>
           <div className="rounded-xl border px-2.5 py-2" style={{ borderColor: VENT_OUT }}>
             <p className="text-mini font-bold uppercase tracking-wide text-muted-foreground">Ventilatie uit</p>

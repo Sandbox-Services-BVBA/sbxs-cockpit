@@ -15,7 +15,6 @@ import {
 } from "recharts";
 import { Section, LivePulse } from "../ui";
 import { cn } from "@/lib/utils";
-import { VentilationFlow } from "./ventilation-flow";
 import type { Range } from "@/lib/energy-range";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -142,10 +141,9 @@ export function Ventilation({ range }: { range: Range }) {
       right={<LivePulse intervalMs={REFRESH_MS} tick={tick} label={`${live.fan_control === "wall" ? "klok" : "modbus"} · bypass ${live.bypass}`} />}
     >
       <div className="space-y-4">
-        {/* Live flow diagram: outside <-> heat exchanger <-> house, with the
-            bypass valve and both duct temperatures. Replaces the old flat
-            tile row — same numbers, but the routing is now visible. */}
-        <VentilationFlow live={live} />
+        {/* The live flow picture (outside <-> core <-> house, bypass valve,
+            temperatures) now lives on the house hero at the top of the page —
+            this section keeps the trend chart and the actual controls. */}
 
         {/* Temp + airflow history */}
         <div className="h-48 -mx-1 sm:h-56">

@@ -22,9 +22,26 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const WATER = "#3b82f6";
 const GAS = "#f97316";
 const OUTSIDE = "#64748b";
+// VENT_IN is a duller teal than EC.battery's cyan — close enough to read as
+// "related" (both are cool tones) without being mistaken for it. VENT_OUT is
+// violet specifically because every warm hue already on this diagram is taken
+// (EC.solar amber, GAS orange, EC.import red) and the exhaust pipe sits right
+// next to the solar connector — same-family colours there would blur together.
+const VENT_IN = "#0891b2";
+const VENT_OUT = "#9333ea";
 
 interface GasPoint { d: string; m3: number; kwh: number; eur: number }
 interface WaterPoint { d: string; m3: number; liter: number; eur: number }
+interface VentLive {
+  supply_temp_c: number;
+  extract_temp_c: number;
+  supply_airflow_m3h: number;
+  extract_airflow_m3h: number;
+  supply_preset_m3h: number;
+  extract_preset_m3h: number;
+  bypass: string; // "open" | "closed" | "opening" | "closing"
+  error?: string;
+}
 
 // A supply we pay for. These all enter from the left so the "what this costs us"
 // story reads as one column.
@@ -81,6 +98,11 @@ export function HouseFlow({
     fetcher,
     { refreshInterval: 60000, keepPreviousData: true }
   );
+  // Same reasoning: ventilation flow rate is a live rate, not a period total.
+  const { data: vent } = useSWR<VentLive>(isLive ? "/api/ventilation" : null, fetcher, {
+    refreshInterval: 10000,
+    keepPreviousData: true,
+  });
 
   // Grid power hunts ±20-50W around zero while the battery balances it; hold
   // the sign steady for GRID_HOLD_MS before trusting it, so a tick-to-tick
@@ -98,6 +120,7 @@ export function HouseFlow({
   const totals = hist?.points ? periodTotals(hist.points, range) : null;
   const bat = hist?.points ? batteryEnergy(hist.points, range) : null;
   const houseClimate: HouseClimate | null = isLive ? readHouseClimate(climate?.series) : null;
+  const houseVent = isLive && vent && !vent.error ? vent : null;
 
   let supplies: Supply[];
   let solar: Supply;
@@ -224,6 +247,7 @@ export function HouseFlow({
               isLive || !bat ? null : `${fmtKwh(bat.charged, 1)} kWh geladen · ${fmtKwh(bat.discharged, 1)} kWh gebruikt`
             }
             climate={houseClimate}
+            vent={houseVent}
             houseValue={houseValue}
             houseUnit={houseUnit}
             houseSub={houseSub}
@@ -237,6 +261,7 @@ export function HouseFlow({
             solar={solar}
             batteries={live?.batteries ?? []}
             climate={houseClimate}
+            vent={houseVent}
             houseValue={houseValue}
             houseUnit={houseUnit}
             houseSub={houseSub}
@@ -287,13 +312,22 @@ interface EnergyCostShape {
 
 // ---- Diagram ---------------------------------------------------------------
 
-const VB = { w: 1080, h: 536 };
+// minY < 0 gives headroom above the roofline for the two ventilation pipes,
+// without touching a single existing coordinate below y=0.
+const VB = { w: 1080, h: 536, minY: -150 };
 const HOUSE = { x0: 350, x1: 730, roofTop: 40, eaves: 178, midEnd: 336, groundEnd: 492 };
 const SUPPLY_X = 132;
 const ASSET_X = 946;
 const SUPPLY_Y: Record<string, number> = { net: 188, gas: 318, water: 442 };
 const WALL_Y: Record<string, number> = { net: 240, gas: 316, water: 432 };
 const GROUND_Y = 500;
+// Where the two roof pipes meet the roof slope, and where their cards float
+// above it. Which side is "in" vs "out" is arbitrary — the pipes are drawn
+// symmetrically and only the label/colour tell them apart.
+const VENT_ROOF_Y = 118;
+const VENT_IN_X = 420;
+const VENT_OUT_X = 660;
+const VENT_CARD_Y = -78;
 
 function HouseDiagram({
   supplies,
@@ -301,6 +335,7 @@ function HouseDiagram({
   batteries,
   throughput,
   climate,
+  vent,
   houseValue,
   houseUnit,
   houseSub,
@@ -312,6 +347,7 @@ function HouseDiagram({
   batteries: Battery[];
   throughput: string | null;
   climate: HouseClimate | null;
+  vent: VentLive | null;
   houseValue: string;
   houseUnit: string;
   houseSub: string;
@@ -319,16 +355,20 @@ function HouseDiagram({
   compact?: boolean;
 }) {
   const weight = (m: number) => (m < 30 ? 1.5 : Math.max(2.5, Math.min(12, m / 240)));
+  // Airflow lives on a m³/h scale (tens to hundreds), not watts, so it needs
+  // its own thickness mapping — the watt-tuned one would floor almost everything.
+  const ventWeight = (m: number) => (m < 10 ? 1.5 : Math.max(2.5, Math.min(9, m / 40)));
   const mid = (HOUSE.x0 + HOUSE.x1) / 2;
   const packs = batteries.slice(0, 2);
+  const bypassOpen = vent ? vent.bypass === "open" || vent.bypass === "opening" : false;
 
   return (
     <svg
-      viewBox={`0 0 ${VB.w} ${VB.h}`}
+      viewBox={`0 ${VB.minY} ${VB.w} ${VB.h - VB.minY}`}
       className="mx-auto w-full"
-      style={{ maxHeight: compact ? undefined : 620 }}
+      style={{ maxHeight: compact ? undefined : 700 }}
       role="img"
-      aria-label="Doorsnede van het huis met energiestromen en temperaturen"
+      aria-label="Doorsnede van het huis met energiestromen, ventilatie en temperaturen"
     >
       {/* Connectors sit behind everything so the cards cap the line ends. */}
       {supplies.map((s) => (
@@ -367,6 +407,32 @@ function HouseDiagram({
           animate={animate}
         />
       ))}
+      {vent && (
+        <>
+          {/* Fresh air down into the roof */}
+          <Connector
+            x1={VENT_IN_X}
+            y1={VENT_CARD_Y + 54}
+            x2={VENT_IN_X}
+            y2={VENT_ROOF_Y}
+            color={VENT_IN}
+            weight={ventWeight(vent.supply_airflow_m3h)}
+            flow={vent.supply_airflow_m3h}
+            animate={animate}
+          />
+          {/* Stale air up out of the roof */}
+          <Connector
+            x1={VENT_OUT_X}
+            y1={VENT_ROOF_Y}
+            x2={VENT_OUT_X}
+            y2={VENT_CARD_Y + 54}
+            color={VENT_OUT}
+            weight={ventWeight(vent.extract_airflow_m3h)}
+            flow={vent.extract_airflow_m3h}
+            animate={animate}
+          />
+        </>
+      )}
 
       <HouseBody climate={climate} value={houseValue} unit={houseUnit} sub={houseSub} />
 
@@ -383,6 +449,29 @@ function HouseDiagram({
       {packs.map((b, i) => (
         <BatteryCard key={b.ip} x={ASSET_X} y={i === 0 ? 288 : 428} index={i + 1} battery={b} />
       ))}
+      {vent && (
+        <>
+          <VentCard
+            x={VENT_IN_X}
+            y={VENT_CARD_Y}
+            label="Ventilatie in"
+            temp={vent.supply_temp_c}
+            flow={vent.supply_airflow_m3h}
+            preset={vent.supply_preset_m3h}
+            color={VENT_IN}
+            tag={`bypass ${bypassOpen ? "open" : "dicht"}`}
+          />
+          <VentCard
+            x={VENT_OUT_X}
+            y={VENT_CARD_Y}
+            label="Ventilatie uit"
+            temp={vent.extract_temp_c}
+            flow={vent.extract_airflow_m3h}
+            preset={vent.extract_preset_m3h}
+            color={VENT_OUT}
+          />
+        </>
+      )}
       {throughput && (
         <text x={ASSET_X} y={GROUND_Y + 22} textAnchor="middle" fontSize="12.5" fill="var(--muted-foreground)">
           {throughput}
@@ -640,6 +729,56 @@ function AssetCard({ x, y, label, value, unit, color }: { x: number; y: number; 
   );
 }
 
+// A ventilation pipe card: temperature plus a flow-vs-preset bar, matching the
+// battery charge bar's visual language. `tag` carries the bypass state — only
+// the intake side shows it, since bypass only changes that duct's routing.
+function VentCard({
+  x,
+  y,
+  label,
+  temp,
+  flow,
+  preset,
+  color,
+  tag,
+}: {
+  x: number;
+  y: number;
+  label: string;
+  temp: number;
+  flow: number;
+  preset: number;
+  color: string;
+  tag?: string;
+}) {
+  const w = 190;
+  const h = 108;
+  const top = y - h / 2;
+  const barW = w - 32;
+  const barX = x - barW / 2;
+  const pct = preset > 0 ? Math.max(0, Math.min(100, (flow / preset) * 100)) : 0;
+
+  return (
+    <g>
+      <rect x={x - w / 2} y={top} width={w} height={h} rx={12} fill="var(--card)" stroke={color} strokeWidth={2.5} />
+      <text x={x} y={top + 20} textAnchor="middle" fontSize="11" fontWeight={700} letterSpacing="1" fill="var(--muted-foreground)">
+        {label.toUpperCase()}
+      </text>
+      <text x={x} y={top + 52} textAnchor="middle" fontSize="24" fontWeight={800} fill={color}>
+        {temp.toLocaleString("nl-BE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+        <tspan fontSize="13" fontWeight={600} fill="var(--muted-foreground)">
+          °C
+        </tspan>
+      </text>
+      <rect x={barX} y={top + 64} width={barW} height={10} rx={5} fill="var(--muted)" stroke="var(--border)" strokeWidth={1} />
+      <rect x={barX} y={top + 64} width={(barW * pct) / 100} height={10} rx={5} fill={color} />
+      <text x={x} y={top + 92} textAnchor="middle" fontSize="10.5" fontWeight={600} fill="var(--muted-foreground)">
+        {Math.round(flow)} m³/h{tag ? ` · ${tag}` : ""}
+      </text>
+    </g>
+  );
+}
+
 // Each pack gets its own card with a charge bar — the per-pack state is the
 // interesting bit, which an averaged number hides.
 function BatteryCard({ x, y, index, battery }: { x: number; y: number; index: number; battery: Battery }) {
@@ -681,6 +820,7 @@ function HouseStack({
   solar,
   batteries,
   climate,
+  vent,
   houseValue,
   houseUnit,
   houseSub,
@@ -689,10 +829,12 @@ function HouseStack({
   solar: Supply;
   batteries: Battery[];
   climate: HouseClimate | null;
+  vent: VentLive | null;
   houseValue: string;
   houseUnit: string;
   houseSub: string;
 }) {
+  const bypassOpen = vent ? vent.bypass === "open" || vent.bypass === "opening" : false;
   const cards = [solar, ...supplies];
   return (
     <div className="space-y-2">
@@ -729,6 +871,27 @@ function HouseStack({
           </div>
         ))}
       </div>
+
+      {vent && (
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-xl border px-2.5 py-2" style={{ borderColor: VENT_IN }}>
+            <p className="text-mini font-bold uppercase tracking-wide text-muted-foreground">Ventilatie in</p>
+            <p className="mt-0.5 text-xl font-bold tabular-nums leading-tight" style={{ color: VENT_IN }}>
+              {vent.supply_temp_c.toLocaleString("nl-BE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}°C
+            </p>
+            <p className="mt-0.5 text-mini text-muted-foreground">
+              {Math.round(vent.supply_airflow_m3h)} m³/h · bypass {bypassOpen ? "open" : "dicht"}
+            </p>
+          </div>
+          <div className="rounded-xl border px-2.5 py-2" style={{ borderColor: VENT_OUT }}>
+            <p className="text-mini font-bold uppercase tracking-wide text-muted-foreground">Ventilatie uit</p>
+            <p className="mt-0.5 text-xl font-bold tabular-nums leading-tight" style={{ color: VENT_OUT }}>
+              {vent.extract_temp_c.toLocaleString("nl-BE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}°C
+            </p>
+            <p className="mt-0.5 text-mini text-muted-foreground">{Math.round(vent.extract_airflow_m3h)} m³/h</p>
+          </div>
+        </div>
+      )}
 
       {climate && (
         <div className="grid grid-cols-2 gap-2">

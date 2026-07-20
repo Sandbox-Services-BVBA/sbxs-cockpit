@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Wind, Thermometer, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { Wind } from "lucide-react";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -13,8 +13,9 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { Section, Metric, LivePulse } from "../ui";
+import { Section, LivePulse } from "../ui";
 import { cn } from "@/lib/utils";
+import { VentilationFlow } from "./ventilation-flow";
 import type { Range } from "@/lib/energy-range";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -31,6 +32,8 @@ interface VentLive {
   extract_temp_c: number;
   supply_airflow_m3h: number;
   extract_airflow_m3h: number;
+  supply_preset_m3h: number;
+  extract_preset_m3h: number;
   supply_pressure_pa: number;
   extract_pressure_pa: number;
   bypass: string;
@@ -72,9 +75,6 @@ const BYPASS = [
   { key: "open", label: "Open" },
   { key: "closed", label: "Dicht" },
 ];
-
-const fmt1 = (n: number | null | undefined) => (n == null ? "—" : n.toFixed(1));
-const bypassActive = (b: string | undefined) => b === "open" || b === "opening";
 
 export function Ventilation({ range }: { range: Range }) {
   const [tick, setTick] = useState(0);
@@ -131,8 +131,6 @@ export function Ventilation({ range }: { range: Range }) {
   }
 
   const points = hist?.points ?? [];
-  const filterDirty = live.filter === "dirty";
-  const bypassOpen = bypassActive(live.bypass);
   const activeKey = live.fan_control === "wall" ? "wall" : live.fan_mode;
   const auto = live.automation;
   const autoOn = !!auto?.enabled;
@@ -144,19 +142,10 @@ export function Ventilation({ range }: { range: Range }) {
       right={<LivePulse intervalMs={REFRESH_MS} tick={tick} label={`${live.fan_control === "wall" ? "klok" : "modbus"} · bypass ${live.bypass}`} />}
     >
       <div className="space-y-4">
-        {/* Live readings */}
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-          <Metric icon={ArrowDownToLine} label="Inblaas" value={fmt1(live.supply_temp_c)} unit="°C" color={C.supply} sub={`naar woning · ${live.supply_airflow_m3h} m³/h`} />
-          <Metric icon={ArrowUpFromLine} label="Retour" value={fmt1(live.extract_temp_c)} unit="°C" color={C.extract} sub={`uit woning · ${live.extract_airflow_m3h} m³/h`} />
-          <Metric icon={Wind} label="Debiet" value={`${live.supply_airflow_m3h}`} unit="m³/h" color={C.airflow} sub={`retour ${live.extract_airflow_m3h}`} />
-          <Metric
-            icon={Thermometer}
-            label="Filter"
-            value={filterDirty ? "Vuil" : "OK"}
-            color={filterDirty ? "#ef4444" : bypassOpen ? "#06b6d4" : "#22c55e"}
-            sub={bypassOpen ? "bypass open · vrije koeling" : `bypass ${live.bypass}`}
-          />
-        </div>
+        {/* Live flow diagram: outside <-> heat exchanger <-> house, with the
+            bypass valve and both duct temperatures. Replaces the old flat
+            tile row — same numbers, but the routing is now visible. */}
+        <VentilationFlow live={live} />
 
         {/* Temp + airflow history */}
         <div className="h-48 -mx-1 sm:h-56">

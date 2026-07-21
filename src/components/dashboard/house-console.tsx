@@ -3,7 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
-import { BarChart3, BatteryCharging, Droplet, Flame, Lightbulb, Monitor, Thermometer, Wind, Zap } from "lucide-react";
+import { BarChart3, BatteryCharging, Droplet, Flame, Lightbulb, Monitor, Snowflake, Thermometer, Wind, Zap } from "lucide-react";
 import { HouseFlow } from "@/components/energy/sections/house-flow";
 import { EnergySection } from "@/components/energy/sections/energy-section";
 import { Batteries } from "@/components/energy/sections/batteries";
@@ -11,6 +11,7 @@ import { Gas } from "@/components/energy/sections/gas";
 import { Water } from "@/components/energy/sections/water";
 import { Climate } from "@/components/energy/sections/climate";
 import { Ventilation } from "@/components/energy/sections/ventilation";
+import { Airco } from "@/components/energy/sections/airco";
 import { TimeframeBar } from "@/components/energy/timeframe-bar";
 import { buildRange, type TFMode } from "@/lib/energy-range";
 import type { Live } from "@/lib/energy-format";
@@ -29,6 +30,7 @@ const LIVE_NAV = [
   { id: "batterij", label: "Batterij", icon: BatteryCharging },
   { id: "klimaat", label: "Klimaat", icon: Thermometer },
   { id: "ventilatie", label: "Ventilatie", icon: Wind },
+  { id: "airco", label: "Airco", icon: Snowflake },
   { id: "office", label: "Office", icon: Lightbulb },
 ];
 
@@ -118,6 +120,9 @@ export function HouseConsole() {
               </div>
               <div id="ventilatie" className="scroll-mt-40">
                 <Ventilation range={range} />
+              </div>
+              <div id="airco" className="scroll-mt-40">
+                <Airco range={range} />
               </div>
               <div id="office" className="grid scroll-mt-40 grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-6">
                 <HomeControlWidget />

@@ -43,6 +43,35 @@ function bypassState(raw: string): { text: string; open: boolean; pending: boole
 
 interface GasPoint { d: string; m3: number; kwh: number; eur: number }
 interface WaterPoint { d: string; m3: number; liter: number; eur: number }
+
+// Airco (MELCloud Home climate.* units) — only the fields the diagram needs.
+interface AircoSummary {
+  name: string;
+  room: string | null;
+  available: boolean;
+  on: boolean;
+  mode: string; // off | cool | heat | auto | dry | fan_only
+  currentTemp: number | null;
+  targetTemp: number | null;
+}
+interface AircoResp { units: AircoSummary[] }
+
+const AIRCO_MODE_COLOR: Record<string, string> = {
+  cool: "#06b6d4",
+  heat: "#f97316",
+  auto: "#22c55e",
+  dry: "#9333ea",
+  fan_only: "#64748b",
+};
+function aircoBadge(a: AircoSummary): { color: string; text: string } {
+  if (!a.available) return { color: "#94a3b8", text: "offline" };
+  if (!a.on) return { color: "#94a3b8", text: "uit" };
+  const color = AIRCO_MODE_COLOR[a.mode] ?? "#06b6d4";
+  const verb =
+    a.mode === "cool" ? "koelt" : a.mode === "heat" ? "verwarmt" : a.mode === "dry" ? "ontvocht." : a.mode === "fan_only" ? "vent." : "auto";
+  const t = a.targetTemp != null && a.mode !== "fan_only" && a.mode !== "dry" ? ` ${a.targetTemp}°` : "";
+  return { color, text: `${verb}${t}` };
+}
 interface VentLive {
   supply_temp_c: number;
   extract_temp_c: number;
@@ -114,6 +143,11 @@ export function HouseFlow({
     refreshInterval: 10000,
     keepPreviousData: true,
   });
+  // Airco (living-room unit) — a live status too, shown on the ground floor.
+  const { data: airco } = useSWR<AircoResp>(isLive ? "/api/airco" : null, fetcher, {
+    refreshInterval: 30000,
+    keepPreviousData: true,
+  });
 
   // Grid power hunts ±20-50W around zero while the battery balances it; hold
   // the sign steady for GRID_HOLD_MS before trusting it, so a tick-to-tick
@@ -132,6 +166,7 @@ export function HouseFlow({
   const bat = hist?.points ? batteryEnergy(hist.points, range) : null;
   const houseClimate: HouseClimate | null = isLive ? readHouseClimate(climate?.series) : null;
   const houseVent = isLive && vent && !vent.error ? vent : null;
+  const livingAirco: AircoSummary | null = isLive ? airco?.units?.find((u) => u.room === "living") ?? null : null;
 
   let supplies: Supply[];
   let solar: Supply;
@@ -259,6 +294,7 @@ export function HouseFlow({
             }
             climate={houseClimate}
             vent={houseVent}
+            airco={livingAirco}
             houseValue={houseValue}
             houseUnit={houseUnit}
             houseSub={houseSub}
@@ -273,6 +309,7 @@ export function HouseFlow({
             batteries={live?.batteries ?? []}
             climate={houseClimate}
             vent={houseVent}
+            airco={livingAirco}
             houseValue={houseValue}
             houseUnit={houseUnit}
             houseSub={houseSub}
@@ -350,6 +387,7 @@ function HouseDiagram({
   throughput,
   climate,
   vent,
+  airco,
   houseValue,
   houseUnit,
   houseSub,
@@ -362,6 +400,7 @@ function HouseDiagram({
   throughput: string | null;
   climate: HouseClimate | null;
   vent: VentLive | null;
+  airco: AircoSummary | null;
   houseValue: string;
   houseUnit: string;
   houseSub: string;
@@ -447,7 +486,7 @@ function HouseDiagram({
         </>
       )}
 
-      <HouseBody climate={climate} value={houseValue} unit={houseUnit} sub={houseSub} />
+      <HouseBody climate={climate} airco={airco} value={houseValue} unit={houseUnit} sub={houseSub} />
 
       {/* Ground line, so the house reads as sitting on something. */}
       <line x1={40} y1={GROUND_Y} x2={VB.w - 40} y2={GROUND_Y} stroke="var(--border)" strokeWidth={2} />
@@ -534,7 +573,7 @@ function Connector({
 
 // The house as a cross-section: attic on top, three rooms in the middle, the
 // living space on the ground floor.
-function HouseBody({ climate, value, unit, sub }: { climate: HouseClimate | null; value: string; unit: string; sub: string }) {
+function HouseBody({ climate, airco, value, unit, sub }: { climate: HouseClimate | null; airco: AircoSummary | null; value: string; unit: string; sub: string }) {
   const { x0, x1, roofTop, eaves, midEnd, groundEnd } = HOUSE;
   const mid = (x0 + x1) / 2;
   const overhang = 22;
@@ -618,6 +657,19 @@ function HouseBody({ climate, value, unit, sub }: { climate: HouseClimate | null
           )}
         </text>
       )}
+      {/* Living-room airco status, mirrored on the opposite ground-floor corner */}
+      {airco &&
+        (() => {
+          const b = aircoBadge(airco);
+          return (
+            <text x={x1 - 14} y={groundEnd - 12} textAnchor="end" fontSize="12.5" fontWeight={700} fill={b.color}>
+              <tspan fontSize="10.5" fontWeight={700} letterSpacing="1" fill="var(--muted-foreground)">
+                AIRCO{" "}
+              </tspan>
+              {b.text}
+            </text>
+          );
+        })()}
     </g>
   );
 }
@@ -865,6 +917,7 @@ function HouseStack({
   batteries,
   climate,
   vent,
+  airco,
   houseValue,
   houseUnit,
   houseSub,
@@ -874,11 +927,13 @@ function HouseStack({
   batteries: Battery[];
   climate: HouseClimate | null;
   vent: VentLive | null;
+  airco: AircoSummary | null;
   houseValue: string;
   houseUnit: string;
   houseSub: string;
 }) {
   const bp = vent ? bypassState(vent.bypass) : null;
+  const ab = airco ? aircoBadge(airco) : null;
   const cards = [solar, ...supplies];
   return (
     <div className="space-y-2">
@@ -944,6 +999,19 @@ function HouseStack({
             </p>
             <p className="mt-0.5 text-mini text-muted-foreground">{Math.round(vent.extract_airflow_m3h)} m³/h</p>
           </div>
+        </div>
+      )}
+
+      {airco && ab && (
+        <div className="rounded-xl border px-2.5 py-2" style={{ borderColor: ab.color }}>
+          <p className="text-mini font-bold uppercase tracking-wide text-muted-foreground">Airco woonkamer</p>
+          <p className="mt-0.5 text-xl font-bold tabular-nums leading-tight" style={{ color: ab.color }}>
+            {ab.text}
+          </p>
+          <p className="mt-0.5 text-mini text-muted-foreground">
+            {airco.currentTemp != null ? `${airco.currentTemp}° nu` : "—"}
+            {airco.on && airco.targetTemp != null ? ` · doel ${airco.targetTemp}°` : ""}
+          </p>
         </div>
       )}
 

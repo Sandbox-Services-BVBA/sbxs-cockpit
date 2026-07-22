@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { Sun, Wind, Snowflake, Flame, Droplet, Zap, Cpu } from "lucide-react";
 import { Section, LivePulse } from "../ui";
@@ -140,6 +140,22 @@ export function HouseScene({ live, tick, intervalMs }: { live: Live | undefined;
   const grid = useStablePower(rawGrid, tick ?? 0, GRID_HOLD_MS);
   const status = live ? statusLine(live, grid) : null;
 
+  // house_w is derived (solar+grid+bat) from three async meters; when the
+  // batteries charge as hard as solar produces, a transient battery-reading blip
+  // pushes it below zero and the max(0,…) floor shows 0. A short median over
+  // recent samples rejects those dips for the live tile (the history graphs
+  // already average per bucket, so they're unaffected).
+  const houseBuf = useRef<number[]>([]);
+  const [houseW, setHouseW] = useState(0);
+  useEffect(() => {
+    if (live?.house_w == null) return;
+    const buf = houseBuf.current;
+    buf.push(live.house_w);
+    if (buf.length > 7) buf.shift();
+    const sorted = [...buf].sort((a, b) => a - b);
+    setHouseW(sorted[Math.floor(sorted.length / 2)]);
+  }, [live?.house_w, tick]);
+
   const gasToday = gasData?.points?.length ? gasData.points[gasData.points.length - 1].m3 : 0;
   const waterToday = waterData?.points?.length ? waterData.points[waterData.points.length - 1].liter : 0;
   const flowLpm = waterData?.flow_lpm ?? 0;
@@ -221,7 +237,7 @@ export function HouseScene({ live, tick, intervalMs }: { live: Live | undefined;
                   <Cpu className="h-3.5 w-3.5" /> Technische ruimte · hart
                 </div>
                 <div className="mt-0.5 flex items-baseline gap-1">
-                  <span className="text-3xl font-black tabular-nums leading-none">{fmtW(live?.house_w ?? 0)}</span>
+                  <span className="text-3xl font-black tabular-nums leading-none">{fmtW(houseW)}</span>
                   <span className="text-mini text-muted-foreground">huis nu</span>
                 </div>
                 {peakW != null && <div className="text-[10px] text-muted-foreground">piek deze maand {fmtW(peakW)}</div>}

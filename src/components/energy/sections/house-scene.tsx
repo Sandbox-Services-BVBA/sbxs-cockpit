@@ -172,30 +172,35 @@ export function HouseScene({ live, tick, intervalMs }: { live: Live | undefined;
         )}
 
         {/* ---- The house cross-section (side view: left = front, right = back) ---- */}
-        <div className="overflow-hidden rounded-xl border border-border/70">
-          {/* Roof: solar on the front slope (left), ventilation on the back slope (right) */}
-          <div className="grid grid-cols-2 gap-px bg-border/40" style={{ clipPath: "polygon(50% 0, 100% 100%, 0 100%)", background: "var(--card)" }}>
-            <div className="flex items-center gap-2 px-3 py-2 pt-6">
-              <Sun className="h-4 w-4" style={{ color: EC.solar }} />
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Zon · dak voor</div>
-                <div className="text-lg font-bold tabular-nums leading-none" style={{ color: EC.solar }}>{fmtW(live?.solar_w ?? 0)}</div>
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-2 px-3 py-2 pt-6 text-right">
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Ventilatie · dak achter</div>
-                <div className="text-mini tabular-nums leading-tight text-muted-foreground">
-                  {vent ? (
-                    <>in {vent.supply_temp_c.toFixed(1)}° · uit {vent.extract_temp_c.toFixed(1)}°<br />{Math.round(vent.supply_airflow_m3h)} m³/h · {vent.bypass === "open" ? "bypass open" : "bypass dicht"}</>
-                  ) : "—"}
+        <div className="relative mx-auto max-w-[580px]">
+          {/* Gable roof drawn as one outlined triangle so it reads as a house.
+              Solar sits on the front slope (left), ventilation on the back (right). */}
+          <div className="relative">
+            <svg viewBox="0 0 100 46" preserveAspectRatio="none" className="block h-[88px] w-full" aria-hidden="true">
+              <polygon points="0,45 50,3 100,45" fill="var(--card)" stroke={EC.house} strokeWidth={2.5} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+            </svg>
+            <div className="absolute inset-x-0 bottom-2 flex items-end justify-between px-6">
+              <div className="flex items-center gap-1.5">
+                <Sun className="h-4 w-4 shrink-0" style={{ color: EC.solar }} />
+                <div>
+                  <div className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Zon · voordak</div>
+                  <div className="text-base font-bold tabular-nums leading-none" style={{ color: EC.solar }}>{fmtW(live?.solar_w ?? 0)}</div>
                 </div>
               </div>
-              <Wind className="h-4 w-4" style={{ color: EC.extract }} />
+              <div className="flex items-center gap-1.5 text-right">
+                <div>
+                  <div className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Vent · achterdak</div>
+                  <div className="text-[10px] tabular-nums leading-tight text-muted-foreground">
+                    {vent ? <>in {vent.supply_temp_c.toFixed(1)}° · {Math.round(vent.supply_airflow_m3h)} m³/h</> : "—"}
+                  </div>
+                </div>
+                <Wind className="h-4 w-4 shrink-0" style={{ color: EC.extract }} />
+              </div>
             </div>
           </div>
 
-          <div className="space-y-px bg-border/40 p-px">
+          {/* House body (walls) */}
+          <div className="space-y-px border-2 border-t-0 bg-border/40 p-px" style={{ borderColor: EC.house }}>
             {/* Attic — Bureau (office airco) */}
             <RoomTile name="Zolder · Bureau" reading={readingFor("bureau")} provenance={prov("bureau")} unit={aircoByRoom.office ?? null} activeUnit={openUnit} onAirco={onAirco} className="min-h-[68px]" />
 

@@ -15,7 +15,7 @@ const DEBOUNCE_MS = 1800;
 // After a send, pull fresh state a few times to catch the (slow) cloud confirming.
 const CONFIRM_REFRESH_MS = [3000, 8000, 18000, 32000];
 
-interface AircoUnit {
+export interface AircoUnit {
   id: string;
   name: string;
   room: string | null;
@@ -35,8 +35,19 @@ interface AircoUnit {
   swingHModes: string[];
 }
 
+// Fire a control command to one unit; returns whether HA accepted it.
+export async function sendAirco(id: string, patch: Desired): Promise<boolean> {
+  try {
+    const r = await fetch("/api/airco", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, ...patch }) });
+    const j = await r.json().catch(() => ({}));
+    return r.ok && j?.ok !== false;
+  } catch {
+    return false;
+  }
+}
+
 // Local desired overrides the user has set but the cloud hasn't confirmed yet.
-interface Desired {
+export interface Desired {
   mode?: string;
   targetTemp?: number;
   fanMode?: string;
@@ -160,7 +171,7 @@ function StatusChip({ phase }: { phase: Phase }) {
 
 // One unit's card. Owns its optimistic desired-state + debounce + send lifecycle,
 // so controls never block: you keep clicking, it batches and sends after you stop.
-function AircoUnitCard({ unit, onSend, onRefresh }: { unit: AircoUnit; onSend: (patch: Desired) => Promise<boolean>; onRefresh: () => void }) {
+export function AircoUnitCard({ unit, onSend, onRefresh }: { unit: AircoUnit; onSend: (patch: Desired) => Promise<boolean>; onRefresh: () => void }) {
   const [desired, setDesiredState] = useState<Desired>({});
   const [phase, setPhase] = useState<Phase>("idle");
   const desiredRef = useRef<Desired>({});

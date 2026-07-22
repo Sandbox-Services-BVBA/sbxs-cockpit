@@ -5,6 +5,7 @@ import useSWR from "swr";
 import Link from "next/link";
 import { BarChart3, BatteryCharging, Droplet, Flame, Lightbulb, Monitor, Snowflake, Thermometer, Wind, Zap } from "lucide-react";
 import { HouseFlow } from "@/components/energy/sections/house-flow";
+import { HouseScene } from "@/components/energy/sections/house-scene";
 import { EnergySection } from "@/components/energy/sections/energy-section";
 import { Batteries } from "@/components/energy/sections/batteries";
 import { Gas } from "@/components/energy/sections/gas";
@@ -104,7 +105,11 @@ export function HouseConsole() {
       ) : (
         <>
           <div id="huis" className="scroll-mt-40">
-            <HouseFlow range={range} live={live} tick={tick} intervalMs={LIVE_MS} />
+            {isLive ? (
+              <HouseScene live={live} tick={tick} intervalMs={LIVE_MS} />
+            ) : (
+              <HouseFlow range={range} live={live} tick={tick} intervalMs={LIVE_MS} />
+            )}
           </div>
 
           {isLive ? (

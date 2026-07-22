@@ -24,6 +24,10 @@ interface AircoUnit {
   fanMode: string | null;
   fanModes: string[];
   hvacModes: string[];
+  swingMode: string | null; // vertical vane
+  swingModes: string[];
+  swingHMode: string | null; // horizontal vane
+  swingHModes: string[];
 }
 
 const MODE_META: Record<string, { label: string; color: string }> = {
@@ -38,6 +42,64 @@ const MODE_ORDER = ["off", "cool", "heat", "auto", "dry", "fan_only"];
 
 function fmt1(n: number | null): string {
   return n == null ? "—" : n.toLocaleString("nl-BE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+// Short button labels for fan speed + vane positions.
+function fanLabel(m: string): string {
+  return m === "auto" ? "Auto" : m.replace("speed_", "");
+}
+function vaneVLabel(m: string): string {
+  return m === "auto" ? "Auto" : m === "swing" ? "Zwenk" : m.replace("position_", "");
+}
+const VANE_H_LABEL: Record<string, string> = {
+  auto: "Auto",
+  swing: "Zwenk",
+  left: "L",
+  left_centre: "LC",
+  centre: "C",
+  right_centre: "RC",
+  right: "R",
+};
+
+// A labelled row of small segmented buttons (fan / vane).
+function ControlRow({
+  label,
+  options,
+  active,
+  disabled,
+  busyKey,
+  onPick,
+}: {
+  label: string;
+  options: { key: string; label: string }[];
+  active: string | null;
+  disabled: boolean;
+  busyKey: string | null;
+  onPick: (key: string) => void;
+}) {
+  if (options.length === 0) return null;
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <span className="w-16 shrink-0 text-mini font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+      <div className="flex flex-1 flex-wrap gap-1">
+        {options.map((o) => (
+          <button
+            key={o.key}
+            disabled={disabled}
+            onClick={() => onPick(o.key)}
+            className={cn(
+              "min-w-[2rem] rounded-md border px-2 py-1 text-mini font-bold uppercase transition-colors",
+              active === o.key ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground",
+              disabled && "opacity-50",
+              busyKey === `${label}:${o.key}` && "opacity-50",
+            )}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function Airco({ range }: { range: Range }) {
@@ -178,11 +240,40 @@ export function Airco({ range }: { range: Range }) {
                   </div>
                 )}
 
+                {/* Fan speed + vertical/horizontal vane — only meaningful while on */}
+                {u.on && (
+                  <div className="mt-1">
+                    <ControlRow
+                      label="Vent."
+                      options={u.fanModes.map((m) => ({ key: m, label: fanLabel(m) }))}
+                      active={u.fanMode}
+                      disabled={busy !== null || !u.available}
+                      busyKey={busy}
+                      onPick={(k) => control(u, { fanMode: k }, `Vent.:${k}`, { fanMode: k })}
+                    />
+                    <ControlRow
+                      label="Lam. ↕"
+                      options={u.swingModes.map((m) => ({ key: m, label: vaneVLabel(m) }))}
+                      active={u.swingMode}
+                      disabled={busy !== null || !u.available}
+                      busyKey={busy}
+                      onPick={(k) => control(u, { swing: k }, `Lam. ↕:${k}`, { swingMode: k })}
+                    />
+                    <ControlRow
+                      label="Lam. ↔"
+                      options={u.swingHModes.map((m) => ({ key: m, label: VANE_H_LABEL[m] ?? m }))}
+                      active={u.swingHMode}
+                      disabled={busy !== null || !u.available}
+                      busyKey={busy}
+                      onPick={(k) => control(u, { swingH: k }, `Lam. ↔:${k}`, { swingHMode: k })}
+                    />
+                  </div>
+                )}
+
                 <div className="mt-2 text-mini text-muted-foreground">
                   {u.on ? (
                     <>
-                      doel {fmt1(u.targetTemp)}° · ventilator {u.fanMode ?? "?"}
-                      {u.action ? ` · ${u.action}` : ""}
+                      doel {fmt1(u.targetTemp)}° · {u.action ? `${u.action}` : "aan"}
                     </>
                   ) : (
                     "uit"

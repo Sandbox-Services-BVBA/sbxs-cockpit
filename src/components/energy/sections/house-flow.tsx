@@ -166,7 +166,9 @@ export function HouseFlow({
   const bat = hist?.points ? batteryEnergy(hist.points, range) : null;
   const houseClimate: HouseClimate | null = isLive ? readHouseClimate(climate?.series) : null;
   const houseVent = isLive && vent && !vent.error ? vent : null;
-  const livingAirco: AircoSummary | null = isLive ? airco?.units?.find((u) => u.room === "living") ?? null : null;
+  // Airco keyed by room slot (living=ground, bedroom=middle, office=attic).
+  const aircoByRoom: Record<string, AircoSummary> = {};
+  if (isLive) for (const u of airco?.units ?? []) if (u.room) aircoByRoom[u.room] = u;
 
   let supplies: Supply[];
   let solar: Supply;
@@ -294,7 +296,7 @@ export function HouseFlow({
             }
             climate={houseClimate}
             vent={houseVent}
-            airco={livingAirco}
+            airco={aircoByRoom}
             houseValue={houseValue}
             houseUnit={houseUnit}
             houseSub={houseSub}
@@ -309,7 +311,7 @@ export function HouseFlow({
             batteries={live?.batteries ?? []}
             climate={houseClimate}
             vent={houseVent}
-            airco={livingAirco}
+            airco={aircoByRoom}
             houseValue={houseValue}
             houseUnit={houseUnit}
             houseSub={houseSub}
@@ -400,7 +402,7 @@ function HouseDiagram({
   throughput: string | null;
   climate: HouseClimate | null;
   vent: VentLive | null;
-  airco: AircoSummary | null;
+  airco: Record<string, AircoSummary>;
   houseValue: string;
   houseUnit: string;
   houseSub: string;
@@ -573,7 +575,7 @@ function Connector({
 
 // The house as a cross-section: attic on top, three rooms in the middle, the
 // living space on the ground floor.
-function HouseBody({ climate, airco, value, unit, sub }: { climate: HouseClimate | null; airco: AircoSummary | null; value: string; unit: string; sub: string }) {
+function HouseBody({ climate, airco, value, unit, sub }: { climate: HouseClimate | null; airco: Record<string, AircoSummary>; value: string; unit: string; sub: string }) {
   const { x0, x1, roofTop, eaves, midEnd, groundEnd } = HOUSE;
   const mid = (x0 + x1) / 2;
   const overhang = 22;
@@ -598,6 +600,7 @@ function HouseBody({ climate, airco, value, unit, sub }: { climate: HouseClimate
           reading={climate.rooms.bureau}
           noSensor={!climate.rooms.bureau}
           showClimate
+          airco={airco.office ?? null}
         />
       )}
 
@@ -619,6 +622,7 @@ function HouseBody({ climate, airco, value, unit, sub }: { climate: HouseClimate
               reading={climate.rooms[slot.id] ?? null}
               showClimate
               small
+              airco={slot.id === "slaapkamer" ? airco.bedroom ?? null : null}
             />
           </g>
         ))}
@@ -658,9 +662,9 @@ function HouseBody({ climate, airco, value, unit, sub }: { climate: HouseClimate
         </text>
       )}
       {/* Living-room airco status, mirrored on the opposite ground-floor corner */}
-      {airco &&
+      {airco.living &&
         (() => {
-          const b = aircoBadge(airco);
+          const b = aircoBadge(airco.living);
           return (
             <text x={x1 - 14} y={groundEnd - 12} textAnchor="end" fontSize="12.5" fontWeight={700} fill={b.color}>
               <tspan fontSize="10.5" fontWeight={700} letterSpacing="1" fill="var(--muted-foreground)">
@@ -682,6 +686,7 @@ function RoomLabel({
   noSensor,
   showClimate,
   small,
+  airco,
 }: {
   x: number;
   y: number;
@@ -690,7 +695,10 @@ function RoomLabel({
   noSensor?: boolean;
   showClimate: boolean;
   small?: boolean;
+  airco?: AircoSummary | null;
 }) {
+  // Airco chip sits below whatever climate rows are shown, so it never overlaps.
+  const aircoY = y + (showClimate ? (noSensor ? 42 : reading?.rh != null ? (small ? 62 : 66) : small ? 46 : 50) : 22);
   return (
     <g>
       <text x={x} y={y} textAnchor="middle" fontSize={small ? 11 : 12} fontWeight={700} letterSpacing="1.1" fill="var(--muted-foreground)">
@@ -713,6 +721,18 @@ function RoomLabel({
             )}
           </>
         ))}
+      {airco &&
+        (() => {
+          const b = aircoBadge(airco);
+          return (
+            <text x={x} y={aircoY} textAnchor="middle" fontSize="10.5" fontWeight={700} fill={b.color}>
+              <tspan letterSpacing="0.5" fill="var(--muted-foreground)">
+                airco{" "}
+              </tspan>
+              {b.text}
+            </text>
+          );
+        })()}
     </g>
   );
 }
@@ -927,13 +947,13 @@ function HouseStack({
   batteries: Battery[];
   climate: HouseClimate | null;
   vent: VentLive | null;
-  airco: AircoSummary | null;
+  airco: Record<string, AircoSummary>;
   houseValue: string;
   houseUnit: string;
   houseSub: string;
 }) {
   const bp = vent ? bypassState(vent.bypass) : null;
-  const ab = airco ? aircoBadge(airco) : null;
+  const aircoUnits = Object.values(airco);
   const cards = [solar, ...supplies];
   return (
     <div className="space-y-2">
@@ -1002,16 +1022,23 @@ function HouseStack({
         </div>
       )}
 
-      {airco && ab && (
-        <div className="rounded-xl border px-2.5 py-2" style={{ borderColor: ab.color }}>
-          <p className="text-mini font-bold uppercase tracking-wide text-muted-foreground">Airco woonkamer</p>
-          <p className="mt-0.5 text-xl font-bold tabular-nums leading-tight" style={{ color: ab.color }}>
-            {ab.text}
-          </p>
-          <p className="mt-0.5 text-mini text-muted-foreground">
-            {airco.currentTemp != null ? `${airco.currentTemp}° nu` : "—"}
-            {airco.on && airco.targetTemp != null ? ` · doel ${airco.targetTemp}°` : ""}
-          </p>
+      {aircoUnits.length > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          {aircoUnits.map((u) => {
+            const b = aircoBadge(u);
+            return (
+              <div key={u.name} className="rounded-xl border px-2.5 py-2" style={{ borderColor: b.color }}>
+                <p className="text-mini font-bold uppercase tracking-wide text-muted-foreground">Airco {u.name}</p>
+                <p className="mt-0.5 text-xl font-bold tabular-nums leading-tight" style={{ color: b.color }}>
+                  {b.text}
+                </p>
+                <p className="mt-0.5 text-mini text-muted-foreground">
+                  {u.currentTemp != null ? `${u.currentTemp}° nu` : "—"}
+                  {u.on && u.targetTemp != null ? ` · doel ${u.targetTemp}°` : ""}
+                </p>
+              </div>
+            );
+          })}
         </div>
       )}
 

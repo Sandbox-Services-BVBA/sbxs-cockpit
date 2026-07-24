@@ -101,9 +101,10 @@ export const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "bank", title: "Bank", category: "money", size: "md", order: 7, selfFetch: true },
   { id: "timeentries", title: "Recent Toggl", category: "money", size: "sm", order: 16 },
 
-  // Comms — email volume / triage
+  // Comms — email volume / triage, plus followed WhatsApp conversations
   { id: "inbox", title: "Inboxes", category: "comms", size: "sm", order: 14 },
   { id: "mailroom", title: "Mailroom", category: "comms", size: "sm", order: 15 },
+  { id: "whatsapp", title: "WhatsApp", category: "comms", size: "md", order: 15.5, selfFetch: true },
 
   // Dev activity — off by default on the wall
   { id: "agents", title: "Agents", category: "dev", size: "md", order: 17, selfFetch: true },

@@ -26,6 +26,12 @@ export const config = {
   ventilationBridgeUrl: (process.env.VENTILATION_BRIDGE_URL || "http://100.96.197.107:3094").replace(/\/$/, ""),
   ventilationBridgeKey: process.env.VENTILATION_BRIDGE_KEY || "",
 
+  // WhatsApp bridge: the cockpit proxies to whatsapp-bridge on the dev server
+  // (over Tailscale), which follows selected WhatsApp chats read-only and logs
+  // them locally. whatsappBridgeKey gates reads/writes; empty => disabled.
+  whatsappBridgeUrl: (process.env.WHATSAPP_BRIDGE_URL || "http://100.96.197.107:3091").replace(/\/$/, ""),
+  whatsappBridgeKey: process.env.WHATSAPP_BRIDGE_KEY || "",
+
   // Telegram bot
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || "",
   telegramChatId: process.env.TELEGRAM_CHAT_ID || "",

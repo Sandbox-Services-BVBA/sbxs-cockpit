@@ -26,6 +26,7 @@ import { DomainsWidget } from "./widgets/domains-widget";
 import { InboxWidget } from "./widgets/inbox-widget";
 import { CityScreensWidget } from "./widgets/cityscreens-widget";
 import { MailroomWidget } from "./widgets/mailroom-widget";
+import { WhatsAppWidget } from "./widgets/whatsapp-widget";
 import { UnbilledWidget } from "./widgets/unbilled-widget";
 import { TimeEntriesWidget } from "./widgets/timeentries-widget";
 import { BtcWidget } from "./widgets/btc-widget";
@@ -147,6 +148,7 @@ export function Dashboard() {
       case "timeentries": return <TimeEntriesWidget entries={data!.timeentries} />;
       case "inbox": return <InboxWidget inboxes={data!.inboxes} />;
       case "mailroom": return <MailroomWidget mailroom={data!.mailroom} />;
+      case "whatsapp": return <WhatsAppWidget />;
       case "agents": return <AgentsWidget />;
       case "ai-usage": return <AiUsageWidget aiUsage={data?.aiUsage} />;
       case "file-activity": return <FileActivityWidget layout={layout} />;

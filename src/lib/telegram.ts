@@ -22,11 +22,21 @@ export async function sendTelegramMessage(text: string, parse_mode: "HTML" | "Ma
   }
 }
 
+/**
+ * Alert messages now carry agent-authored detail and fix steps, which contain
+ * shell text like `&&` and `->`. Telegram rejects the whole message if that
+ * reaches its HTML parser unescaped, and a rejected message is logged and then
+ * marked notified — a silent failure in the very system meant to catch them.
+ */
+export function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 export function formatAlert(severity: string, category: string, source: string, message: string): string {
   const icon = severity === "critical" ? "CRITICAL" : "WARNING";
-  return `<b>[${icon}] ${category}</b>\n${source}: ${message}`;
+  return `<b>[${icon}] ${escapeHtml(category)}</b>\n${escapeHtml(source)}: ${escapeHtml(message)}`;
 }
 
 export function formatRecovery(category: string, source: string, message: string): string {
-  return `<b>[RESOLVED] ${category}</b>\n${source}: ${message}`;
+  return `<b>[RESOLVED] ${escapeHtml(category)}</b>\n${escapeHtml(source)}: ${escapeHtml(message)}`;
 }

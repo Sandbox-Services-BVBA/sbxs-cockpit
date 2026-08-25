@@ -102,18 +102,31 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Ingest integration health
+  // Ingest connection health (table is still named integration_health)
   if (payload.integrations) {
     const stmt = db.prepare(`
-      INSERT INTO integration_health (integration_name, category, status, last_check_at, details)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO integration_health (integration_name, category, status, last_check_at,
+        details, purpose, last_flow_at, fix)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     for (const i of payload.integrations) {
-      stmt.run(i.integration_name, i.category, i.status, i.last_check_at, i.details);
+      stmt.run(
+        i.integration_name, i.category, i.status, i.last_check_at,
+        i.details, i.purpose ?? null, i.last_flow_at ?? null, i.fix ?? null
+      );
 
-      if (i.status === "critical") {
-        createAlert("warning", "integration", i.integration_name, `Integration down: ${i.details || "unknown"}`);
+      // Severity mirrors the reported state. It used to be hardcoded to
+      // "warning", and a "warning" connection raised nothing at all, so a
+      // linked-but-silent bridge stayed invisible. Purpose and fix travel with
+      // the alert so the Telegram message is actionable on its own.
+      // The alert category stays "integration" through the UI rename so dedup
+      // and auto-resolve keep matching the alerts already open in the live DB.
+      if (i.status === "critical" || i.status === "warning") {
+        const lines = [i.details || "state unknown"];
+        if (i.purpose) lines.push(`Needed for: ${i.purpose}`);
+        if (i.fix) lines.push(`Fix:\n${i.fix}`);
+        createAlert(i.status, "integration", i.integration_name, lines.join("\n"));
       } else if (i.status === "ok") {
         resolveAlerts("integration", i.integration_name);
       }

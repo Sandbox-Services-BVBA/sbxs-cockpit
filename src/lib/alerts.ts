@@ -1,5 +1,5 @@
 import { getDb } from "./db";
-import { sendTelegramMessage, formatAlert, formatRecovery } from "./telegram";
+import { sendTelegramMessage, formatAlert, formatRecovery, escapeHtml } from "./telegram";
 import { config } from "./config";
 import type { Alert } from "@/types";
 
@@ -107,7 +107,7 @@ export async function processAlertNotifications() {
     if (shouldEscalate) {
       const duration = formatDuration(minutesSinceCreated);
       await sendTelegramMessage(
-        `<b>[STILL DOWN - ${duration}]</b>\n${alert.source}: ${alert.message}`
+        `<b>[STILL DOWN - ${duration}]</b>\n${escapeHtml(alert.source)}: ${escapeHtml(alert.message)}`
       );
       db.prepare("UPDATE alerts SET last_notified_at = datetime('now') WHERE id = ?").run(alert.id);
     }
@@ -120,7 +120,7 @@ export async function processAlertNotifications() {
 
   if (warnings.length > 0) {
     const grouped = warnings
-      .map((w) => `- ${w.source}: ${w.message}`)
+      .map((w) => `- ${escapeHtml(w.source)}: ${escapeHtml(w.message)}`)
       .join("\n");
     await sendTelegramMessage(`<b>[WARNINGS] ${warnings.length} issue(s)</b>\n${grouped}`);
     const ids = warnings.map((w) => w.id);

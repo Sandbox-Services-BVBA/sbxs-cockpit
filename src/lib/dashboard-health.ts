@@ -19,6 +19,60 @@ export function isSourceStale(value: string | null | undefined, maxAgeMs = AGENT
   return parsed === null || Date.now() - parsed > maxAgeMs;
 }
 
+/** What the shell badge is allowed to claim about the data on screen. */
+export type FeedStatus = "live" | "stale" | "offline" | "connecting";
+
+export interface FeedState {
+  status: FeedStatus;
+  label: string;
+  /** Age of the newest agent signal, e.g. "4m". Null when nothing has arrived. */
+  age: string | null;
+  /** Long form, for the badge's title and screen readers. */
+  detail: string;
+}
+
+function ageLabel(value: string | null | undefined): string | null {
+  const parsed = timestampMs(value);
+  if (parsed === null) return null;
+  const seconds = Math.max(0, Math.round((Date.now() - parsed) / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+  return `${Math.floor(seconds / 86400)}d`;
+}
+
+// The badge reports the age of the underlying signal, never the age of the
+// last page refresh. A dashboard that repaints every 30 seconds on top of a
+// collector that died an hour ago must not read as live.
+export function getFeedState(data: DashboardData | null, error: string | null): FeedState {
+  if (!data) {
+    return error
+      ? { status: "offline", label: "Offline", age: null, detail: `The dashboard request failed: ${error}` }
+      : { status: "connecting", label: "Connecting", age: null, detail: "Waiting for the first cockpit snapshot." };
+  }
+
+  const age = ageLabel(data.freshness.agent);
+  const health = getDashboardHealth(data);
+
+  if (health.agentStale) {
+    return {
+      status: "stale",
+      label: "Stale",
+      age,
+      detail: age
+        ? `The cockpit agent last delivered ${age} ago, outside its 15 minute window.`
+        : "The cockpit agent has never delivered a signal.",
+    };
+  }
+
+  return {
+    status: "live",
+    label: "Live",
+    age,
+    detail: `The cockpit agent delivered ${age ?? "just now"} ago.`,
+  };
+}
+
 export interface DashboardHealth {
   tone: CockpitTone;
   headline: string;

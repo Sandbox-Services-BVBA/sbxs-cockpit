@@ -58,6 +58,24 @@ function runMigrations(db: Database.Database) {
   if (!alertColNames.has("last_notified_at")) {
     db.exec("ALTER TABLE alerts ADD COLUMN last_notified_at DATETIME");
   }
+
+  // Connections (formerly "integrations"): a row must be able to say what the
+  // connection is for, when data last actually moved through it, and how to fix
+  // it. `last_check_at` is when we last asked; `last_flow_at` is when the thing
+  // last did its job. A connection can answer the first question happily while
+  // failing the second for weeks, which is exactly the failure this surfaces.
+  const integrationCols = db.prepare("PRAGMA table_info(integration_health)").all() as { name: string }[];
+  const integrationColNames = new Set(integrationCols.map((c) => c.name));
+
+  if (!integrationColNames.has("purpose")) {
+    db.exec("ALTER TABLE integration_health ADD COLUMN purpose TEXT");
+  }
+  if (!integrationColNames.has("last_flow_at")) {
+    db.exec("ALTER TABLE integration_health ADD COLUMN last_flow_at DATETIME");
+  }
+  if (!integrationColNames.has("fix")) {
+    db.exec("ALTER TABLE integration_health ADD COLUMN fix TEXT");
+  }
 }
 
 function initSchema(db: Database.Database) {
@@ -138,6 +156,9 @@ function initSchema(db: Database.Database) {
       status TEXT DEFAULT 'unknown',
       last_check_at DATETIME,
       details TEXT,
+      purpose TEXT,
+      last_flow_at DATETIME,
+      fix TEXT,
       checked_at DATETIME DEFAULT (datetime('now'))
     );
 

@@ -72,10 +72,30 @@ export interface IntegrationHealth {
   integration_name: string;
   category: string;
   status: "ok" | "warning" | "critical";
+  /** When we last asked the connection about itself. */
   last_check_at: string;
   details: string | null;
+  /** What this connection is for, so the consequence of it being down is visible. */
+  purpose: string | null;
+  /** When data last actually moved through it. Null means never, or not measurable. */
+  last_flow_at: string | null;
+  /** Operator-ready recovery steps, newline separated. Shown inline when unhealthy. */
+  fix: string | null;
   checked_at: string;
 }
+
+/**
+ * What the agent posts. The three connection fields are optional so an older
+ * agent build (or a collector that cannot measure flow) still ingests cleanly.
+ */
+export type IntegrationHealthInput = Omit<
+  IntegrationHealth,
+  "id" | "checked_at" | "purpose" | "last_flow_at" | "fix"
+> & {
+  purpose?: string | null;
+  last_flow_at?: string | null;
+  fix?: string | null;
+};
 
 export interface Alert {
   id: number;
@@ -139,5 +159,5 @@ export interface StatusPayload {
   backups?: Omit<BackupStatus, "id" | "checked_at">[];
   crons?: Omit<CronJob, "id" | "checked_at">[];
   projects?: Omit<Project, "id" | "checked_at">[];
-  integrations?: Omit<IntegrationHealth, "id" | "checked_at">[];
+  integrations?: IntegrationHealthInput[];
 }

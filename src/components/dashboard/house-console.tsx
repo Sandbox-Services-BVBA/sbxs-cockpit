@@ -68,7 +68,9 @@ export function HouseConsole() {
   return (
     <div className="space-y-3">
       {/* Anchors + the global timeframe that drives every section below. */}
-      <div className="sticky top-[76px] z-20 -mx-4 border-b border-border/70 bg-background/90 px-4 py-2.5 backdrop-blur-xl sm:-mx-6 sm:px-6 xl:-mx-8 xl:px-8">
+      {/* Sits directly under the shell header, whatever height the notch makes
+          it, and bleeds to the window edge through the shell's own gutter. */}
+      <div className="bleed-x sticky top-header-total z-20 border-b border-border/70 bg-background/90 py-2.5 backdrop-blur-xl">
         <div className="flex flex-wrap items-center gap-2">
           <nav aria-label="Home sections" className="-mx-1 flex flex-1 gap-1.5 overflow-x-auto px-1 pb-2">
             {nav.map((n) => (

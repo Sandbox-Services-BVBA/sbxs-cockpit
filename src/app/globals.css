@@ -139,6 +139,12 @@
   --header-height: 68px;
   --header-total: calc(var(--header-height) + var(--safe-top));
   --navbar-height: 62px;
+  /* The gutter .app-main reserves. Anything that needs to bleed to the window
+     edge inside it (a sticky sub-bar, a full-width strip) reads it back
+     through .bleed-x rather than hard-coding a negative margin. */
+  --main-pad: 14px;
+  --main-pad-left: max(var(--main-pad), var(--safe-left));
+  --main-pad-right: max(var(--main-pad), var(--safe-right));
 
   /* Paper. Warm off-white ground, deep green-black ink, accents darkened
      enough to hold their own against it. */
@@ -654,10 +660,17 @@
      keeps the last pane reachable above it. */
   padding:
     18px
-    max(14px, var(--safe-right))
+    var(--main-pad-right)
     calc(var(--navbar-height) + var(--safe-bottom) + 26px)
-    max(14px, var(--safe-left));
+    var(--main-pad-left);
   overflow-x: clip;
+}
+
+.bleed-x {
+  margin-right: calc(var(--main-pad-right) * -1);
+  margin-left: calc(var(--main-pad-left) * -1);
+  padding-right: var(--main-pad-right);
+  padding-left: var(--main-pad-left);
 }
 
 /* The bottom bar, phones only. Four pinned domains plus a sheet for the rest;
@@ -753,15 +766,14 @@
 }
 
 @media (min-width: 640px) {
-  .app-header {
-    gap: 16px;
-    padding-right: max(22px, var(--safe-right));
-    padding-left: max(22px, var(--safe-left));
+  :root {
+    --main-pad: 22px;
   }
 
-  .app-main {
-    padding-right: max(22px, var(--safe-right));
-    padding-left: max(22px, var(--safe-left));
+  .app-header {
+    gap: 16px;
+    padding-right: var(--main-pad-right);
+    padding-left: var(--main-pad-left);
   }
 }
 
@@ -783,6 +795,8 @@
 @media (min-width: 1024px) {
   :root {
     --header-height: 76px;
+    --main-pad: 26px;
+    --navbar-height: 0px;
   }
 
   .app-rail {
@@ -794,12 +808,65 @@
   }
 
   .app-main {
-    padding: 22px max(26px, var(--safe-right)) 40px max(26px, var(--safe-left));
+    padding-top: 22px;
+    padding-bottom: 40px;
   }
 
   .app-bottom {
     display: none;
   }
+}
+
+/* --- View chrome ---------------------------------------------------------- */
+
+.view-lede {
+  max-width: 70ch;
+  color: var(--ink-muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.view-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  font-size: 0.875rem;
+}
+
+.view-note b {
+  font-weight: 700;
+}
+
+.view-note p {
+  margin-top: 3px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  opacity: 0.82;
+}
+
+.view-note__icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 9px;
+  background: color-mix(in srgb, currentColor 13%, transparent);
+}
+
+.view-note--bad {
+  border-color: color-mix(in srgb, var(--rose) 44%, transparent);
+  background: color-mix(in srgb, var(--rose) 9%, transparent);
+  color: var(--rose);
+}
+
+.view-note--good {
+  border-color: color-mix(in srgb, var(--green) 40%, transparent);
+  background: color-mix(in srgb, var(--green) 9%, transparent);
+  color: var(--green);
 }
 
 .cockpit-panel,

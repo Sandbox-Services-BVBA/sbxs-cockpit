@@ -241,62 +241,92 @@ function EventRow({
   tokens,
   changed,
   expanded,
+  showTime,
   onToggle,
 }: {
   event: LogEvent;
   tokens: string[];
   changed: boolean[];
   expanded: boolean;
+  showTime: boolean;
   onToggle: () => void;
 }) {
   const body = event.sample.extra;
   const shownBody = expanded ? body : body.slice(0, BODY_PREVIEW_LINES);
   const hiddenBody = body.length - shownBody.length;
 
+  // Click to expand, but never steal a click that was actually a text selection:
+  // copying a line out of a log is the whole point of having one.
+  const toggleUnlessSelecting = () => {
+    if (window.getSelection()?.isCollapsed !== false) onToggle();
+  };
+
+  const changedText = tokens
+    .filter((_, i) => changed[i])
+    .join(" ")
+    .trim();
+
   return (
     <div className="flex gap-2 border-b border-border/40 px-1 py-1 last:border-b-0 hover:bg-muted/30">
       <span className={cn("mt-0.5 w-0.5 shrink-0 self-stretch", LEVEL_BAR[event.level])} />
-      <span
-        className="shrink-0 pt-px text-mini tabular-nums text-muted-foreground/60"
-        title={event.from ? event.from.toISOString() : "no timestamp"}
-      >
-        {fmtClock(event.from)}
-      </span>
+      {showTime && (
+        <span
+          className="shrink-0 pt-px text-mini tabular-nums text-muted-foreground/60"
+          title={event.from ? event.from.toISOString() : "no timestamp on this line"}
+        >
+          {event.from ? fmtClock(event.from) : <span className="opacity-30">--------</span>}
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <p className={cn("min-w-0 flex-1 whitespace-pre-wrap break-words", LEVEL_TEXT[event.level])}>
-            {tokens.map((t, i) =>
-              changed[i] ? (
-                <span key={i} className="bg-primary/15 text-foreground">
-                  {t}
-                </span>
-              ) : (
-                <span key={i} className={event.count > 1 ? "opacity-70" : undefined}>
-                  {t}
-                </span>
-              )
+          <div className="min-w-0 flex-1">
+            {/* On a phone a full log line wraps to ten rows and buries the tail,
+                which is where the reason codes live. So lead with the tokens
+                that changed and clamp the full line underneath; from sm up the
+                whole line fits and this summary is hidden. */}
+            {changedText && !expanded && (
+              <p className="break-words text-foreground sm:hidden">{changedText}</p>
             )}
-          </p>
+            <p
+              onClick={toggleUnlessSelecting}
+              className={cn(
+                "cursor-default whitespace-pre-wrap break-words",
+                !expanded && "line-clamp-3 sm:line-clamp-none",
+                LEVEL_TEXT[event.level]
+              )}
+            >
+              {tokens.map((t, i) =>
+                changed[i] ? (
+                  <span key={i} className="bg-primary/15 text-foreground">
+                    {t}
+                  </span>
+                ) : (
+                  <span key={i} className={event.count > 1 ? "opacity-70" : undefined}>
+                    {t}
+                  </span>
+                )
+              )}
+            </p>
+          </div>
           {event.count > 1 && (
             <span
               className="shrink-0 whitespace-nowrap text-mini tabular-nums text-muted-foreground/70"
               title={`${event.count} identical lines, ${fmtDay(event.from)} ${fmtClock(event.from)} to ${fmtClock(event.to)}`}
             >
-              x{event.count} until {fmtClock(event.to)}
+              x{event.count}
+              <span className="hidden sm:inline"> until {fmtClock(event.to)}</span>
             </span>
           )}
         </div>
         {body.length > 0 && (
-          <button
-            onClick={onToggle}
-            className="mt-0.5 block w-full cursor-pointer text-left"
+          <p
+            onClick={toggleUnlessSelecting}
             title={expanded ? "collapse" : "expand"}
+            className="mt-0.5 block cursor-default whitespace-pre-wrap break-words border-l border-border/60 pl-2 text-mini text-muted-foreground"
           >
-            <span className="block whitespace-pre-wrap break-words border-l border-border/60 pl-2 text-mini text-muted-foreground">
-              {shownBody.join("\n")}
-              {hiddenBody > 0 && `\n+ ${hiddenBody} more lines`}
-            </span>
-          </button>
+            {shownBody.join("\n")}
+            {hiddenBody > 0 && `\n+ ${hiddenBody} more lines`}
+          </p>
         )}
       </div>
     </div>
@@ -317,7 +347,9 @@ export function LogsConsole({
   const [selected, setSelected] = useState(initialSource || "");
 
   const [mode, setMode] = useState<Mode>("events");
-  const [lines, setLines] = useState(500);
+  // Events mode collapses hard, so a default that spans most of a day of
+  // once-a-minute heartbeats still renders as a handful of rows.
+  const [lines, setLines] = useState(1000);
   const [query, setQuery] = useState("");
   const [deep, setDeep] = useState(false);
   const [minLevel, setMinLevel] = useState<MinLevel>("");
@@ -444,11 +476,24 @@ export function LogsConsole({
   }, [filtered]);
 
   const errorCount = useMemo(() => filtered.filter((r) => r.level === "error").length, [filtered]);
+  // Plenty of logs carry no timestamps at all; do not keep a dead column for them.
+  const hasTimestamps = useMemo(() => rows.some((r) => r.event.from !== null), [rows]);
 
+  // Raw mode is a tail, so it opens at the newest line. Two frames: the first
+  // commit has not finished laying out a few thousand wrapped rows yet.
   useEffect(() => {
-    if (mode !== "raw" || !rawRef.current) return;
-    rawRef.current.scrollTop = rawRef.current.scrollHeight;
-  }, [mode, tail]);
+    if (mode !== "raw") return;
+    let frame = 0;
+    const pin = () => {
+      const el = rawRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    };
+    frame = requestAnimationFrame(() => {
+      pin();
+      frame = requestAnimationFrame(pin);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [mode, tail, query, minLevel]);
 
   useEffect(() => {
     setExpanded(new Set());
@@ -565,9 +610,11 @@ export function LogsConsole({
 
           <div className="flex flex-wrap items-center gap-x-3 text-mini text-muted-foreground/70">
             <span className="tabular-nums">
-              {mode === "events"
-                ? `${filtered.length} lines collapsed to ${rows.length} events`
-                : `${shownRaw.length} lines`}
+              {mode === "raw"
+                ? `${shownRaw.length} lines`
+                : filtered.length === rawLines.length
+                  ? `${rawLines.length} lines collapsed to ${rows.length} events`
+                  : `${rawLines.length} lines, ${filtered.length} entries, ${rows.length} events`}
             </span>
             {errorCount > 0 && (
               <span className="tabular-nums text-red-500 dark:text-red-400">{errorCount} error lines</span>
@@ -579,6 +626,11 @@ export function LogsConsole({
             )}
             {tail?.capped && <span>payload capped</span>}
             {deep && <span>deep scan: matching lines only</span>}
+            {mode === "events" && rows.length > 0 && (
+              <span title="Raw mode shows each line exactly as written, which is often UTC.">
+                times local
+              </span>
+            )}
             {loadedAt > 0 && <span className="ml-auto">updated {fmtAge(Math.floor(loadedAt / 1000), now)} ago</span>}
           </div>
         </header>
@@ -600,6 +652,7 @@ export function LogsConsole({
                   event={event}
                   tokens={tokens}
                   changed={changed}
+                  showTime={hasTimestamps}
                   expanded={expanded.has(`${event.key}-${event.sample.index}`)}
                   onToggle={() => toggleExpanded(`${event.key}-${event.sample.index}`)}
                 />

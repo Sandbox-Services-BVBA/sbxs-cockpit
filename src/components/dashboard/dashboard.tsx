@@ -18,7 +18,7 @@ import { BackupsWidget } from "./widgets/backups-widget";
 import { CronsWidget } from "./widgets/crons-widget";
 import { UptimeGridWidget } from "./widgets/uptime-grid-widget";
 import { ProjectsWidget } from "./widgets/projects-widget";
-import { IntegrationsWidget } from "./widgets/integrations-widget";
+import { ConnectionsWidget } from "./widgets/connections-widget";
 import { UmamiWidget } from "./widgets/umami-widget";
 import { SobrietyWidget } from "./widgets/sobriety-widget";
 import { WeightWidget } from "./widgets/weight-widget";
@@ -54,7 +54,7 @@ const WALLBOARD_IDS = new Set([
   "domains",
   "servers",
   "backups",
-  "integrations",
+  "connections",
   "crons",
   "services",
   "inbox",
@@ -140,7 +140,7 @@ export function Dashboard() {
       case "umami-byb": return <UmamiWidget site="bookyourbox" title="BookYourBox" />;
       case "servers": return <ServersWidget servers={data!.servers} />;
       case "backups": return <BackupsWidget backups={data!.backups} />;
-      case "integrations": return <IntegrationsWidget integrations={data!.integrations} />;
+      case "connections": return <ConnectionsWidget connections={data!.integrations} />;
       case "crons": return <CronsWidget crons={data!.crons} />;
       case "services": return <ServicesWidget services={data?.services} />;
       case "unbilled": return <UnbilledWidget unbilled={data!.unbilled} />;

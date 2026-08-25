@@ -23,7 +23,7 @@ export type DashboardView = "wall" | WidgetCategory;
 export const VIEW_META: Record<DashboardView, { label: string; description: string }> = {
   alerts: { label: "Attention", description: "Active incidents, warnings, and stale sources" },
   sites: { label: "Client sites", description: "Availability, domains, screens, and traffic" },
-  infra: { label: "Infrastructure", description: "Servers, services, backups, and integrations" },
+  infra: { label: "Infrastructure", description: "Servers, services, backups, and connections" },
   money: { label: "Finance", description: "Billing, cash position, and recorded time" },
   comms: { label: "Communications", description: "Inbox load and automated mail processing" },
   dev: { label: "Development", description: "Active agents, projects, files, and activity" },

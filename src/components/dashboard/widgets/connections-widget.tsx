@@ -160,7 +160,7 @@ function ConnectionRow({ connection }: { connection: IntegrationHealth }) {
 
       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-mini text-muted-foreground">
         <span>checked {checked ?? "never"}</span>
-        <span>flow {flow ?? "never recorded"}</span>
+        <span>flow {flow ?? "not recorded"}</span>
       </div>
 
       {steps.length > 0 && (

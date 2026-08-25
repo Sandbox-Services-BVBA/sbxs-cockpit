@@ -1,6 +1,8 @@
-// Single source of truth for the dashboard. `dashboard.tsx` maps over
-// DEFAULT_WIDGETS (filtered by enabled category, sorted by `order`) instead of
-// hard-coding render blocks, so ordering / categorisation lives here.
+// Which widgets exist, which domain owns each one, and in what order they
+// render. The domain views map over DEFAULT_WIDGETS (filtered by category,
+// sorted by `order`) rather than hard-coding render blocks.
+//
+// Domain labels, descriptions and routes live in lib/views.ts, not here.
 
 export type LayoutMode = "grid" | "columns" | "wall";
 
@@ -26,50 +28,6 @@ export interface WidgetConfig {
   selfFetch?: boolean;
 }
 
-// Filter-bar order: ops-critical first, personal last.
-export const ALL_CATEGORIES: WidgetCategory[] = [
-  "alerts",
-  "sites",
-  "money",
-  "infra",
-  "comms",
-  "dev",
-  "house",
-  "personal",
-];
-
-// What shows on the always-on ops wall by default. Dev/House/Personal are
-// one-tap views, off by default so the wall stays a clean ops overview.
-export const DEFAULT_ENABLED_CATEGORIES: WidgetCategory[] = [
-  "alerts",
-  "sites",
-  "money",
-  "infra",
-  "comms",
-];
-
-export const CATEGORY_LABELS: Record<WidgetCategory, string> = {
-  alerts: "Alerts",
-  sites: "Client Sites",
-  money: "Money",
-  infra: "Infrastructure",
-  comms: "Comms",
-  dev: "Dev",
-  house: "House",
-  personal: "Personal",
-};
-
-export const CATEGORY_COLORS: Record<WidgetCategory, string> = {
-  alerts: "#c43b31",
-  sites: "#237a57",
-  money: "#9a6800",
-  infra: "#376b87",
-  comms: "#18746d",
-  dev: "#3c67a3",
-  house: "#b35d25",
-  personal: "#a8455d",
-};
-
 // Size maps to CSS grid column spans (only used in the "grid" / vertical layout).
 export const SIZE_SPANS: Record<WidgetSize, string> = {
   sm: "col-span-1 md:col-span-1 xl:col-span-2",
@@ -78,7 +36,7 @@ export const SIZE_SPANS: Record<WidgetSize, string> = {
   xl: "col-span-1 md:col-span-2 xl:col-span-6",
 };
 
-// All 26 widgets, ordered by importance for an always-on ops wall.
+// Every widget, ordered by importance for an always-on ops wall.
 export const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "alerts-summary", title: "Active Alerts", category: "alerts", size: "xl", order: 1 },
 
@@ -117,8 +75,8 @@ export const DEFAULT_WIDGETS: WidgetConfig[] = [
   // climate, ventilation, office) itself, so only the overview teaser lives here.
   { id: "home-control", title: "Office", category: "house", size: "md", order: 27, selfFetch: true },
 
-  // Personal — off by default
-  { id: "sobriety", title: "Sobriety", category: "personal", size: "sm", order: 24, selfFetch: true },
+  // Personal — off by default. Sobriety was dropped from the dashboard on
+  // 2026-08-25; /api/health/sobriety and its table stay, the history is Bob's.
   { id: "weight", title: "Weight", category: "personal", size: "md", order: 25, selfFetch: true },
   { id: "btc", title: "Bitcoin", category: "personal", size: "md", order: 26, selfFetch: true },
 ];

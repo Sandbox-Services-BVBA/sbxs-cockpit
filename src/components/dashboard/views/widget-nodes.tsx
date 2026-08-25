@@ -11,7 +11,6 @@ import { UptimeGridWidget } from "../widgets/uptime-grid-widget";
 import { ProjectsWidget } from "../widgets/projects-widget";
 import { ConnectionsWidget } from "../widgets/connections-widget";
 import { UmamiWidget } from "../widgets/umami-widget";
-import { SobrietyWidget } from "../widgets/sobriety-widget";
 import { WeightWidget } from "../widgets/weight-widget";
 import { DomainsWidget } from "../widgets/domains-widget";
 import { InboxWidget } from "../widgets/inbox-widget";
@@ -65,7 +64,6 @@ export function widgetNode(id: string, { data, layout, agentStale }: WidgetConte
     case "projects": return <ProjectsWidget projects={data!.projects} />;
     case "file-explorer": return <FileTreeWidget layout={layout} />;
     case "home-control": return <HomeControlWidget />;
-    case "sobriety": return <SobrietyWidget />;
     case "weight": return <WeightWidget />;
     case "btc": return <BtcWidget />;
     default: return null;

@@ -43,6 +43,49 @@
   --color-sbxs-blue: var(--sbxs-blue);
   --color-sbxs-blue-light: var(--sbxs-blue-light);
 
+  /* --- Ported from my-home ------------------------------------------------
+     my-home carries its whole visual language in :root custom properties and
+     has no UI dependency at all. Tailwind v4 is CSS-first, so the same
+     properties register here as theme values and become utilities without a
+     rewrite. my-home is dark-only; every role below is defined twice, on bare
+     :root for paper and in .dark for ink, so light mode does not regress. */
+  --font-serif: var(--serif);
+
+  /* Text and edge roles. `ink` is the reading colour, `ink-muted` secondary
+     copy, `ink-quiet` mono eyebrows and timestamps. `line` separates, and
+     `line-soft` merely groups. */
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-quiet: var(--ink-quiet);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-pane: var(--pane);
+  --color-pane-raised: var(--pane-raised);
+
+  /* One accent per domain, assigned in --domain-accent below. Never used to
+     carry meaning on its own: status still reads from a word or a chip. */
+  --color-teal: var(--teal);
+  --color-amber: var(--amber);
+  --color-blue: var(--blue);
+  --color-green: var(--green);
+  --color-rose: var(--rose);
+  --color-purple: var(--purple);
+  --color-coral: var(--coral);
+  --color-sand: var(--sand);
+
+  /* The PWA runs full-bleed under the iPhone clock and home indicator. Fixed
+     and full-width elements clear those strips through these tokens, never a
+     raw env() call, so a test can simulate a notched device by redefining
+     them. --header-total is the header plus the status strip above it: use it
+     for any offset or remaining-height maths. */
+  --spacing-safe-top: var(--safe-top);
+  --spacing-safe-right: var(--safe-right);
+  --spacing-safe-bottom: var(--safe-bottom);
+  --spacing-safe-left: var(--safe-left);
+  --spacing-header: var(--header-height);
+  --spacing-header-total: var(--header-total);
+  --spacing-navbar: var(--navbar-height);
+
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
@@ -79,6 +122,48 @@
 }
 
 :root {
+  color-scheme: light;
+
+  /* Typography. The serif is the system face my-home uses, so Bob's Mac and
+     phone render the headings exactly as they do there; Newsreader is the
+     web fallback for everything else. Mono stays JetBrains for labels. */
+  --serif: "Iowan Old Style", "Tiempos Headline", var(--font-display), Palatino,
+    Georgia, serif;
+  --sans: var(--font-ui), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: var(--font-code), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --header-height: 68px;
+  --header-total: calc(var(--header-height) + var(--safe-top));
+  --navbar-height: 62px;
+
+  /* Paper. Warm off-white ground, deep green-black ink, accents darkened
+     enough to hold their own against it. */
+  --ink: #172320;
+  --ink-muted: rgba(23, 35, 32, 0.72);
+  --ink-quiet: rgba(23, 35, 32, 0.5);
+  --line: rgba(21, 59, 62, 0.17);
+  --line-soft: rgba(21, 59, 62, 0.085);
+  --pane: #fbfaf6;
+  --pane-raised: #ffffff;
+  --teal: #2c7a70;
+  --amber: #97690c;
+  --blue: #2f6ba8;
+  --green: #2c7a4d;
+  --rose: #b0463f;
+  --purple: #6a4ea4;
+  --coral: #d1442c;
+  --sand: #8a6d1f;
+  --panel-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.46) inset,
+    0 10px 32px rgba(17, 40, 44, 0.045);
+  --panel-shadow-hover:
+    0 1px 0 rgba(255, 255, 255, 0.5) inset,
+    0 14px 38px rgba(17, 40, 44, 0.07);
+
   --sbxs-coral: #f15f48;
   --sbxs-blue: #153b3e;
   --sbxs-blue-light: #487f83;
@@ -118,38 +203,64 @@
 }
 
 .dark {
-  --background: #0c1719;
-  --foreground: #e7ece8;
-  --card: #122326;
-  --card-foreground: #e7ece8;
-  --popover: #15282b;
-  --popover-foreground: #e7ece8;
+  color-scheme: dark;
+
+  /* Ink. my-home's warm off-white on a near-black that carries the faintest
+     trace of the brand teal, with its pastel accent set carried over intact. */
+  --ink: #fdf8ef;
+  --ink-muted: rgba(253, 248, 239, 0.7);
+  --ink-quiet: rgba(253, 248, 239, 0.46);
+  --line: rgba(255, 255, 255, 0.14);
+  --line-soft: rgba(255, 255, 255, 0.075);
+  --pane: #1b1e23;
+  --pane-raised: #22262c;
+  --teal: #78d4c1;
+  --amber: #f4bd73;
+  --blue: #9bc8f7;
+  --green: #9ad5a8;
+  --rose: #f0a29c;
+  --purple: #c5a8f0;
+  --coral: #f8836c;
+  --sand: #dcc38b;
+  --panel-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.035) inset,
+    0 12px 34px rgba(0, 0, 0, 0.34);
+  --panel-shadow-hover:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 18px 46px rgba(0, 0, 0, 0.44);
+
+  --background: #16181c;
+  --foreground: #fdf8ef;
+  --card: #1b1e23;
+  --card-foreground: #fdf8ef;
+  --popover: #22262c;
+  --popover-foreground: #fdf8ef;
   --primary: #f15f48;
   --primary-foreground: #ffffff;
-  --secondary: #1a3033;
-  --secondary-foreground: #e7ece8;
-  --muted: #1a3033;
-  --muted-foreground: #97a9a4;
-  --accent: #20383b;
-  --accent-foreground: #f3f6f3;
+  --secondary: #262a31;
+  --secondary-foreground: #fdf8ef;
+  --muted: #23262c;
+  --muted-foreground: rgba(253, 248, 239, 0.62);
+  --accent: #2a2e36;
+  --accent-foreground: #fdf8ef;
   --destructive: #f06459;
-  --border: #294144;
-  --input: #365054;
+  --border: #2e3239;
+  --input: #3a3f48;
   --ring: #f15f48;
-  --chart-1: #f36b55;
-  --chart-2: #69a7b1;
-  --chart-3: #54b985;
-  --chart-4: #d6a64a;
-  --chart-5: #d47c92;
-  --sidebar: #081214;
-  --sidebar-foreground: #eef3ef;
+  --chart-1: #f8836c;
+  --chart-2: #78d4c1;
+  --chart-3: #9ad5a8;
+  --chart-4: #f4bd73;
+  --chart-5: #c5a8f0;
+  --sidebar: #101215;
+  --sidebar-foreground: #fdf8ef;
   --sidebar-primary: #f15f48;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #193034;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #263d41;
+  --sidebar-accent: #23262c;
+  --sidebar-accent-foreground: #fdf8ef;
+  --sidebar-border: #2e3239;
   --sidebar-ring: #f15f48;
-  --grid-line: rgba(218, 236, 230, 0.028);
+  --grid-line: rgba(253, 248, 239, 0.026);
 }
 
 @layer base {
@@ -158,9 +269,10 @@
   }
 
   html {
-    @apply font-sans;
+    font-family: var(--sans);
     min-width: 320px;
     scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
@@ -173,6 +285,10 @@
     background-size: auto, 32px 32px, 32px 32px;
     font-feature-settings: "ss01" 1, "cv02" 1, "cv03" 1;
     text-rendering: optimizeLegibility;
+    /* The bottom bar is fixed; the document must never gain a sideways
+       scrollbar from a pane that overflows its column. */
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
   }
 
   button,
@@ -189,14 +305,44 @@
   }
 }
 
+/* --- Domain accents -------------------------------------------------------
+   One colour per domain, set once on a [data-domain] container and read by
+   everything inside it as var(--domain-accent). Nothing depends on the accent
+   to convey state: severity is always carried by a word or a chip as well. */
+[data-domain] { --domain-accent: var(--ink-quiet); }
+[data-domain="house"] { --domain-accent: var(--amber); }
+[data-domain="alerts"] { --domain-accent: var(--coral); }
+[data-domain="sites"] { --domain-accent: var(--green); }
+[data-domain="infra"] { --domain-accent: var(--blue); }
+[data-domain="money"] { --domain-accent: var(--sand); }
+[data-domain="comms"] { --domain-accent: var(--purple); }
+[data-domain="dev"] { --domain-accent: var(--teal); }
+[data-domain="personal"] { --domain-accent: var(--rose); }
+
+/* The mono label that sits above a heading. Ported from my-home, scaled up
+   two steps because the cockpit is read at desk distance, not arm's length. */
+.eyebrow {
+  color: var(--ink-quiet);
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.serif {
+  font-family: var(--serif);
+  letter-spacing: -0.02em;
+  font-weight: 500;
+}
+
 .cockpit-panel,
 .cockpit-metric,
 .cockpit-posture {
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
   background: color-mix(in srgb, var(--card) 94%, transparent);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.46) inset,
-    0 10px 32px rgba(17, 40, 44, 0.045);
+  box-shadow: var(--panel-shadow);
   backdrop-filter: blur(8px);
 }
 
@@ -206,9 +352,7 @@
 }
 
 .cockpit-panel:hover {
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.5) inset,
-    0 14px 38px rgba(17, 40, 44, 0.07);
+  box-shadow: var(--panel-shadow-hover);
 }
 
 .cockpit-metric,
@@ -225,7 +369,7 @@
 .cockpit-metric:hover {
   transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--primary) 24%, var(--border));
-  box-shadow: 0 16px 40px rgba(17, 40, 44, 0.08);
+  box-shadow: var(--panel-shadow-hover);
 }
 
 .cockpit-posture {

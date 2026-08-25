@@ -4,29 +4,18 @@ import { useState } from "react";
 import { Check, ChevronDown, Copy } from "lucide-react";
 import { WidgetTile } from "../widget-tile";
 import { cn } from "@/lib/utils";
-import { isSourceStale } from "@/lib/dashboard-health";
+import {
+  ago,
+  connectionState,
+  fixSteps,
+  sortConnections,
+  CONNECTION_LABEL as STATE_LABEL,
+  type ConnectionState,
+} from "@/lib/connection-state";
 import type { IntegrationHealth } from "@/types";
 
-// A connection is never reported "connected" because a process is alive. It is
-// reported from its own state field, with the moment we last asked and the
-// moment data last actually moved shown separately. A row with no fresh check
-// behind it reads unverified rather than green.
-
-type ConnectionState = "critical" | "unverified" | "warning" | "ok";
-
-const STATE_ORDER: Record<ConnectionState, number> = {
-  critical: 0,
-  unverified: 1,
-  warning: 2,
-  ok: 3,
-};
-
-const STATE_LABEL: Record<ConnectionState, string> = {
-  critical: "Not working",
-  unverified: "Unverified",
-  warning: "Degraded",
-  ok: "Connected",
-};
+// The wallboard's rendering of a connection. Infrastructure has its own
+// converted pane; both read the same state rules from lib/connection-state.
 
 const STATE_CHIP: Record<ConnectionState, string> = {
   critical: "border-red-600/40 bg-red-600/12 text-red-700 dark:text-red-300",
@@ -41,42 +30,6 @@ const STATE_ROW: Record<ConnectionState, string> = {
   warning: "border-amber-600/30 bg-amber-600/[0.05]",
   ok: "border-border/65",
 };
-
-function tsOf(value: string | null): number | null {
-  if (!value) return null;
-  // SQLite writes "YYYY-MM-DD HH:MM:SS" in UTC; the agent sends ISO with offset.
-  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)
-    ? `${value.replace(" ", "T")}Z`
-    : value;
-  const parsed = Date.parse(normalized);
-  return Number.isNaN(parsed) ? null : parsed;
-}
-
-function ago(value: string | null): string | null {
-  const parsed = tsOf(value);
-  if (parsed === null) return null;
-  const seconds = Math.max(0, Math.round((Date.now() - parsed) / 1000));
-  if (seconds < 60) return `${seconds}s ago`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
-}
-
-function stateOf(connection: IntegrationHealth): ConnectionState {
-  // A stale reading cannot support a green row. A stale bad reading still
-  // stands: nothing has since said the connection recovered.
-  if (connection.status === "critical") return "critical";
-  if (connection.status === "warning") return "warning";
-  return isSourceStale(connection.last_check_at) ? "unverified" : "ok";
-}
-
-/** Split an agent fix string into steps, dropping any "1. " numbering. */
-function fixSteps(fix: string): string[] {
-  return fix
-    .split("\n")
-    .map((line) => line.replace(/^\s*\d+[.)]\s*/, "").trim())
-    .filter(Boolean);
-}
 
 function CopyStep({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -105,7 +58,7 @@ function CopyStep({ text }: { text: string }) {
 }
 
 function ConnectionRow({ connection }: { connection: IntegrationHealth }) {
-  const state = stateOf(connection);
+  const state = connectionState(connection);
   const unhealthy = state !== "ok";
   const steps = connection.fix ? fixSteps(connection.fix) : [];
   // The fix belongs on screen at the moment the failure is seen, not one tap
@@ -207,12 +160,8 @@ export function ConnectionsWidget({ connections }: { connections: IntegrationHea
     );
   }
 
-  const sorted = [...connections].sort(
-    (a, b) =>
-      STATE_ORDER[stateOf(a)] - STATE_ORDER[stateOf(b)] ||
-      a.integration_name.localeCompare(b.integration_name)
-  );
-  const working = sorted.filter((connection) => stateOf(connection) === "ok").length;
+  const sorted = sortConnections(connections);
+  const working = sorted.filter((connection) => connectionState(connection) === "ok").length;
 
   return (
     <WidgetTile

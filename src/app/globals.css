@@ -869,6 +869,489 @@
   color: var(--green);
 }
 
+/* --- Panes ----------------------------------------------------------------
+   The converted language, currently worn by Infrastructure. A pane is a
+   bordered block with a serif title and a mono readout, and it is exactly as
+   tall as its contents: nothing here is stretched to match a neighbour.
+
+   Tone is carried by a word in every case (the readout, the row's state word)
+   and only reinforced by --pane-tone, so the panes survive being read in
+   greyscale. */
+
+.pane {
+  --pane-tone: var(--ink-quiet);
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--pane) 92%, transparent);
+  box-shadow: var(--panel-shadow);
+}
+
+.pane[data-tone="ok"] { --pane-tone: var(--green); }
+.pane[data-tone="warn"] { --pane-tone: var(--amber); }
+.pane[data-tone="bad"] { --pane-tone: var(--rose); }
+
+.pane__head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 13px 16px 11px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+/* The accent tick: the only place the domain colour appears as pure
+   decoration, and it says which domain you are in, not how it is doing. */
+.pane__head::before {
+  content: "";
+  align-self: center;
+  width: 3px;
+  height: 17px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: var(--domain-accent);
+}
+
+.pane__title {
+  min-width: 0;
+  flex: 1;
+  font-size: 1.0625rem;
+  line-height: 1.1;
+}
+
+.pane__readout {
+  flex-shrink: 0;
+  color: var(--pane-tone);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.pane__body {
+  padding: 12px 16px 14px;
+}
+
+.pane__empty {
+  color: var(--ink-quiet);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.infra-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.infra-grid__stack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pane--wide {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 1100px) {
+  .infra-grid {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  }
+}
+
+/* The rollup strip: four counts, each one a fraction so the denominator is
+   visible. A bare "3" would not say three out of how many. */
+.tally-strip {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 780px) {
+  .tally-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.tally {
+  min-width: 0;
+  padding: 12px 14px 13px;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--pane) 62%, transparent);
+}
+
+.tally .eyebrow {
+  color: var(--domain-accent);
+}
+
+.tally__value {
+  margin-top: 9px;
+  font-size: 1.75rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.tally__note {
+  margin-top: 5px;
+  color: var(--ink-quiet);
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+/* --- Server nodes --------------------------------------------------------- */
+
+.node-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 208px), 1fr));
+}
+
+.node {
+  --node-tone: var(--green);
+  min-width: 0;
+  padding: 11px 12px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+}
+
+.node[data-tone="warn"] {
+  --node-tone: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 34%, transparent);
+}
+
+.node[data-tone="bad"] {
+  --node-tone: var(--rose);
+  border-color: color-mix(in srgb, var(--rose) 40%, transparent);
+}
+
+.node__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+.node__name {
+  overflow: hidden;
+  font-size: 0.9375rem;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node__state {
+  flex-shrink: 0;
+  color: var(--ink-quiet);
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.05em;
+}
+
+.node__state--flag {
+  color: var(--node-tone);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.node__foot {
+  margin-top: 9px;
+  color: var(--ink-quiet);
+  font-size: 0.6875rem;
+  line-height: 1.3;
+}
+
+.meter {
+  --meter-tone: var(--green);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2.5px 0;
+}
+
+.meter[data-tone="warn"] { --meter-tone: var(--amber); }
+.meter[data-tone="bad"] { --meter-tone: var(--rose); }
+
+.meter__label {
+  width: 24px;
+  flex-shrink: 0;
+  color: var(--ink-quiet);
+  font-family: var(--mono);
+  font-size: 0.5625rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.meter__track {
+  position: relative;
+  height: 5px;
+  flex: 1;
+  overflow: hidden;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--ink) 11%, transparent);
+}
+
+.meter__fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--meter-tone);
+}
+
+.meter__value {
+  width: 30px;
+  flex-shrink: 0;
+  color: var(--ink-muted);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Status lists --------------------------------------------------------- */
+
+.status-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.status-row {
+  --row-tone: var(--green);
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 8px 0;
+}
+
+.status-row + .status-row {
+  border-top: 1px solid var(--line-soft);
+}
+
+.status-row[data-tone="warn"] { --row-tone: var(--amber); }
+.status-row[data-tone="bad"] { --row-tone: var(--rose); }
+.status-row[data-tone="idle"] { --row-tone: var(--ink-quiet); }
+
+.status-row__dot {
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--row-tone);
+}
+
+.status-row__main {
+  min-width: 0;
+  flex: 1;
+}
+
+.status-row__name {
+  overflow: hidden;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-row__note {
+  margin-top: 2px;
+  color: var(--ink-quiet);
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.status-row__right {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  font-family: var(--mono);
+}
+
+.status-row__age {
+  color: var(--ink-quiet);
+  font-size: 0.6875rem;
+  white-space: nowrap;
+}
+
+.status-row__word {
+  color: var(--row-tone);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+/* --- Connections ---------------------------------------------------------- */
+
+/* The connections pane runs the full width, so its cards flow into as many
+   columns as fit rather than making one very long ribbon. A card never splits
+   across a column break: an open fix has to stay with its connection. */
+.conn-list {
+  column-gap: 8px;
+  column-width: 330px;
+}
+
+.conn {
+  margin-bottom: 8px;
+  break-inside: avoid;
+  --conn-tone: var(--green);
+  padding: 10px 11px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+}
+
+.conn[data-tone="warn"] {
+  --conn-tone: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 34%, transparent);
+  background: color-mix(in srgb, var(--amber) 6%, transparent);
+}
+
+.conn[data-tone="bad"] {
+  --conn-tone: var(--rose);
+  border-color: color-mix(in srgb, var(--rose) 38%, transparent);
+  background: color-mix(in srgb, var(--rose) 6%, transparent);
+}
+
+.conn[data-tone="idle"] {
+  --conn-tone: var(--ink-quiet);
+}
+
+.conn__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 9px;
+}
+
+.conn__name {
+  overflow: hidden;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conn__purpose {
+  margin-top: 2px;
+  color: var(--ink-quiet);
+  font-size: 0.6875rem;
+  line-height: 1.35;
+}
+
+.conn__chip {
+  flex-shrink: 0;
+  padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, var(--conn-tone) 42%, transparent);
+  border-radius: 6px;
+  color: var(--conn-tone);
+  font-family: var(--mono);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.conn__detail {
+  margin-top: 7px;
+  color: var(--ink-quiet);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.conn__detail--state {
+  color: var(--conn-tone);
+}
+
+.conn__times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 7px;
+  color: var(--ink-quiet);
+  font-family: var(--mono);
+  font-size: 0.625rem;
+}
+
+.conn__fix {
+  margin-top: 9px;
+}
+
+.fix__toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-quiet);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  transition: color 150ms ease;
+}
+
+.fix__toggle:hover {
+  color: var(--ink);
+}
+
+.fix__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 7px;
+}
+
+.fix__steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.fix__n {
+  width: 12px;
+  flex-shrink: 0;
+  margin-top: 4px;
+  color: var(--ink-quiet);
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.fix__steps code {
+  min-width: 0;
+  flex: 1;
+  padding: 5px 7px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.fix__copy {
+  flex-shrink: 0;
+  padding: 4px;
+  border-radius: 5px;
+  color: var(--ink-quiet);
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.fix__copy:hover {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--ink);
+}
+
 .cockpit-panel,
 .cockpit-metric,
 .cockpit-posture {

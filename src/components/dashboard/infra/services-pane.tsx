@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { ago } from "@/lib/connection-state";
 import type { Service } from "@/types";
@@ -33,6 +34,17 @@ function subscribe(listener: () => void) {
 const getSnapshot = () => snapshot;
 const getServerSnapshot = () => 0;
 
+function LogsLink() {
+  return (
+    <Link
+      href="/infra/logs"
+      className="mt-3 block border-t border-line-soft pt-3 font-mono text-mini text-ink-quiet hover:text-ink"
+    >
+      Open the complete service log console
+    </Link>
+  );
+}
+
 function uptimeLabel(seconds: number): string {
   if (!seconds || seconds < 0) return "running";
   if (seconds < 60) return `up ${seconds}s`;
@@ -49,6 +61,7 @@ export function ServicesPane({ services }: { services: Service[] | null | undefi
     return (
       <Pane title="Services" readout="no report">
         <PaneEmpty>The agent has not reported the service list on this run.</PaneEmpty>
+        <LogsLink />
       </Pane>
     );
   }
@@ -57,6 +70,7 @@ export function ServicesPane({ services }: { services: Service[] | null | undefi
     return (
       <Pane title="Services" readout="none tracked">
         <PaneEmpty>The agent reported an empty service list.</PaneEmpty>
+        <LogsLink />
       </Pane>
     );
   }
@@ -94,6 +108,7 @@ export function ServicesPane({ services }: { services: Service[] | null | undefi
           );
         })}
       </ul>
+      <LogsLink />
     </Pane>
   );
 }

@@ -76,7 +76,7 @@ export function LogsWidget({ layout = "grid" }: { layout?: "grid" | "columns" | 
         title="Service Logs"
         size="md"
         headerRight={
-          <Link href="/logs" className="text-mini text-muted-foreground hover:text-foreground">
+          <Link href="/infra/logs" className="text-mini text-muted-foreground hover:text-foreground">
             open console
           </Link>
         }
@@ -84,7 +84,7 @@ export function LogsWidget({ layout = "grid" }: { layout?: "grid" | "columns" | 
         {locked && (
           <p className="text-petite text-muted-foreground">
             Locked.{" "}
-            <Link href="/logs" className="underline hover:text-foreground">
+            <Link href="/infra/logs" className="underline hover:text-foreground">
               Enter the access key
             </Link>{" "}
             to read service logs.

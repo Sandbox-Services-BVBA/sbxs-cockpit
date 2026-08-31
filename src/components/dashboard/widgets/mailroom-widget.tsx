@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { WidgetTile } from "../widget-tile";
 
 interface MailroomData {
@@ -31,7 +32,14 @@ export function MailroomWidget({ mailroom }: { mailroom: MailroomData | null }) 
     <WidgetTile
       title="Mailroom"
       size="sm"
-      headerRight={<span className="text-mini font-mono text-muted-foreground">{mailroom.total} total</span>}
+      headerRight={
+        <div className="flex items-center gap-2 font-mono text-mini text-muted-foreground">
+          <span>{mailroom.total} total</span>
+          <Link href="/comms/mailroom" className="hover:text-foreground">
+            open trail
+          </Link>
+        </div>
+      }
     >
       <div className="space-y-1.5">
         <div className="flex items-baseline gap-1.5">

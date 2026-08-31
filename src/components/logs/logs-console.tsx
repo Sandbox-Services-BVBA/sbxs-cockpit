@@ -336,9 +336,11 @@ function EventRow({
 // ─── Console ────────────────────────────────────────────────────────────────
 export function LogsConsole({
   initialSource,
+  serviceFilter,
   className,
 }: {
   initialSource?: string;
+  serviceFilter?: string;
   className?: string;
 }) {
   const [unlocked, setUnlocked] = useState(false);
@@ -375,10 +377,21 @@ export function LogsConsole({
 
   const loadSources = useCallback(async () => {
     try {
-      const list = await fetchLogSources();
+      const all = await fetchLogSources();
+      const list = serviceFilter
+        ? all.filter((source) => source.service === serviceFilter)
+        : all;
       setSources(list);
       setSourcesErr("");
-      setSelected((cur) => cur || list.find((s) => s.live)?.id || list[0]?.id || "");
+      setSelected((cur) => {
+        if (cur && list.some((source) => source.id === cur)) return cur;
+        return (
+          list.find((source) => source.id === initialSource)?.id ||
+          list.find((source) => source.live)?.id ||
+          list[0]?.id ||
+          ""
+        );
+      });
     } catch (e) {
       const err = e as { status?: number; message?: string };
       if (err.status === 401) {
@@ -389,7 +402,7 @@ export function LogsConsole({
         setSourcesErr(err.message || "Failed to list sources");
       }
     }
-  }, []);
+  }, [initialSource, serviceFilter]);
 
   useEffect(() => {
     if (!unlocked) return;

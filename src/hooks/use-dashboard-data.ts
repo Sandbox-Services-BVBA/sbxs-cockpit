@@ -1,7 +1,19 @@
 "use client";
 
 import useSWR from "swr";
-import type { ServerHealth, BackupStatus, UptimeCheck, CronJob, Project, IntegrationHealth, Alert, Service, AiUsage } from "@/types";
+import type {
+  AiUsage,
+  Alert,
+  BackupStatus,
+  CronJob,
+  GpuMetricHistory,
+  GpuStatus,
+  IntegrationHealth,
+  Project,
+  ServerHealth,
+  Service,
+  UptimeCheck,
+} from "@/types";
 
 export interface DashboardFreshness {
   agent: string | null;
@@ -11,6 +23,8 @@ export interface DashboardFreshness {
 
 export interface DashboardData {
   servers: ServerHealth[];
+  gpu: GpuStatus | null;
+  gpuHistory: GpuMetricHistory[];
   services: Service[] | null;
   backups: BackupStatus[];
   uptime: UptimeCheck[];

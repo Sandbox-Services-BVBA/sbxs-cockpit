@@ -16,6 +16,7 @@ const WALLBOARD_IDS = new Set([
   "cityscreens",
   "domains",
   "servers",
+  "gpu",
   "backups",
   "connections",
   "crons",

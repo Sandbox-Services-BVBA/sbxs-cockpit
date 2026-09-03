@@ -27,6 +27,7 @@ import { AgentsWidget } from "../widgets/agents-widget";
 import { AiUsageWidget } from "../widgets/ai-usage-widget";
 import { FileTreeWidget } from "../widgets/file-explorer-widget";
 import { HomeControlWidget } from "../widgets/home-control-widget";
+import { GpuWidget } from "../widgets/gpu-widget";
 
 export interface WidgetContext {
   data: DashboardData | null;
@@ -48,6 +49,7 @@ export function widgetNode(id: string, { data, layout, agentStale }: WidgetConte
     case "umami-plaq": return <UmamiWidget site="plaqstudio" title="Plaq Studio" />;
     case "umami-byb": return <UmamiWidget site="bookyourbox" title="BookYourBox" />;
     case "servers": return <ServersWidget servers={data!.servers} />;
+    case "gpu": return <GpuWidget gpu={data!.gpu} history={data!.gpuHistory} />;
     case "backups": return <BackupsWidget backups={data!.backups} />;
     case "connections": return <ConnectionsWidget connections={data!.integrations} />;
     case "crons": return <CronsWidget crons={data!.crons} />;

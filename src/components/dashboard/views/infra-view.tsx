@@ -9,6 +9,7 @@ import { BackupsPane } from "../infra/backups-pane";
 import { ConnectionsPane } from "../infra/connections-pane";
 import { CronsPane } from "../infra/crons-pane";
 import { ServicesPane } from "../infra/services-pane";
+import { GpuWidget } from "../widgets/gpu-widget";
 import { SourceFreshnessNotice, ViewError, ViewLede, ViewSkeleton } from "./view-chrome";
 
 function Tally({ label, value, note }: { label: string; value: string; note: string }) {
@@ -88,6 +89,7 @@ export function InfraView() {
           pane that carries a fix and is read most often. */}
       <div className="infra-grid">
         <ServersPane servers={data?.servers} />
+        <GpuWidget gpu={data?.gpu ?? null} history={data?.gpuHistory ?? []} />
         <ServicesPane services={services} />
         <div className="infra-grid__stack">
           <BackupsPane backups={data?.backups} />

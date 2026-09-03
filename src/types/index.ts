@@ -12,6 +12,30 @@ export interface ServerHealth {
   checked_at: string;
 }
 
+export interface GpuDeviceMetric {
+  gpu_index: number;
+  gpu_uuid: string;
+  gpu_name: string;
+  utilization_percent: number | null;
+  memory_used_mb: number | null;
+  memory_total_mb: number | null;
+  temperature_c: number | null;
+  power_draw_w: number | null;
+  power_limit_w: number | null;
+}
+
+export interface GpuStatus {
+  available: boolean;
+  devices: GpuDeviceMetric[];
+  captured_at: string;
+  error?: string | null;
+}
+
+export interface GpuMetricHistory extends GpuDeviceMetric {
+  id: number;
+  checked_at: string;
+}
+
 export interface BackupStatus {
   id: number;
   backup_name: string;
@@ -156,6 +180,7 @@ export interface StatusPayload {
   source: string;
   timestamp: string;
   servers?: Omit<ServerHealth, "id" | "checked_at">[];
+  gpu?: GpuStatus;
   backups?: Omit<BackupStatus, "id" | "checked_at">[];
   crons?: Omit<CronJob, "id" | "checked_at">[];
   projects?: Omit<Project, "id" | "checked_at">[];

@@ -37,6 +37,39 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // GPU is optional so older collectors keep working. The current envelope is
+  // stored below in kv_store even when nvidia-smi is unavailable; numeric
+  // history is appended only for devices that actually reported a sample.
+  if (payload.gpu?.available && Array.isArray(payload.gpu.devices)) {
+    const stmt = db.prepare(`
+      INSERT INTO gpu_metric_history (gpu_index, gpu_uuid, gpu_name,
+        utilization_percent, memory_used_mb, memory_total_mb, temperature_c,
+        power_draw_w, power_limit_w)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const finiteOrNull = (value: unknown) =>
+      typeof value === "number" && Number.isFinite(value) ? value : null;
+
+    for (const gpu of payload.gpu.devices) {
+      if (!Number.isInteger(gpu.gpu_index) || !gpu.gpu_uuid || !gpu.gpu_name) continue;
+      stmt.run(
+        gpu.gpu_index,
+        gpu.gpu_uuid,
+        gpu.gpu_name,
+        finiteOrNull(gpu.utilization_percent),
+        finiteOrNull(gpu.memory_used_mb),
+        finiteOrNull(gpu.memory_total_mb),
+        finiteOrNull(gpu.temperature_c),
+        finiteOrNull(gpu.power_draw_w),
+        finiteOrNull(gpu.power_limit_w)
+      );
+    }
+
+    // The dashboard reads 24 hours. Keeping 30 days leaves headroom for later
+    // period controls without allowing this five-minute table to grow forever.
+    db.prepare("DELETE FROM gpu_metric_history WHERE checked_at < datetime('now', '-30 days')").run();
+  }
+
   // Ingest backup status
   if (payload.backups) {
     const stmt = db.prepare(`
@@ -142,7 +175,7 @@ export async function POST(request: NextRequest) {
 
   const kvStmt = db.prepare("INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)");
   const body = payload as unknown as Record<string, unknown>;
-  for (const key of ["inboxes", "domains", "cityscreens", "mailroom", "unbilled", "timeentries", "services", "ai_usage"]) {
+  for (const key of ["inboxes", "domains", "cityscreens", "mailroom", "unbilled", "timeentries", "services", "ai_usage", "gpu"]) {
     if (body[key]) {
       kvStmt.run(key, JSON.stringify(body[key]));
     }

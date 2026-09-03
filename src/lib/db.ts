@@ -94,6 +94,20 @@ function initSchema(db: Database.Database) {
       checked_at DATETIME DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS gpu_metric_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      gpu_index INTEGER NOT NULL,
+      gpu_uuid TEXT NOT NULL,
+      gpu_name TEXT NOT NULL,
+      utilization_percent REAL,
+      memory_used_mb REAL,
+      memory_total_mb REAL,
+      temperature_c REAL,
+      power_draw_w REAL,
+      power_limit_w REAL,
+      checked_at DATETIME DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS backup_status (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       backup_name TEXT NOT NULL,
@@ -188,6 +202,8 @@ function initSchema(db: Database.Database) {
 
     CREATE INDEX IF NOT EXISTS idx_server_health_checked
       ON server_health(server_name, checked_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_gpu_metric_history_checked
+      ON gpu_metric_history(gpu_uuid, checked_at DESC);
     CREATE INDEX IF NOT EXISTS idx_uptime_checked
       ON uptime_checks(site_url, checked_at DESC);
     CREATE INDEX IF NOT EXISTS idx_alerts_active

@@ -1,5 +1,15 @@
 import { getDb } from "@/lib/db";
-import type { ServerHealth, BackupStatus, UptimeCheck, CronJob, Project, IntegrationHealth, Alert } from "@/types";
+import type {
+  Alert,
+  BackupStatus,
+  CronJob,
+  GpuMetricHistory,
+  GpuStatus,
+  IntegrationHealth,
+  Project,
+  ServerHealth,
+  UptimeCheck,
+} from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -134,6 +144,16 @@ export async function GET() {
     ? servicesRaw.map((s) => ({ ...s, last_beat: beatMap.get(s.name as string) ?? null }))
     : null;
 
+  const gpu = getKv("gpu") as GpuStatus | null;
+  const gpuHistory = db.prepare(`
+    SELECT id, gpu_index, gpu_uuid, gpu_name, utilization_percent,
+      memory_used_mb, memory_total_mb, temperature_c, power_draw_w,
+      power_limit_w, checked_at
+    FROM gpu_metric_history
+    WHERE checked_at >= datetime('now', '-24 hours')
+    ORDER BY checked_at ASC, gpu_index ASC
+  `).all() as GpuMetricHistory[];
+
   const generatedAt = new Date().toISOString();
   const freshness = {
     // Server health is present in every cockpit-agent payload and is therefore
@@ -149,6 +169,8 @@ export async function GET() {
 
   return Response.json({
     servers,
+    gpu,
+    gpuHistory,
     services,
     backups,
     uptime,

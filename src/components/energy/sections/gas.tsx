@@ -6,7 +6,7 @@ import { Flame } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, YAxis, XAxis, Tooltip, CartesianGrid } from "recharts";
 import { Section, Metric } from "../ui";
 import { daysToCover, pointsInRange, sumBy } from "@/lib/energy-house";
-import type { Range } from "@/lib/energy-range";
+import { useHomeConsole } from "@/components/dashboard/home/home-console-provider";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const REFRESH_MS = 60000; // the P1 gas register only ticks every ~5 min
@@ -72,7 +72,8 @@ function GasTooltip({
 
 // Gas follows the global timeframe like every other period chart. The endpoint
 // only speaks trailing `days`, so we over-fetch and clip to the selected range.
-export function Gas({ range }: { range: Range }) {
+export function Gas() {
+  const { range } = useHomeConsole();
   const days = daysToCover(range);
   const { data } = useSWR<GasData>(`/api/energy?gas=1&days=${days}`, fetcher, {
     refreshInterval: range.canNext ? 0 : REFRESH_MS,

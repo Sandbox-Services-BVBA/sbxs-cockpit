@@ -16,6 +16,7 @@ import {
 import { Section, LivePulse } from "../ui";
 import { cn } from "@/lib/utils";
 import type { Range } from "@/lib/energy-range";
+import { useHomeConsole } from "@/components/dashboard/home/home-console-provider";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -81,7 +82,8 @@ const BYPASS_LABEL: Record<string, string> = {
   closing: "sluit...",
 };
 
-export function Ventilation({ range }: { range: Range }) {
+export function Ventilation() {
+  const { range } = useHomeConsole();
   const [tick, setTick] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);

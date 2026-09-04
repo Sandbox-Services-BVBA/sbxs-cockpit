@@ -3,9 +3,11 @@ import { BOTTOM_BAR_IDS, VIEWS } from "@/lib/views";
 import { DEFAULT_WIDGETS } from "@/lib/widget-registry";
 import { getModule, MODULE_BY_ID, MODULE_CATALOG } from "./catalog";
 import { DEFAULT_DOMAIN_ORDER, DEFAULT_LAYOUTS, DEFAULT_MOBILE_PINS } from "./default-layouts";
+import { HOME_MODULES } from "./home-modules";
 import type { ViewId } from "./types";
 
-const PRIVATE = ["bank", "weight", "btc", "file-explorer", "file-activity"];
+const PRIVATE = ["bank", "weight", "btc", "file-explorer", "file-activity", "home.raw-metrics"];
+const CONTROL = ["home-control", "home.ventilation", "home.airco"];
 
 describe("module catalog", () => {
   it("keeps every registry id, unchanged, so saved profiles survive", () => {
@@ -14,10 +16,10 @@ describe("module catalog", () => {
     }
   });
 
-  it("only adds the Infrastructure rollup on top of the registry", () => {
+  it("only adds the Infrastructure rollup and the Home modules on top of the registry", () => {
     const registryIds = new Set(DEFAULT_WIDGETS.map((widget) => widget.id));
     const extra = MODULE_CATALOG.filter((entry) => !registryIds.has(entry.id)).map((m) => m.id);
-    expect(extra).toEqual(["infra.summary"]);
+    expect(extra).toEqual(["infra.summary", ...HOME_MODULES.map((m) => m.id)]);
   });
 
   it("has unique ids and a matching lookup table", () => {
@@ -39,7 +41,7 @@ describe("module catalog", () => {
     for (const entry of MODULE_CATALOG) {
       const expected = PRIVATE.includes(entry.id)
         ? "private"
-        : entry.id === "home-control"
+        : CONTROL.includes(entry.id)
           ? "control"
           : "normal";
       expect(entry.sensitivity, entry.id).toBe(expected);

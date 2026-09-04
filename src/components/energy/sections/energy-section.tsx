@@ -16,6 +16,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import { Section } from "../ui";
+import { useHomeConsole } from "@/components/dashboard/home/home-console-provider";
 import { EC, fmtKwh, fmtW, fmtSigned, gd, gridColor, type HistPoint } from "@/lib/energy-format";
 import { energyBars, bucketTickFmt, bucketSpanLabel, type EnergyBar, type Range } from "@/lib/energy-range";
 
@@ -123,8 +124,8 @@ function DayPowerTooltip({ active, payload }: { active?: boolean; payload?: Arra
   );
 }
 
-export function EnergySection({ range }: { range: Range }) {
-  const isLive = range.mode === "live";
+export function EnergySection() {
+  const { range, isLive } = useHomeConsole();
   const isDay = range.mode === "day";
   const { data: hist } = useSWR<{ points: HistPoint[] }>(`/api/energy?start=${range.start}&end=${range.fetchEnd}`, fetcher, {
     refreshInterval: range.canNext ? 0 : isLive ? 3000 : 30000,

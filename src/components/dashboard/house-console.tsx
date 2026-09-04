@@ -1,69 +1,62 @@
 "use client";
 
-import { useState } from "react";
-import useSWR from "swr";
 import Link from "next/link";
-import { BarChart3, BatteryCharging, Droplet, Flame, Lightbulb, Monitor, Snowflake, Thermometer, Wind, Zap } from "lucide-react";
-import { HouseFlow } from "@/components/energy/sections/house-flow";
-import { HouseScene } from "@/components/energy/sections/house-scene";
-import { EnergySection } from "@/components/energy/sections/energy-section";
-import { Batteries } from "@/components/energy/sections/batteries";
-import { Gas } from "@/components/energy/sections/gas";
-import { Water } from "@/components/energy/sections/water";
-import { Climate } from "@/components/energy/sections/climate";
-import { Ventilation } from "@/components/energy/sections/ventilation";
-import { Airco } from "@/components/energy/sections/airco";
+import {
+  BarChart3,
+  BatteryCharging,
+  Droplet,
+  Flame,
+  Lightbulb,
+  Monitor,
+  Snowflake,
+  Thermometer,
+  Wind,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import { TimeframeBar } from "@/components/energy/timeframe-bar";
-import { buildRange, type TFMode } from "@/lib/energy-range";
-import type { Live } from "@/lib/energy-format";
-import { HomeControlWidget } from "./widgets/home-control-widget";
-import { RawMetricsWidget } from "./widgets/raw-metrics-widget";
+import { useResolvedView } from "@/lib/layout/client";
+import { GRID_CLASS } from "@/lib/layout/grid";
+import { homeAnchorId, homeAnchorsFor, homeModeFor, homeModulesFor } from "@/lib/layout/home-modules";
+import { HomeConsoleProvider, useHomeConsole } from "./home/home-console-provider";
+import { ModuleFrame } from "./views/module-frame";
+import { homeModuleNode } from "./views/home-renderers";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
-const LIVE_MS = 3000;
+// Nav icons stay here, next to the markup, so the layout library holds only
+// serializable metadata.
+const NAV_ICONS: Record<string, LucideIcon> = {
+  "home.house": Zap,
+  "home.energy": BarChart3,
+  "home.batteries": BatteryCharging,
+  "home.gas": Flame,
+  "home.water": Droplet,
+  "home.climate": Thermometer,
+  "home.ventilation": Wind,
+  "home.airco": Snowflake,
+  "home-control": Lightbulb,
+};
 
-// The two modes answer different questions, so they get different sections.
-// Live = "what is happening right now" (rates, controls, the flow picture).
-// Period = "what did we use" (totals and bar charts over the selected range).
-const LIVE_NAV = [
-  { id: "huis", label: "Huis", icon: Zap },
-  { id: "verloop", label: "Verloop", icon: BarChart3 },
-  { id: "batterij", label: "Batterij", icon: BatteryCharging },
-  { id: "klimaat", label: "Klimaat", icon: Thermometer },
-  { id: "ventilatie", label: "Ventilatie", icon: Wind },
-  { id: "airco", label: "Airco", icon: Snowflake },
-  { id: "office", label: "Office", icon: Lightbulb },
-];
-
-const PERIOD_NAV = [
-  { id: "huis", label: "Huis", icon: Zap },
-  { id: "energie", label: "Energie", icon: BarChart3 },
-  { id: "gas", label: "Gas", icon: Flame },
-  { id: "water", label: "Water", icon: Droplet },
-  { id: "klimaat", label: "Klimaat", icon: Thermometer },
-];
-
+// The provider owns the timeframe and the single live feed; everything under
+// it, the sticky bar included, reads that one context.
 export function HouseConsole() {
-  const [tick, setTick] = useState(0);
-  const [mode, setMode] = useState<TFMode>("live");
-  const [offset, setOffset] = useState(0);
+  return (
+    <HomeConsoleProvider>
+      <HomeConsoleBody />
+    </HomeConsoleProvider>
+  );
+}
 
-  // The live-data tick rerenders the view, keeping this rolling range current.
-  const range = buildRange(mode, offset);
-  const isLive = range.mode === "live";
+function HomeConsoleBody() {
+  const { range, isLive, live, changeMode, step } = useHomeConsole();
+  const resolved = useResolvedView("house");
 
-  const { data: live } = useSWR<Live>("/api/energy", fetcher, {
-    refreshInterval: isLive ? LIVE_MS : 30000,
-    keepPreviousData: true,
-    onSuccess: () => setTick((t) => t + 1),
-  });
-
-  const changeMode = (m: TFMode) => {
-    setMode(m);
-    setOffset(0); // jump back to the current period when switching granularity
-  };
-
-  const nav = isLive ? LIVE_NAV : PERIOD_NAV;
+  // Live and period answer different questions, so a module that does not
+  // apply to the current mode is not placed at all, and its anchor goes with
+  // it. Hidden modules are already absent from `resolved.modules`, so they
+  // never mount and a self-fetching one stops polling.
+  const mode = homeModeFor(isLive);
+  const modules = homeModulesFor(mode, resolved.modules);
+  const nav = homeAnchorsFor(mode, modules);
 
   return (
     <div className="space-y-3">
@@ -73,16 +66,19 @@ export function HouseConsole() {
       <div className="bleed-x sticky top-header-total z-20 border-b border-border/70 bg-background/90 py-2.5 backdrop-blur-xl">
         <div className="flex flex-wrap items-center gap-2">
           <nav aria-label="Home sections" className="-mx-1 flex flex-1 gap-1.5 overflow-x-auto px-1 pb-2">
-            {nav.map((n) => (
-              <a
-                key={n.id}
-                href={`#${n.id}`}
-                className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card/70 px-2.5 py-1 text-mini font-bold uppercase tracking-wide text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-              >
-                <n.icon className="h-3.5 w-3.5" aria-hidden="true" />
-                <span className="hidden sm:inline">{n.label}</span>
-              </a>
-            ))}
+            {nav.map((n) => {
+              const Icon = NAV_ICONS[n.moduleId];
+              return (
+                <a
+                  key={n.id}
+                  href={`#${n.id}`}
+                  className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card/70 px-2.5 py-1 text-mini font-bold uppercase tracking-wide text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                >
+                  {Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />}
+                  <span className="hidden sm:inline">{n.label}</span>
+                </a>
+              );
+            })}
           </nav>
           <Link
             href="/kitchen"
@@ -93,7 +89,7 @@ export function HouseConsole() {
             <span className="hidden sm:inline">Keuken</span>
           </Link>
         </div>
-        <TimeframeBar range={range} onMode={changeMode} onStep={(d) => setOffset((o) => Math.min(0, o + d))} />
+        <TimeframeBar range={range} onMode={changeMode} onStep={step} />
       </div>
 
       {live?.error ? (
@@ -105,57 +101,22 @@ export function HouseConsole() {
           Verbinden met energy-monitor...
         </div>
       ) : (
-        <>
-          <div id="huis" className="scroll-mt-40">
-            {isLive ? (
-              <HouseScene live={live} tick={tick} intervalMs={LIVE_MS} />
-            ) : (
-              <HouseFlow range={range} live={live} tick={tick} intervalMs={LIVE_MS} />
-            )}
-          </div>
-
-          {isLive ? (
-            <>
-              <div id="verloop" className="scroll-mt-40">
-                <EnergySection range={range} />
-              </div>
-              <div id="batterij" className="scroll-mt-40">
-                <Batteries live={live} range={range} />
-              </div>
-              <div id="klimaat" className="scroll-mt-40">
-                <Climate range={range} />
-              </div>
-              <div id="ventilatie" className="scroll-mt-40">
-                <Ventilation range={range} />
-              </div>
-              <div id="airco" className="scroll-mt-40">
-                <Airco range={range} />
-              </div>
-              <div id="office" className="grid scroll-mt-40 grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-6">
-                <HomeControlWidget />
-                <RawMetricsWidget />
-              </div>
-            </>
-          ) : (
-            <>
-              <div id="energie" className="scroll-mt-40">
-                <EnergySection range={range} />
-              </div>
-              <div id="batterij" className="scroll-mt-40">
-                <Batteries live={live} range={range} />
-              </div>
-              <div id="gas" className="scroll-mt-40">
-                <Gas range={range} />
-              </div>
-              <div id="water" className="scroll-mt-40">
-                <Water range={range} />
-              </div>
-              <div id="klimaat" className="scroll-mt-40">
-                <Climate range={range} />
-              </div>
-            </>
-          )}
-        </>
+        <div className={GRID_CLASS}>
+          {modules.map((entry) => {
+            const node = homeModuleNode(entry.moduleId, { density: entry.density });
+            if (node === null) return null;
+            // The anchor target sits inside the frame; scroll-mt clears the
+            // sticky bar just as it did on the old section wrappers.
+            const anchor = homeAnchorId(mode, entry.moduleId);
+            return (
+              <ModuleFrame key={entry.moduleId} resolved={entry}>
+                <div id={anchor} className="scroll-mt-40">
+                  {node}
+                </div>
+              </ModuleFrame>
+            );
+          })}
+        </div>
       )}
     </div>
   );

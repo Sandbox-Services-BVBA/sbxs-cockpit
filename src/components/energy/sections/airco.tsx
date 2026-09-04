@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { Snowflake } from "lucide-react";
 import { Section, LivePulse } from "../ui";
 import { cn } from "@/lib/utils";
-import type { Range } from "@/lib/energy-range";
+import { useHomeConsole } from "@/components/dashboard/home/home-console-provider";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const REFRESH_MS = 30000;
@@ -380,8 +380,8 @@ export function AircoUnitCard({ unit, onSend, onRefresh }: { unit: AircoUnit; on
   );
 }
 
-export function Airco({ range }: { range: Range }) {
-  const isLive = range.mode === "live";
+export function Airco() {
+  const { isLive } = useHomeConsole();
   const [tick, setTick] = useState(0);
 
   const { data, mutate } = useSWR<{ units: AircoUnit[]; error?: string }>(isLive ? "/api/airco" : null, fetcher, {

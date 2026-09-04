@@ -15,7 +15,8 @@ import {
   CartesianGrid,
 } from "recharts";
 import { Section, Segmented } from "../ui";
-import { bucketSpanLabel, bucketTickFmt, type Range } from "@/lib/energy-range";
+import { bucketSpanLabel, bucketTickFmt } from "@/lib/energy-range";
+import { useHomeConsole } from "@/components/dashboard/home/home-console-provider";
 import { tempColor, type ClimatePoint, type ClimateSeries } from "@/lib/energy-rooms";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -177,10 +178,10 @@ function BandTooltip({ active, payload, unit }: { active?: boolean; payload?: Ti
   );
 }
 
-export function Climate({ range }: { range: Range }) {
+export function Climate() {
+  const { range, isLive } = useHomeConsole();
   const [metric, setMetric] = useState<Metric>("temp");
   const unit = metric === "temp" ? "°C" : "%";
-  const isLive = range.mode === "live";
   const aggregated = range.mode === "week" || range.mode === "month" || range.mode === "year";
 
   // The API always returns a trailing window (server clamps to MAX_API_HOURS),

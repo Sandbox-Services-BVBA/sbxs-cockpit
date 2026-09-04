@@ -7,6 +7,7 @@ import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, Cartes
 import { Section, Metric } from "../ui";
 import { cn } from "@/lib/utils";
 import type { Range } from "@/lib/energy-range";
+import { useHomeConsole } from "@/components/dashboard/home/home-console-provider";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const REFRESH_MS = 30000;
@@ -172,7 +173,8 @@ function WellDayStrip({ onChanged }: { onChanged: () => void }) {
   );
 }
 
-export function Water({ range }: { range: Range }) {
+export function Water() {
+  const { range } = useHomeConsole();
   const days = daysFor(range);
   const { data, mutate } = useSWR<WaterData>(`/api/energy?water=1&days=${days}`, fetcher, {
     refreshInterval: REFRESH_MS,

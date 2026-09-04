@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import { Section } from "../ui";
 import { cn } from "@/lib/utils";
+import { useHomeConsole } from "@/components/dashboard/home/home-console-provider";
 import { EC, fmtW, fmtKwh, type Battery, type HistPoint, type Live } from "@/lib/energy-format";
 import { bucketSpanLabel, bucketTickFmt, type Range } from "@/lib/energy-range";
 
@@ -228,8 +229,16 @@ function PeriodTooltip({ active, payload, bucket }: { active?: boolean; payload?
 // Batterij section, timeframe-aware: live = per-pack cells + rolling power,
 // dag = SOC/power curve over the day, week/maand/jaar = kWh geladen vs
 // ontladen per bucket as diverging bars (mirrors the energy-section bars).
-export function Batteries({ live, range }: { live: Live; range: Range }) {
-  const isLive = range.mode === "live";
+export function Batteries() {
+  const { live } = useHomeConsole();
+  // The console only mounts modules once the feed is in, so this is a type
+  // guard rather than a state; it also keeps the hooks below unconditional.
+  if (!live) return null;
+  return <BatteriesBody live={live} />;
+}
+
+function BatteriesBody({ live }: { live: Live }) {
+  const { range, isLive } = useHomeConsole();
   const isDay = range.mode === "day";
   const { data: hist } = useSWR<{ points: HistPoint[] }>(`/api/energy?start=${range.start}&end=${range.fetchEnd}`, fetcher, {
     refreshInterval: range.canNext ? 0 : isLive ? 3000 : 30000,

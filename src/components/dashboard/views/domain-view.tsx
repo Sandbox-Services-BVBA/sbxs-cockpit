@@ -1,28 +1,37 @@
 "use client";
 
-import { Fragment } from "react";
 import { useDashboardData } from "@/hooks/use-dashboard-data";
 import { getDashboardHealth } from "@/lib/dashboard-health";
-import { DEFAULT_WIDGETS, type WidgetCategory } from "@/lib/widget-registry";
-import { VIEW_BY_ID, type ViewId } from "@/lib/views";
-import { widgetNode } from "./widget-nodes";
+import { GRID_CLASS } from "@/lib/layout/grid";
+import { resolveView } from "@/lib/layout/resolver";
+import type { ViewId } from "@/lib/layout/types";
+import type { WidgetCategory } from "@/lib/widget-registry";
+import { VIEW_BY_ID } from "@/lib/views";
+import { ModuleFrame } from "./module-frame";
+import { moduleNode } from "./module-renderers";
 import { ViewError, ViewLede, ViewSkeleton } from "./view-chrome";
 
-const SECTION_GRID = "grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-6";
-
 /**
- * The pre-migration view: a domain's registered widgets in the shared grid.
- * Infrastructure has its own converted view; everything else still renders
- * this way until phase 2 reaches it.
+ * A standard domain rendered through the placement engine: the resolver
+ * decides which modules show, in what order and at what width; the frame
+ * owns the span; the renderer map owns the content.
+ *
+ * The profile is always null for now. Persistence lands separately and will
+ * hand a saved profile in here; the seam exists so nothing else has to move.
  */
 export function DomainView({ category }: { category: WidgetCategory }) {
   const { data, loading, error } = useDashboardData();
   const health = getDashboardHealth(data);
-  const meta = VIEW_BY_ID[category as ViewId];
+  const viewId = category as ViewId;
+  const meta = VIEW_BY_ID[viewId];
+  const resolved = resolveView(viewId, null);
 
-  const widgets = DEFAULT_WIDGETS
-    .filter((widget) => widget.category === category && (widget.selfFetch || data))
-    .sort((a, b) => a.order - b.order);
+  // Hidden modules are absent from `resolved.modules`, so they never mount
+  // and a self-fetching one stops polling. Shared-data modules wait for the
+  // payload; self-fetching ones render straight away.
+  const modules = resolved.modules.filter(
+    (entry) => entry.definition.dataMode === "self-fetch" || data
+  );
 
   return (
     <div className="cockpit-view space-y-4">
@@ -31,12 +40,21 @@ export function DomainView({ category }: { category: WidgetCategory }) {
       {loading && !data ? (
         <ViewSkeleton />
       ) : (
-        <div className={SECTION_GRID}>
-          {widgets.map((widget) => (
-            <Fragment key={widget.id}>
-              {widgetNode(widget.id, { data, layout: "grid", agentStale: health.agentStale })}
-            </Fragment>
-          ))}
+        <div className={GRID_CLASS}>
+          {modules.map((entry) => {
+            const node = moduleNode(entry.moduleId, {
+              data,
+              agentStale: health.agentStale,
+              density: entry.density,
+              layout: "grid",
+            });
+            if (node === null) return null;
+            return (
+              <ModuleFrame key={entry.moduleId} resolved={entry}>
+                {node}
+              </ModuleFrame>
+            );
+          })}
         </div>
       )}
     </div>

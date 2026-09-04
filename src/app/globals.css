@@ -1468,3 +1468,18 @@
   .cockpit-metric { padding: 1.125rem; }
   .cockpit-posture { padding: 1.5rem; }
 }
+
+/* --- Module placement frame -----------------------------------------------
+   The frame itself carries no chrome in normal mode: the legacy tiles still
+   draw their own. This is only the fallback the error boundary shows when a
+   single module throws, so the rest of the view stays on screen. */
+.module-frame__error {
+  padding: 1rem;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.module-frame__error .eyebrow {
+  margin-bottom: 0.5rem;
+  color: var(--rose);
+}

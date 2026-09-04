@@ -1,0 +1,218 @@
+import { getModule } from "@/lib/layout/catalog";
+import {
+  LAYOUT_SCHEMA_VERSION,
+  MOBILE_PIN_COUNT,
+  type DomainOverride,
+  type LayoutProfile,
+  type ModuleDensity,
+  type ModuleOverride,
+  type ModuleWidth,
+  type ViewId,
+  type ViewOverride,
+} from "@/lib/layout/types";
+import { VIEWS } from "@/lib/views";
+
+// Gate between an untrusted PUT body and the database. The rule of thumb:
+// a value that merely no longer exists (a renamed module, a view that went
+// away) is dropped so an old profile keeps working; a value of the wrong
+// shape or one that breaks a policy (privacy, safety, capabilities) rejects
+// the whole document, because the client that sent it is confused and
+// half-applying its intent would be worse than telling it so.
+//
+// The result contains overrides only. Defaults are never copied in, so a
+// later change to the code defaults reaches every device.
+
+export const MAX_PROFILE_BYTES = 64 * 1024;
+
+export type ValidationResult =
+  | { ok: true; profile: LayoutProfile }
+  | { ok: false; error: string };
+
+const WIDTHS: ReadonlySet<string> = new Set<ModuleWidth>(["compact", "standard", "wide", "full"]);
+const DENSITIES: ReadonlySet<string> = new Set<ModuleDensity>(["summary", "standard", "full"]);
+const VIEW_IDS: ReadonlySet<string> = new Set(VIEWS.map((view) => view.id));
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function fail(error: string): ValidationResult {
+  return { ok: false, error };
+}
+
+function isViewId(value: string): value is ViewId {
+  return VIEW_IDS.has(value);
+}
+
+type ModuleCheck = { ok: true; override: ModuleOverride | null } | { ok: false; error: string };
+
+function checkModuleOverride(viewId: ViewId, moduleId: string, raw: unknown): ModuleCheck {
+  if (!isPlainObject(raw)) return { ok: false, error: `views.${viewId}.modules.${moduleId} must be an object` };
+
+  const definition = getModule(moduleId);
+  // Unknown id, or a module that may not live in this view: drop silently.
+  if (!definition || !definition.allowedViews.includes(viewId)) return { ok: true, override: null };
+
+  const override: ModuleOverride = {};
+  const where = `views.${viewId}.modules.${moduleId}`;
+
+  if (raw.enabled !== undefined) {
+    if (typeof raw.enabled !== "boolean") return { ok: false, error: `${where}.enabled must be a boolean` };
+    if (raw.enabled === false && definition.required) {
+      return { ok: false, error: `${where}: "${definition.title}" is required and cannot be hidden` };
+    }
+    if (raw.enabled === true && viewId === "wall" && definition.sensitivity !== "normal") {
+      return { ok: false, error: `${where}: ${definition.sensitivity} modules may not appear on the wallboard` };
+    }
+    override.enabled = raw.enabled;
+  }
+
+  if (raw.width !== undefined) {
+    if (typeof raw.width !== "string" || !WIDTHS.has(raw.width)) {
+      return { ok: false, error: `${where}.width must be one of compact, standard, wide, full` };
+    }
+    if (!definition.allowedWidths.includes(raw.width as ModuleWidth)) {
+      return { ok: false, error: `${where}.width "${raw.width}" is not supported by this module` };
+    }
+    override.width = raw.width as ModuleWidth;
+  }
+
+  if (raw.density !== undefined) {
+    if (typeof raw.density !== "string" || !DENSITIES.has(raw.density)) {
+      return { ok: false, error: `${where}.density must be one of summary, standard, full` };
+    }
+    if (!definition.allowedDensities.includes(raw.density as ModuleDensity)) {
+      return { ok: false, error: `${where}.density "${raw.density}" is not supported by this module` };
+    }
+    override.density = raw.density as ModuleDensity;
+  }
+
+  return { ok: true, override: Object.keys(override).length > 0 ? override : null };
+}
+
+type ViewCheck = { ok: true; override: ViewOverride | null } | { ok: false; error: string };
+
+function checkViewOverride(viewId: ViewId, raw: unknown): ViewCheck {
+  if (!isPlainObject(raw)) return { ok: false, error: `views.${viewId} must be an object` };
+  const override: ViewOverride = {};
+
+  if (raw.order !== undefined) {
+    if (!Array.isArray(raw.order) || raw.order.some((id) => typeof id !== "string")) {
+      return { ok: false, error: `views.${viewId}.order must be an array of module ids` };
+    }
+    const seen = new Set<string>();
+    const order: string[] = [];
+    for (const id of raw.order as string[]) {
+      if (seen.has(id)) continue;
+      const definition = getModule(id);
+      if (!definition || !definition.allowedViews.includes(viewId)) continue;
+      seen.add(id);
+      order.push(id);
+    }
+    if (order.length > 0) override.order = order;
+  }
+
+  if (raw.modules !== undefined) {
+    if (!isPlainObject(raw.modules)) return { ok: false, error: `views.${viewId}.modules must be an object` };
+    const modules: Record<string, ModuleOverride> = {};
+    for (const [moduleId, value] of Object.entries(raw.modules)) {
+      const checked = checkModuleOverride(viewId, moduleId, value);
+      if (!checked.ok) return checked;
+      if (checked.override) modules[moduleId] = checked.override;
+    }
+    if (Object.keys(modules).length > 0) override.modules = modules;
+  }
+
+  return { ok: true, override: Object.keys(override).length > 0 ? override : null };
+}
+
+type DomainCheck = { ok: true; override: DomainOverride | null } | { ok: false; error: string };
+
+function checkDomainOverride(viewId: ViewId, raw: unknown): DomainCheck {
+  if (!isPlainObject(raw)) return { ok: false, error: `domains.${viewId} must be an object` };
+  const override: DomainOverride = {};
+
+  if (raw.visible !== undefined) {
+    if (typeof raw.visible !== "boolean") return { ok: false, error: `domains.${viewId}.visible must be a boolean` };
+    override.visible = raw.visible;
+  }
+  if (raw.order !== undefined) {
+    if (typeof raw.order !== "number" || !Number.isInteger(raw.order)) {
+      return { ok: false, error: `domains.${viewId}.order must be an integer` };
+    }
+    override.order = raw.order;
+  }
+  if (raw.mobilePinned !== undefined) {
+    if (typeof raw.mobilePinned !== "boolean") {
+      return { ok: false, error: `domains.${viewId}.mobilePinned must be a boolean` };
+    }
+    override.mobilePinned = raw.mobilePinned;
+  }
+
+  return { ok: true, override: Object.keys(override).length > 0 ? override : null };
+}
+
+export function validateProfile(raw: unknown): ValidationResult {
+  if (!isPlainObject(raw)) return fail("profile must be an object");
+
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(raw);
+  } catch {
+    return fail("profile is not serializable");
+  }
+  if (Buffer.byteLength(serialized, "utf8") > MAX_PROFILE_BYTES) {
+    return fail(`profile exceeds ${MAX_PROFILE_BYTES / 1024} KB`);
+  }
+
+  const { schemaVersion, revision } = raw;
+  if (typeof schemaVersion !== "number" || !Number.isInteger(schemaVersion) || schemaVersion < 1) {
+    return fail("schemaVersion must be a positive integer");
+  }
+  if (schemaVersion > LAYOUT_SCHEMA_VERSION) {
+    return fail(`schemaVersion ${schemaVersion} is newer than this server supports (${LAYOUT_SCHEMA_VERSION})`);
+  }
+  if (revision !== undefined && (typeof revision !== "number" || !Number.isInteger(revision) || revision < 0)) {
+    return fail("revision must be a non-negative integer");
+  }
+
+  const profile: LayoutProfile = { schemaVersion, revision: typeof revision === "number" ? revision : 0 };
+
+  if (raw.domains !== undefined) {
+    if (!isPlainObject(raw.domains)) return fail("domains must be an object");
+    const domains: Partial<Record<ViewId, DomainOverride>> = {};
+    let pinsSpecified = false;
+    let pinned = 0;
+    for (const [key, value] of Object.entries(raw.domains)) {
+      if (!isViewId(key)) continue;
+      const checked = checkDomainOverride(key, value);
+      if (!checked.ok) return fail(checked.error);
+      if (!checked.override) continue;
+      domains[key] = checked.override;
+      if (checked.override.mobilePinned !== undefined) {
+        pinsSpecified = true;
+        if (checked.override.mobilePinned) pinned += 1;
+      }
+    }
+    // The bottom bar has exactly four slots. A partial pin set would make the
+    // resolver guess which defaults to keep, so require the full set or none.
+    if (pinsSpecified && pinned !== MOBILE_PIN_COUNT) {
+      return fail(`mobilePinned must select exactly ${MOBILE_PIN_COUNT} domains (got ${pinned})`);
+    }
+    if (Object.keys(domains).length > 0) profile.domains = domains;
+  }
+
+  if (raw.views !== undefined) {
+    if (!isPlainObject(raw.views)) return fail("views must be an object");
+    const views: Partial<Record<ViewId, ViewOverride>> = {};
+    for (const [key, value] of Object.entries(raw.views)) {
+      if (!isViewId(key)) continue;
+      const checked = checkViewOverride(key, value);
+      if (!checked.ok) return fail(checked.error);
+      if (checked.override) views[key] = checked.override;
+    }
+    if (Object.keys(views).length > 0) profile.views = views;
+  }
+
+  return { ok: true, profile };
+}

@@ -5,6 +5,12 @@ import fs from "fs";
 // Use /app/data for persistent volume in production (Coolify mounts here)
 // Falls back to cwd/data for local development and build
 function getDbPath() {
+  // Explicit override, used by tests to point at a throwaway file so they
+  // never open the real cockpit.db.
+  if (process.env.COCKPIT_DB_PATH) {
+    fs.mkdirSync(path.dirname(process.env.COCKPIT_DB_PATH), { recursive: true });
+    return process.env.COCKPIT_DB_PATH;
+  }
   if (process.env.NODE_ENV === "production") {
     try {
       fs.mkdirSync("/app/data", { recursive: true });
@@ -75,6 +81,15 @@ function runMigrations(db: Database.Database) {
   }
   if (!integrationColNames.has("fix")) {
     db.exec("ALTER TABLE integration_health ADD COLUMN fix TEXT");
+  }
+
+  // Layout profiles: an early hand-made table from the masterplan could exist
+  // without the revision column that optimistic concurrency depends on.
+  const layoutCols = db.prepare("PRAGMA table_info(dashboard_layout_profiles)").all() as { name: string }[];
+  const layoutColNames = new Set(layoutCols.map((c) => c.name));
+
+  if (layoutCols.length > 0 && !layoutColNames.has("revision")) {
+    db.exec("ALTER TABLE dashboard_layout_profiles ADD COLUMN revision INTEGER NOT NULL DEFAULT 1");
   }
 }
 
@@ -208,5 +223,26 @@ function initSchema(db: Database.Database) {
       ON uptime_checks(site_url, checked_at DESC);
     CREATE INDEX IF NOT EXISTS idx_alerts_active
       ON alerts(resolved, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS dashboard_layout_profiles (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      schema_version INTEGER NOT NULL,
+      revision INTEGER NOT NULL DEFAULT 1,
+      config_json TEXT NOT NULL,
+      updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS layout_audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      at DATETIME NOT NULL DEFAULT (datetime('now')),
+      action TEXT NOT NULL,
+      actor TEXT NOT NULL,
+      revision INTEGER,
+      summary TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_layout_audit_at
+      ON layout_audit_log(at DESC);
   `);
 }

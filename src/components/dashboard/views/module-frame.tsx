@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 interface ModuleFrameProps {
   resolved: ResolvedModule;
   children: ReactNode;
-  /** Reserved for the layout editor; normal mode renders nothing extra. */
+  /** Set by the editor's live preview; normal mode renders nothing extra. */
   editing?: boolean;
   className?: string;
 }
@@ -17,15 +17,21 @@ interface ModuleFrameProps {
  * The placement wrapper: the only thing that owns a module's grid span.
  * Legacy widgets still draw their own WidgetTile, so the frame adds no chrome
  * of its own, but it does catch a render error so one broken module cannot
- * blank the whole view.
+ * blank the whole view. In the editor preview it carries the module's title
+ * as a caption so a hidden-then-shown module can be told apart at a glance.
  */
 export function ModuleFrame({ resolved, children, editing = false, className }: ModuleFrameProps) {
   return (
     <div
       data-module-id={resolved.moduleId}
       data-editing={editing || undefined}
-      className={cn("min-w-0", WIDTH_SPANS[resolved.width], className)}
+      className={cn("min-w-0", WIDTH_SPANS[resolved.width], editing && "module-frame--editing", className)}
     >
+      {editing && (
+        <p className="module-frame__caption eyebrow" aria-hidden="true">
+          {resolved.definition.title} / {resolved.width}
+        </p>
+      )}
       <ModuleErrorBoundary title={resolved.definition.title}>{children}</ModuleErrorBoundary>
     </div>
   );

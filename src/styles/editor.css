@@ -1,1 +1,554 @@
-/* editor styles. Imported from app/globals.css. */
+/* Layout editor. Imported from app/globals.css.
+
+   Normal mode owns no rule in this file: everything here is scoped to the
+   editing header, the editor list, the Sections tab, the password prompt,
+   and the safety fallbacks the shell shows when Attention is hidden. */
+
+/* --- Header while editing -------------------------------------------------
+   Doubled selectors on purpose: globals.css sets .app-header's fixed height
+   after this file is imported, so an equal-specificity rule would lose. */
+
+.app-header.app-header--editing {
+  height: auto;
+  flex-wrap: wrap;
+  padding-bottom: 0;
+}
+
+.app-header.app-header--editing .app-header__title,
+.app-header.app-header--editing .app-header__status {
+  min-height: var(--header-height);
+  justify-content: center;
+}
+
+.editor-bar {
+  display: flex;
+  flex-basis: 100%;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0 10px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.editor-bar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.editor-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+}
+
+.editor-tab {
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 9px;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.editor-tab.is-active {
+  background: color-mix(in srgb, var(--domain-accent) 16%, transparent);
+  color: var(--domain-accent);
+}
+
+/* --- Buttons and fields --------------------------------------------------- */
+
+.editor-btn {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 70%, transparent);
+  color: var(--ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.editor-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--domain-accent) 45%, var(--line));
+}
+
+.editor-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.editor-btn--primary {
+  border-color: var(--domain-accent);
+  background: var(--domain-accent);
+  color: var(--background);
+}
+
+.editor-btn--primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.editor-btn--danger {
+  color: var(--rose);
+  border-color: color-mix(in srgb, var(--rose) 40%, transparent);
+}
+
+.editor-btn--icon {
+  width: 34px;
+  padding: 0;
+  justify-content: center;
+}
+
+.editor-btn--small {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 0.75rem;
+}
+
+.editor-btn:focus-visible,
+.editor-tab:focus-visible,
+.editor-select:focus-visible,
+.editor-input:focus-visible,
+.editor-switch input:focus-visible,
+.editor-link:focus-visible,
+.app-alert-pill:focus-visible {
+  outline: 2px solid var(--domain-accent);
+  outline-offset: 2px;
+}
+
+.editor-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.editor-field > span {
+  color: var(--ink-quiet);
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.editor-field--stack .editor-input {
+  width: 100%;
+}
+
+.editor-select,
+.editor-input {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  color: var(--ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.editor-select:disabled {
+  opacity: 0.6;
+}
+
+.editor-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.editor-switch input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--domain-accent);
+  cursor: pointer;
+}
+
+.editor-switch input:disabled {
+  cursor: not-allowed;
+}
+
+.editor-switch:has(input:disabled) {
+  opacity: 0.55;
+}
+
+/* --- Notes ---------------------------------------------------------------- */
+
+.editor-notes {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.editor-note {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.editor-note--warn {
+  border-color: color-mix(in srgb, var(--amber) 44%, transparent);
+  background: color-mix(in srgb, var(--amber) 10%, transparent);
+  color: var(--amber);
+}
+
+.editor-note--bad {
+  border-color: color-mix(in srgb, var(--rose) 44%, transparent);
+  background: color-mix(in srgb, var(--rose) 9%, transparent);
+  color: var(--rose);
+}
+
+.editor-note--info {
+  border-color: color-mix(in srgb, var(--blue) 40%, transparent);
+  background: color-mix(in srgb, var(--blue) 9%, transparent);
+  color: var(--blue);
+}
+
+/* --- The editor body ------------------------------------------------------ */
+
+.editor-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+}
+
+@media (min-width: 1024px) {
+  .editor-split {
+    grid-template-columns: minmax(360px, 460px) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.editor {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.editor--note {
+  max-width: 62ch;
+}
+
+.editor__title {
+  font-size: 1.25rem;
+  line-height: 1.1;
+}
+
+.editor__lede {
+  max-width: 62ch;
+  color: var(--ink-muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.editor-link {
+  color: var(--domain-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.editor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.editor-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  box-shadow: var(--panel-shadow);
+}
+
+.editor-row__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.editor-row__text {
+  min-width: 0;
+  flex: 1;
+}
+
+.editor-row__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.editor-row__index {
+  min-width: 1.4em;
+  color: var(--ink-quiet);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.editor-row__icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: var(--ink-muted);
+}
+
+.editor-row__tag {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--domain-accent) 14%, transparent);
+  color: var(--domain-accent);
+  font-family: var(--mono);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.editor-row__note {
+  margin-top: 3px;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.editor-row__reason {
+  color: var(--amber);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.editor-row__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 14px;
+}
+
+.editor-move {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* --- Hidden-modules tray -------------------------------------------------- */
+
+.editor-tray {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px dashed var(--line);
+  border-radius: 13px;
+}
+
+.editor-tray__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.editor-tray__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.editor-tray__empty {
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+}
+
+.editor-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.editor-pins {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+  color: var(--ink-muted);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.editor-pins b {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* --- Live preview (desktop only) ----------------------------------------- */
+
+.editor-preview {
+  min-width: 0;
+}
+
+.editor-preview__label {
+  margin-bottom: 8px;
+}
+
+/* Scaled down so the desktop grid keeps its real column count in the side
+   column: the canvas is laid out at roughly the main region's full width and
+   shown at two thirds. `inert` keeps it out of the tab order. */
+.editor-preview__canvas {
+  zoom: 0.66;
+  user-select: none;
+}
+
+.module-frame--editing {
+  outline: 1px dashed color-mix(in srgb, var(--domain-accent) 55%, transparent);
+  outline-offset: 4px;
+  border-radius: 0.875rem;
+}
+
+.module-frame__caption {
+  margin-bottom: 6px;
+  color: var(--domain-accent);
+}
+
+/* --- Password prompt ------------------------------------------------------ */
+
+.editor-dialog__scrim {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.editor-dialog {
+  /* Rendered outside the [data-domain] shell, so the accent needs its own value. */
+  --domain-accent: var(--teal);
+  display: flex;
+  width: min(420px, 100%);
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--background);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+}
+
+.editor-dialog__title {
+  font-size: 1.2rem;
+  line-height: 1.1;
+}
+
+.editor-dialog__help {
+  color: var(--ink-muted);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.editor-dialog .editor-actions {
+  justify-content: flex-end;
+}
+
+/* --- Safety fallback when Attention is hidden ----------------------------- */
+
+.app-alert-pill {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--rose) 42%, transparent);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--rose) 12%, transparent);
+  color: var(--rose);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.app-nav__badge {
+  display: grid;
+  min-width: 20px;
+  height: 20px;
+  margin-left: auto;
+  padding: 0 6px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--rose);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  font-weight: 800;
+}
+
+.app-rail__link--alert,
+.app-more__link--alert {
+  color: var(--rose);
+}
+
+.app-bottom__link--alert {
+  position: relative;
+}
+
+.app-bottom__link--alert::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  right: 14px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--rose);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--rose) 60%, transparent);
+}
+
+.app-more__empty {
+  padding: 10px 12px;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+}

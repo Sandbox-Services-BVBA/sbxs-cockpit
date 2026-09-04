@@ -50,6 +50,7 @@ export const DEFAULT_WIDGETS: WidgetConfig[] = [
   // Infrastructure — plumbing health
   { id: "servers", title: "Servers", category: "infra", size: "lg", order: 3 },
   { id: "gpu", title: "GPU", category: "infra", size: "lg", order: 3.5 },
+  { id: "thermals", title: "Thermals", category: "infra", size: "lg", order: 3.6 },
   { id: "backups", title: "Backups", category: "infra", size: "md", order: 4 },
   { id: "connections", title: "Connections", category: "infra", size: "md", order: 5 },
   { id: "crons", title: "Cron Jobs", category: "infra", size: "sm", order: 10 },

@@ -125,6 +125,7 @@ describe("wallboard privacy", () => {
       "uptime-grid",
       "servers",
       "gpu",
+      "thermals",
       "backups",
       "connections",
       "cityscreens",

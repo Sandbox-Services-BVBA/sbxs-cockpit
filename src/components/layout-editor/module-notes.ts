@@ -16,6 +16,7 @@ const NOTES: Record<string, string> = {
   "infra.summary": "One-line health rollup of servers, backups and jobs",
   servers: "Disk, RAM, CPU and uptime per server",
   gpu: "AI server GPU load, memory and temperature",
+  thermals: "Proxmox host CPU temperature, AIO pump and fan speeds",
   backups: "Last successful backup per target",
   connections: "Gmail, Drive, API and other integration tokens",
   crons: "Scheduled jobs and their last exit status",

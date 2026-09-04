@@ -12,6 +12,8 @@ import type {
   Project,
   ServerHealth,
   Service,
+  ThermalHistory,
+  ThermalStatus,
   UptimeCheck,
 } from "@/types";
 
@@ -25,6 +27,8 @@ export interface DashboardData {
   servers: ServerHealth[];
   gpu: GpuStatus | null;
   gpuHistory: GpuMetricHistory[];
+  thermals: ThermalStatus | null;
+  thermalHistory: ThermalHistory[];
   services: Service[] | null;
   backups: BackupStatus[];
   uptime: UptimeCheck[];

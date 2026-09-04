@@ -70,6 +70,43 @@ export async function POST(request: NextRequest) {
     db.prepare("DELETE FROM gpu_metric_history WHERE checked_at < datetime('now', '-30 days')").run();
   }
 
+  // Proxmox host thermals, same shape of deal as GPU: the envelope always goes
+  // to kv_store below so the widget can say *why* it has nothing, and numeric
+  // history is appended only when the SSH sample actually came back.
+  if (payload.thermals?.available) {
+    const t = payload.thermals;
+    const finite = (value: unknown) =>
+      typeof value === "number" && Number.isFinite(value) ? value : null;
+
+    db.prepare(`
+      INSERT INTO host_thermal_history (host, cpu_tctl_c, cpu_tccd_c, board_temp_c,
+        nvme_max_c, ram_max_c, fan_cpu_rpm, fan_pump_rpm, fan_case_rpm,
+        pwm_cpu_percent, pwm_pump_percent, pwm_case_percent)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      t.host || "proxmox",
+      finite(t.cpu_tctl_c), finite(t.cpu_tccd_c), finite(t.board_temp_c),
+      finite(t.nvme_max_c), finite(t.ram_max_c),
+      finite(t.fan_cpu_rpm), finite(t.fan_pump_rpm), finite(t.fan_case_rpm),
+      finite(t.pwm_cpu_percent), finite(t.pwm_pump_percent), finite(t.pwm_case_percent)
+    );
+
+    // Matches the GPU table's policy: the dashboard reads 24 h, we keep 30 days
+    // so a longer period control can be added later without a migration.
+    db.prepare("DELETE FROM host_thermal_history WHERE checked_at < datetime('now', '-30 days')").run();
+
+    // A stopped pump is the one failure that cooks the CPU within seconds, so
+    // it is worth an alert rather than only a line on a chart. The pump idles
+    // near 3500 rpm on its flat 70% BIOS curve; 1500 is well clear of that and
+    // still unambiguous about "not turning".
+    if (typeof t.fan_pump_rpm === "number" && t.fan_pump_rpm < 1500) {
+      createAlert("critical", "thermals", t.host || "proxmox",
+        `AIO pump at ${t.fan_pump_rpm.toFixed(0)} rpm`);
+    } else if (typeof t.fan_pump_rpm === "number") {
+      resolveAlerts("thermals", t.host || "proxmox");
+    }
+  }
+
   // Ingest backup status
   if (payload.backups) {
     const stmt = db.prepare(`
@@ -175,7 +212,7 @@ export async function POST(request: NextRequest) {
 
   const kvStmt = db.prepare("INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)");
   const body = payload as unknown as Record<string, unknown>;
-  for (const key of ["inboxes", "domains", "cityscreens", "mailroom", "unbilled", "timeentries", "services", "ai_usage", "gpu"]) {
+  for (const key of ["inboxes", "domains", "cityscreens", "mailroom", "unbilled", "timeentries", "services", "ai_usage", "gpu", "thermals"]) {
     if (body[key]) {
       kvStmt.run(key, JSON.stringify(body[key]));
     }

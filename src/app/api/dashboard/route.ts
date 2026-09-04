@@ -5,6 +5,8 @@ import type {
   CronJob,
   GpuMetricHistory,
   GpuStatus,
+  ThermalHistory,
+  ThermalStatus,
   IntegrationHealth,
   Project,
   ServerHealth,
@@ -154,6 +156,16 @@ export async function GET() {
     ORDER BY checked_at ASC, gpu_index ASC
   `).all() as GpuMetricHistory[];
 
+  const thermals = getKv("thermals") as ThermalStatus | null;
+  const thermalHistory = db.prepare(`
+    SELECT id, host, cpu_tctl_c, cpu_tccd_c, board_temp_c, nvme_max_c, ram_max_c,
+      fan_cpu_rpm, fan_pump_rpm, fan_case_rpm,
+      pwm_cpu_percent, pwm_pump_percent, pwm_case_percent, checked_at
+    FROM host_thermal_history
+    WHERE checked_at >= datetime('now', '-24 hours')
+    ORDER BY checked_at ASC
+  `).all() as ThermalHistory[];
+
   const generatedAt = new Date().toISOString();
   const freshness = {
     // Server health is present in every cockpit-agent payload and is therefore
@@ -171,6 +183,8 @@ export async function GET() {
     servers,
     gpu,
     gpuHistory,
+    thermals,
+    thermalHistory,
     services,
     backups,
     uptime,

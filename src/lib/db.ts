@@ -123,6 +123,23 @@ function initSchema(db: Database.Database) {
       checked_at DATETIME DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS host_thermal_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      host TEXT NOT NULL,
+      cpu_tctl_c REAL,
+      cpu_tccd_c REAL,
+      board_temp_c REAL,
+      nvme_max_c REAL,
+      ram_max_c REAL,
+      fan_cpu_rpm REAL,
+      fan_pump_rpm REAL,
+      fan_case_rpm REAL,
+      pwm_cpu_percent REAL,
+      pwm_pump_percent REAL,
+      pwm_case_percent REAL,
+      checked_at DATETIME DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS backup_status (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       backup_name TEXT NOT NULL,
@@ -217,6 +234,9 @@ function initSchema(db: Database.Database) {
 
     CREATE INDEX IF NOT EXISTS idx_server_health_checked
       ON server_health(server_name, checked_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_host_thermal_history_checked
+      ON host_thermal_history(host, checked_at);
+
     CREATE INDEX IF NOT EXISTS idx_gpu_metric_history_checked
       ON gpu_metric_history(gpu_uuid, checked_at DESC);
     CREATE INDEX IF NOT EXISTS idx_uptime_checked

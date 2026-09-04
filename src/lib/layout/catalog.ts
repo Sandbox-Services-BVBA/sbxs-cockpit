@@ -125,6 +125,13 @@ const CORE_MODULES: ModuleDefinition[] = [
     defaultWidth: "wide",
     allowedWidths: ["standard", "wide", "full"],
   }),
+  define("thermals", {
+    title: "Thermals",
+    ownerView: "infra",
+    alsoIn: WALL,
+    defaultWidth: "wide",
+    allowedWidths: ["standard", "wide", "full"],
+  }),
   define("backups", {
     title: "Backups",
     ownerView: "infra",

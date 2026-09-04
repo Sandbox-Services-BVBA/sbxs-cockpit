@@ -36,6 +36,43 @@ export interface GpuMetricHistory extends GpuDeviceMetric {
   checked_at: string;
 }
 
+/**
+ * Proxmox host thermals, read over SSH from `sensors -j` (IT8689E + k10temp).
+ *
+ * Channel identities, established by measurement on 2026-09-04 — the BIOS
+ * header labels do NOT line up with the driver channel numbers:
+ *   fan1 / pwm1 = CPU_FAN   -> the three AIO radiator fans (daisy-chained)
+ *   fan2 / pwm2 = SYS_FAN1  -> the AIO pump
+ *   fan3 / pwm3 = SYS_FAN2  -> the case fan hub
+ * See sbxs-infra/proxmox/fan-control/README.md.
+ */
+export interface ThermalSample {
+  cpu_tctl_c: number | null;
+  cpu_tccd_c: number | null;
+  board_temp_c: number | null;
+  nvme_max_c: number | null;
+  ram_max_c: number | null;
+  fan_cpu_rpm: number | null;
+  fan_pump_rpm: number | null;
+  fan_case_rpm: number | null;
+  pwm_cpu_percent: number | null;
+  pwm_pump_percent: number | null;
+  pwm_case_percent: number | null;
+}
+
+export interface ThermalStatus extends ThermalSample {
+  available: boolean;
+  host: string;
+  captured_at: string;
+  error?: string | null;
+}
+
+export interface ThermalHistory extends ThermalSample {
+  id: number;
+  host: string;
+  checked_at: string;
+}
+
 export interface BackupStatus {
   id: number;
   backup_name: string;
@@ -181,6 +218,7 @@ export interface StatusPayload {
   timestamp: string;
   servers?: Omit<ServerHealth, "id" | "checked_at">[];
   gpu?: GpuStatus;
+  thermals?: ThermalStatus;
   backups?: Omit<BackupStatus, "id" | "checked_at">[];
   crons?: Omit<CronJob, "id" | "checked_at">[];
   projects?: Omit<Project, "id" | "checked_at">[];

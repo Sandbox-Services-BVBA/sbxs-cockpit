@@ -29,6 +29,7 @@ import { AiUsageWidget } from "../widgets/ai-usage-widget";
 import { FileTreeWidget } from "../widgets/file-explorer-widget";
 import { HomeControlWidget } from "../widgets/home-control-widget";
 import { GpuWidget } from "../widgets/gpu-widget";
+import { ThermalsWidget } from "../widgets/thermals-widget";
 import { InfraSummary } from "../infra/infra-summary";
 import { ServersPane } from "../infra/servers-pane";
 import { BackupsPane } from "../infra/backups-pane";
@@ -65,6 +66,7 @@ export function moduleNode(id: string, { data, agentStale, density, layout }: Mo
       ? <ServersWidget servers={data!.servers} density={density} />
       : <ServersPane servers={data!.servers} density={density} />;
     case "gpu": return <GpuWidget gpu={data!.gpu} history={data!.gpuHistory} />;
+    case "thermals": return <ThermalsWidget thermals={data!.thermals} history={data!.thermalHistory} />;
     case "backups": return wall
       ? <BackupsWidget backups={data!.backups} density={density} />
       : <BackupsPane backups={data!.backups} density={density} />;

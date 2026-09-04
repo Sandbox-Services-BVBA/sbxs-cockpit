@@ -24,7 +24,7 @@ import { ViewError, ViewLede, ViewSkeleton } from "./view-chrome";
  */
 export function DomainView({ category }: { category: WidgetCategory }) {
   const { data, loading, error } = useDashboardData();
-  const { editing } = useLayout();
+  const { editing, ready } = useLayout();
   const desktop = useDesktop();
   const viewId = category as ViewId;
   const meta = VIEW_BY_ID[viewId];
@@ -46,7 +46,7 @@ export function DomainView({ category }: { category: WidgetCategory }) {
     <div className="cockpit-view space-y-4">
       <ViewLede>{meta.description}</ViewLede>
       {error && <ViewError message={error} />}
-      {loading && !data ? <ViewSkeleton /> : <ModuleGrid resolved={resolved} data={data} />}
+      {!ready || (loading && !data) ? <ViewSkeleton /> : <ModuleGrid resolved={resolved} data={data} />}
     </div>
   );
 }
@@ -64,7 +64,8 @@ function ModuleGrid({
 
   // Hidden modules are absent from `resolved.modules`, so they never mount
   // and a self-fetching one stops polling. Shared-data modules wait for the
-  // payload; self-fetching ones render straight away.
+  // payload; self-fetching ones render straight away. The view holds the
+  // whole grid until the profile is known, so nothing mounts on defaults.
   const modules = resolved.modules.filter(
     (entry) => entry.definition.dataMode === "self-fetch" || data
   );

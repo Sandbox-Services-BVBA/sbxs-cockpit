@@ -43,6 +43,12 @@ interface LayoutContextValue {
   profile: LayoutProfile;
   saved: LayoutProfile;
   revision: number;
+  /**
+   * False until /api/layout has answered (or failed). Views hold their
+   * modules back until then, so a module Bob hid never mounts on the
+   * defaults for a moment and fires a fetch before the profile arrives.
+   */
+  ready: boolean;
   editing: boolean;
   dirty: boolean;
   saveState: SaveState;
@@ -168,7 +174,7 @@ function clearDraftStorage() {
 }
 
 export function LayoutProvider({ children }: { children: ReactNode }) {
-  const { data, mutate } = useSWR<{ profile: LayoutProfile; revision: number }>(
+  const { data, error: loadError, mutate } = useSWR<{ profile: LayoutProfile; revision: number }>(
     "/api/layout",
     fetcher,
     { revalidateOnFocus: false }
@@ -188,6 +194,8 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
 
   const saved = data?.profile ?? EMPTY_PROFILE;
   const revision = data?.revision ?? 0;
+  // A failed load still counts as ready: the defaults are the honest answer then.
+  const ready = data !== undefined || loadError !== undefined;
   const editing = draft !== null;
   const profile = draft ?? saved;
   const authenticated = session?.authenticated ?? false;
@@ -311,6 +319,7 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
       profile,
       saved,
       revision,
+      ready,
       editing,
       dirty,
       saveState,
@@ -319,6 +328,9 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
       authConfigured,
 
       startEditing: () => {
+        // Editing a draft cloned from the empty placeholder would save an
+        // empty profile at revision 0; the shell disables the button too.
+        if (!ready) return;
         setSaveState("idle");
         setSaveError(null);
         setEditorTab("modules");
@@ -460,6 +472,7 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
     saved,
     profile,
     revision,
+    ready,
     editing,
     saveState,
     saveError,

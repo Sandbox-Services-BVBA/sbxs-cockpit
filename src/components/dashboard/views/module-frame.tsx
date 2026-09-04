@@ -47,8 +47,9 @@ interface BoundaryState {
 }
 
 // React still has no hook for error boundaries, so this is the one class
-// component in the dashboard.
-class ModuleErrorBoundary extends Component<BoundaryProps, BoundaryState> {
+// component in the dashboard. Exported for the wall, whose masonry cells are
+// not frames but need the same protection.
+export class ModuleErrorBoundary extends Component<BoundaryProps, BoundaryState> {
   state: BoundaryState = { failed: false };
 
   static getDerivedStateFromError(): BoundaryState {

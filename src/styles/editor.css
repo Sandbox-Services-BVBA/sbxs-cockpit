@@ -267,6 +267,19 @@
   line-height: 1.5;
 }
 
+/* The conflict note the shell shows after a refused save closes the editor. */
+.app-main__note {
+  margin-bottom: 12px;
+}
+
+button.editor-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
 .editor-link {
   color: var(--domain-accent);
   text-decoration: underline;

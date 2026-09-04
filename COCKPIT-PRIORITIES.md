@@ -41,8 +41,18 @@ events should be measured before frequency-based personalization is introduced.
 ## Remaining Release Gates
 
 - Add global user/session authentication before exposing more controls.
+  **Partially met (2026-09-04):** a password session (`COCKPIT_PASSWORD`,
+  `/api/auth/*`) gates every dashboard write, which today means the layout
+  profile. Reads are deliberately still open: the cockpit is Tailscale-fronted
+  and the wallboard runs unattended. Any control that changes the house, a VM
+  or a server still needs a read gate or a per-action confirmation before it
+  ships; the GPU mode switch stays blocked on that.
 - Rotate shared credentials and remove the CityScreens password from source.
 - Add validation, timeouts, rate limits, and an audit log to write endpoints.
+  **Met for the layout endpoints (2026-09-04):** catalog validation with a
+  64 KB body cap, optimistic revision locking, login rate limiting, and
+  `layout_audit_log` readable at `GET /api/layout/audit`. Not yet applied to
+  the collector ingest (`/api/status`) or the home control proxies.
 - Report unreachable servers explicitly instead of silently skipping them.
 - Split heavy live home polling into shared snapshots or a push channel.
 - Add event telemetry and use it to validate daily-work ordering.

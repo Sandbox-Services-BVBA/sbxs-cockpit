@@ -29,6 +29,19 @@ const FAKE_CATALOG: ModuleDefinition[] = [
     dataMode: "self-fetch",
   },
   {
+    // Private and never allowed on the wall, like every real private module.
+    id: "dev.files",
+    title: "Files",
+    ownerView: "dev",
+    allowedViews: ["dev"],
+    defaultWidth: "wide",
+    allowedWidths: ["wide"],
+    defaultDensity: "standard",
+    allowedDensities: ["standard"],
+    sensitivity: "private",
+    dataMode: "self-fetch",
+  },
+  {
     id: "alerts.queue",
     title: "Attention queue",
     ownerView: "alerts",
@@ -142,6 +155,16 @@ describe("validateProfile catalog rules", () => {
     // The same module is fine in its owner view.
     const ok = validateProfile({ schemaVersion: 1, views: { money: { modules: { "money.bank": { enabled: true } } } } });
     expect(ok.ok).toBe(true);
+  });
+
+  it("refuses a private module on the wallboard even when the wall is not among its views", () => {
+    expectError(
+      { schemaVersion: 1, views: { wall: { modules: { "dev.files": { enabled: true } } } } },
+      /private modules may not appear on the wallboard/
+    );
+    // Hiding it there is harmless and just dropped, like any out-of-view id.
+    const hidden = validateProfile({ schemaVersion: 1, views: { wall: { modules: { "dev.files": { enabled: false } } } } });
+    expect(hidden.ok && hidden.profile.views).toBeUndefined();
   });
 
   it("refuses to disable a required module", () => {

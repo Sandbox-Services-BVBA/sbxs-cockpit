@@ -50,19 +50,25 @@ function checkModuleOverride(viewId: ViewId, moduleId: string, raw: unknown): Mo
   if (!isPlainObject(raw)) return { ok: false, error: `views.${viewId}.modules.${moduleId} must be an object` };
 
   const definition = getModule(moduleId);
-  // Unknown id, or a module that may not live in this view: drop silently.
-  if (!definition || !definition.allowedViews.includes(viewId)) return { ok: true, override: null };
+  // Unknown id: drop silently, it is most likely a module that was removed.
+  if (!definition) return { ok: true, override: null };
+  const where = `views.${viewId}.modules.${moduleId}`;
+
+  // Privacy comes before reach. No private or control module lists the wall
+  // in its allowed views, so checking reach first would quietly drop the
+  // attempt; a client asking for it is confused and should be told so.
+  if (raw.enabled === true && viewId === "wall" && definition.sensitivity !== "normal") {
+    return { ok: false, error: `${where}: ${definition.sensitivity} modules may not appear on the wallboard` };
+  }
+  // A module that may not live in this view: drop silently.
+  if (!definition.allowedViews.includes(viewId)) return { ok: true, override: null };
 
   const override: ModuleOverride = {};
-  const where = `views.${viewId}.modules.${moduleId}`;
 
   if (raw.enabled !== undefined) {
     if (typeof raw.enabled !== "boolean") return { ok: false, error: `${where}.enabled must be a boolean` };
     if (raw.enabled === false && definition.required) {
       return { ok: false, error: `${where}: "${definition.title}" is required and cannot be hidden` };
-    }
-    if (raw.enabled === true && viewId === "wall" && definition.sensitivity !== "normal") {
-      return { ok: false, error: `${where}: ${definition.sensitivity} modules may not appear on the wallboard` };
     }
     override.enabled = raw.enabled;
   }

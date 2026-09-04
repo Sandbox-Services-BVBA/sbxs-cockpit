@@ -8,13 +8,21 @@ import { cn } from "@/lib/utils";
 // why Save may be refusing. Shared between the header bar and the editor
 // footer so a phone user does not have to scroll back up to save.
 
-/** Views whose modules render through DomainView and therefore edit in place. */
+/**
+ * Views that render their modules through the resolver and therefore edit
+ * in place. That is every domain since Phase 6; the shell still uses the set
+ * to tell a domain from a drill-down route beneath it (/infra/logs).
+ */
 export const EDITABLE_VIEWS: ReadonlySet<ViewId> = new Set<ViewId>([
+  "house",
+  "alerts",
+  "infra",
   "sites",
   "money",
   "comms",
   "dev",
   "personal",
+  "wall",
 ]);
 
 export function EditorActions({ viewId, className }: { viewId: ViewId; className?: string }) {

@@ -226,11 +226,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const feed = getFeedState(data, error);
   const attentionCount = getDashboardHealth(data).attentionCount;
   const nav = useNavigation(attentionCount);
-  const { editing, editorTab, startEditing, authPrompt } = useLayout();
+  const { editing, editorTab, startEditing, authPrompt, ready, saveState, saveError, cancel } = useLayout();
+  // A stale save was refused and the editor closed on the reloaded layout;
+  // the reason has to outlive the editor or the change looks like it vanished.
+  const conflictNote = !editing && saveState === "conflict" ? saveError : null;
 
-  // The wall is an unattended shared display: no editing there. A drill-down
-  // route (logs, mailroom) and the views that still draw their own panes get
-  // the Sections tab and an explanation instead of a module list.
+  // The wall is an unattended shared display, so it gets no Customize button;
+  // its placements are edited by opening Customize elsewhere and navigating
+  // here. A drill-down route (logs, mailroom) has no module list and gets
+  // the Sections tab and an explanation instead.
   const customizable = current.id !== "wall";
   const editsInPlace = EDITABLE_VIEWS.has(current.id) && pathname === current.href;
 
@@ -299,6 +303,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   onClick={startEditing}
+                  disabled={!ready}
                   className="app-icon-button"
                   aria-label="Customize layout"
                   title="Customize"
@@ -311,7 +316,19 @@ export function AppShell({ children }: { children: ReactNode }) {
             {editing && <EditorBar viewId={current.id} />}
           </header>
 
-          <main className="app-main">{main}</main>
+          <main className="app-main">
+            {conflictNote && (
+              <div className="editor-notes app-main__note" role="status">
+                <p className="editor-note editor-note--info">
+                  {conflictNote}{" "}
+                  <button type="button" className="editor-link" onClick={cancel}>
+                    Dismiss
+                  </button>
+                </p>
+              </div>
+            )}
+            {main}
+          </main>
         </div>
 
         <BottomBar current={current} nav={nav} attentionCount={attentionCount} />

@@ -52,11 +52,14 @@ function define(id: string, spec: ModuleSpec): ModuleDefinition {
 const WALL: ViewId[] = ["wall"];
 
 const CORE_MODULES: ModuleDefinition[] = [
+  // Required and list-heavy: density may fold warnings into a count, never a
+  // critical. The widget enforces that; the catalog only offers the choice.
   define("alerts-summary", {
     title: "Active Alerts",
     ownerView: "alerts",
     defaultWidth: "full",
     allowedWidths: ["wide", "full"],
+    listy: true,
     required: true,
   }),
 

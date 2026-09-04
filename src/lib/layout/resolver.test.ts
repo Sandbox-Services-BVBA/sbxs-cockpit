@@ -120,6 +120,22 @@ describe("resolveView with overrides", () => {
 });
 
 describe("wallboard privacy", () => {
+  it("places, by default, exactly the old hard-coded allow-list in registry order", () => {
+    expect(ids(resolveView("wall", null))).toEqual([
+      "uptime-grid",
+      "servers",
+      "gpu",
+      "backups",
+      "connections",
+      "cityscreens",
+      "domains",
+      "crons",
+      "services",
+      "inbox",
+      "mailroom",
+    ]);
+  });
+
   it("shows only normal-sensitivity modules by default", () => {
     const view = resolveView("wall", null);
     expect(view.modules.length).toBeGreaterThan(0);
@@ -146,6 +162,33 @@ describe("wallboard privacy", () => {
       expect(all).not.toContain(id);
     }
     expect(ids(view)[0]).toBe("servers");
+  });
+
+  it("lets a profile reorder, hide and set density on what the wall may show", () => {
+    const view = resolveView("wall", profile({
+      views: {
+        wall: {
+          order: ["crons", "uptime-grid"],
+          modules: { crons: { density: "summary" }, "uptime-grid": { enabled: false } },
+        },
+      },
+    }));
+    expect(ids(view)[0]).toBe("crons");
+    expect(view.modules[0].density).toBe("summary");
+    expect(view.hidden.map((m) => m.moduleId)).toEqual(["uptime-grid"]);
+  });
+});
+
+describe("attention safety", () => {
+  it("keeps the alert queue placed whatever the profile says, with density as the only choice", () => {
+    const view = resolveView("alerts", profile({
+      views: { alerts: { modules: { "alerts-summary": { enabled: false, density: "summary", width: "compact" } } } },
+    }));
+    expect(ids(view)).toEqual(["alerts-summary"]);
+    expect(view.hidden).toEqual([]);
+    expect(view.modules[0].density).toBe("summary");
+    // compact is not an allowed width for the queue, so the default holds.
+    expect(view.modules[0].width).toBe("full");
   });
 });
 

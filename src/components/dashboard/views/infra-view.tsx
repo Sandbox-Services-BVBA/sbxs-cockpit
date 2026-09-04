@@ -2,9 +2,11 @@
 
 import { useDashboardData } from "@/hooks/use-dashboard-data";
 import { getDashboardHealth } from "@/lib/dashboard-health";
-import { useResolvedView } from "@/lib/layout/client";
+import { useLayout, useResolvedView } from "@/lib/layout/client";
 import { GRID_CLASS } from "@/lib/layout/grid";
+import type { ResolvedView } from "@/lib/layout/types";
 import { VIEW_BY_ID } from "@/lib/views";
+import { useDesktop, ViewEditor } from "@/components/layout-editor";
 import { ModuleFrame } from "./module-frame";
 import { moduleNode } from "./module-renderers";
 import { SourceFreshnessNotice, ViewError, ViewLede, ViewSkeleton } from "./view-chrome";
@@ -18,10 +20,26 @@ import { SourceFreshnessNotice, ViewError, ViewLede, ViewSkeleton } from "./view
  */
 export function InfraView() {
   const { data, loading, error } = useDashboardData();
+  const { editing, ready } = useLayout();
+  const desktop = useDesktop();
   const health = getDashboardHealth(data);
   const resolved = useResolvedView("infra");
 
-  if (loading && !data) {
+  if (editing) {
+    return (
+      <div className="cockpit-view">
+        <ViewEditor
+          viewId="infra"
+          resolved={resolved}
+          preview={desktop ? <InfraGrid resolved={resolved} data={data} editing /> : undefined}
+        />
+      </div>
+    );
+  }
+
+  // Until the profile is known a hidden module could mount on the defaults;
+  // the skeleton covers that wait as well as the first dashboard fetch.
+  if (!ready || (loading && !data)) {
     return (
       <div className="cockpit-view space-y-4">
         <ViewLede>{VIEW_BY_ID.infra.description}</ViewLede>
@@ -30,6 +48,27 @@ export function InfraView() {
     );
   }
 
+  return (
+    <div className="cockpit-view space-y-4">
+      <ViewLede>{VIEW_BY_ID.infra.description}</ViewLede>
+      {error && <ViewError message={error} />}
+      <SourceFreshnessNotice agentStale={health.agentStale} uptimeStale={false} />
+      <InfraGrid resolved={resolved} data={data} />
+    </div>
+  );
+}
+
+function InfraGrid({
+  resolved,
+  data,
+  editing = false,
+}: {
+  resolved: ResolvedView;
+  data: ReturnType<typeof useDashboardData>["data"];
+  editing?: boolean;
+}) {
+  const health = getDashboardHealth(data);
+
   // Hidden modules are absent from `resolved.modules`, so they never mount.
   // Shared-data modules wait for the payload; self-fetching ones render now.
   const modules = resolved.modules.filter(
@@ -37,27 +76,21 @@ export function InfraView() {
   );
 
   return (
-    <div className="cockpit-view space-y-4">
-      <ViewLede>{VIEW_BY_ID.infra.description}</ViewLede>
-      {error && <ViewError message={error} />}
-      <SourceFreshnessNotice agentStale={health.agentStale} uptimeStale={false} />
-
-      <div className={GRID_CLASS}>
-        {modules.map((entry) => {
-          const node = moduleNode(entry.moduleId, {
-            data,
-            agentStale: health.agentStale,
-            density: entry.density,
-            layout: "grid",
-          });
-          if (node === null) return null;
-          return (
-            <ModuleFrame key={entry.moduleId} resolved={entry}>
-              {node}
-            </ModuleFrame>
-          );
-        })}
-      </div>
+    <div className={GRID_CLASS}>
+      {modules.map((entry) => {
+        const node = moduleNode(entry.moduleId, {
+          data,
+          agentStale: health.agentStale,
+          density: entry.density,
+          layout: "grid",
+        });
+        if (node === null) return null;
+        return (
+          <ModuleFrame key={entry.moduleId} resolved={entry} editing={editing}>
+            {node}
+          </ModuleFrame>
+        );
+      })}
     </div>
   );
 }

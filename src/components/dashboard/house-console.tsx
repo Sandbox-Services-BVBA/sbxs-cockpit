@@ -15,9 +15,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { TimeframeBar } from "@/components/energy/timeframe-bar";
-import { useResolvedView } from "@/lib/layout/client";
+import { useLayout, useResolvedView } from "@/lib/layout/client";
 import { GRID_CLASS } from "@/lib/layout/grid";
 import { homeAnchorId, homeAnchorsFor, homeModeFor, homeModulesFor } from "@/lib/layout/home-modules";
+import { ViewEditor } from "@/components/layout-editor";
 import { HomeConsoleProvider, useHomeConsole } from "./home/home-console-provider";
 import { ModuleFrame } from "./views/module-frame";
 import { homeModuleNode } from "./views/home-renderers";
@@ -37,16 +38,30 @@ const NAV_ICONS: Record<string, LucideIcon> = {
 };
 
 // The provider owns the timeframe and the single live feed; everything under
-// it, the sticky bar included, reads that one context.
+// it, the sticky bar included, reads that one context. While Customize is
+// active the console gives way to the editor list entirely: the provider is
+// not mounted, so the 3 second live poll stops with it, and there is no
+// desktop preview because the sections only make sense with that feed.
 export function HouseConsole() {
+  const { editing, ready } = useLayout();
+  const resolved = useResolvedView("house");
+
+  if (editing) {
+    return (
+      <div className="cockpit-view">
+        <ViewEditor viewId="house" resolved={resolved} />
+      </div>
+    );
+  }
+
   return (
     <HomeConsoleProvider>
-      <HomeConsoleBody />
+      <HomeConsoleBody ready={ready} />
     </HomeConsoleProvider>
   );
 }
 
-function HomeConsoleBody() {
+function HomeConsoleBody({ ready }: { ready: boolean }) {
   const { range, isLive, live, changeMode, step } = useHomeConsole();
   const resolved = useResolvedView("house");
 
@@ -54,8 +69,10 @@ function HomeConsoleBody() {
   // apply to the current mode is not placed at all, and its anchor goes with
   // it. Hidden modules are already absent from `resolved.modules`, so they
   // never mount and a self-fetching one stops polling.
+  // Nothing is placed until the profile is known, so a hidden self-fetching
+  // module (raw metrics) never mounts on the defaults for a moment.
   const mode = homeModeFor(isLive);
-  const modules = homeModulesFor(mode, resolved.modules);
+  const modules = ready ? homeModulesFor(mode, resolved.modules) : [];
   const nav = homeAnchorsFor(mode, modules);
 
   return (

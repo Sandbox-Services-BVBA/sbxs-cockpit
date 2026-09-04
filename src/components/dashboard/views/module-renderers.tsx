@@ -40,8 +40,9 @@ export interface ModuleRenderContext {
   data: DashboardData | null;
   agentStale: boolean;
   /**
-   * The resolved density. The Infrastructure list modules read it; the rest
-   * are fixed-density in the catalog and never see anything but "standard".
+   * The resolved density. The list modules (Infrastructure panes, the alert
+   * queue) read it; the rest are fixed-density in the catalog and never see
+   * anything but "standard".
    */
   density: ModuleDensity;
   layout: LayoutMode;
@@ -76,7 +77,7 @@ export function moduleNode(id: string, { data, agentStale, density, layout }: Mo
     case "services": return wall
       ? <ServicesWidget services={data?.services} density={density} />
       : <ServicesPane services={data?.services} density={density} />;
-    case "alerts-summary": return <AlertsSummaryWidget alerts={data!.alerts} suppressHealthy={agentStale} />;
+    case "alerts-summary": return <AlertsSummaryWidget alerts={data!.alerts} density={density} suppressHealthy={agentStale} />;
     case "uptime-grid": return <UptimeGridWidget uptime={data!.uptime} uptimeHistory={data!.uptimeHistory} />;
     case "cityscreens": return <CityScreensWidget displays={data!.cityscreens} />;
     case "domains": return <DomainsWidget domains={data!.domains} />;

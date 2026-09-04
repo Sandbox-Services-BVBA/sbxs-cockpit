@@ -64,7 +64,7 @@ describe("module catalog", () => {
   it("offers a density choice only to list-heavy modules", () => {
     const listy = MODULE_CATALOG.filter((m) => m.allowedDensities.length > 1).map((m) => m.id);
     expect(listy.sort()).toEqual(
-      ["backups", "connections", "crons", "domains", "file-activity", "projects", "servers", "services", "uptime-grid"]
+      ["alerts-summary", "backups", "connections", "crons", "domains", "file-activity", "projects", "servers", "services", "uptime-grid"]
     );
   });
 });

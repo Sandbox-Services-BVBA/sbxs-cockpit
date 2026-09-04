@@ -12,6 +12,7 @@ import type {
   ModuleWidth,
   ViewId,
 } from "./types";
+import { HOME_MODULES } from "./home-modules";
 
 const LIST_DENSITIES: ModuleDensity[] = ["summary", "standard", "full"];
 const FIXED_DENSITY: ModuleDensity[] = ["standard"];
@@ -50,7 +51,7 @@ function define(id: string, spec: ModuleSpec): ModuleDefinition {
 // or a write control, never reaches the shared display whatever a profile says.
 const WALL: ViewId[] = ["wall"];
 
-export const MODULE_CATALOG: ModuleDefinition[] = [
+const CORE_MODULES: ModuleDefinition[] = [
   define("alerts-summary", {
     title: "Active Alerts",
     ownerView: "alerts",
@@ -269,6 +270,10 @@ export const MODULE_CATALOG: ModuleDefinition[] = [
     selfFetch: true,
   }),
 ];
+
+// Home's definitions live in their own file: the Home console owns a shared
+// timeframe and live feed, so its modules are context modules, not cards.
+export const MODULE_CATALOG: ModuleDefinition[] = [...CORE_MODULES, ...HOME_MODULES];
 
 export const MODULE_BY_ID: Record<string, ModuleDefinition> = Object.fromEntries(
   MODULE_CATALOG.map((module) => [module.id, module])

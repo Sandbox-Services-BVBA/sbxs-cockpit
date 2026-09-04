@@ -8,9 +8,10 @@
 
 import { BOTTOM_BAR_IDS, VIEWS } from "@/lib/views";
 import type { ModulePlacement, ViewId } from "./types";
+import { HOME_LAYOUT } from "./home-modules";
 
 export const DEFAULT_LAYOUTS: Record<ViewId, ModulePlacement[]> = {
-  house: [{ moduleId: "home-control" }],
+  house: [{ moduleId: "home-control" }, ...HOME_LAYOUT],
 
   alerts: [{ moduleId: "alerts-summary" }],
 

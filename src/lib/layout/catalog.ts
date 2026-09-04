@@ -99,8 +99,8 @@ const CORE_MODULES: ModuleDefinition[] = [
     selfFetch: true,
   }),
 
-  // Infrastructure. The rollup strip is registered now so Phase 4 can place
-  // it; InfraView keeps rendering its own hard-coded panes until then.
+  // Infrastructure. Six placements plus GPU; InfraView renders all of them
+  // through the resolver, and the list panes honour density.
   define("infra.summary", {
     title: "Infrastructure rollup",
     ownerView: "infra",

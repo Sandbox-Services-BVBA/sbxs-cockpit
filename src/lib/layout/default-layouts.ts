@@ -11,18 +11,24 @@ import type { ModulePlacement, ViewId } from "./types";
 import { HOME_LAYOUT } from "./home-modules";
 
 export const DEFAULT_LAYOUTS: Record<ViewId, ModulePlacement[]> = {
-  house: [{ moduleId: "home-control" }, ...HOME_LAYOUT],
+  // HOME_LAYOUT places Office itself, in its live-mode slot after Airco.
+  house: HOME_LAYOUT,
 
   alerts: [{ moduleId: "alerts-summary" }],
 
+  // Infrastructure as it looked with its hand-built grid: the rollup strip,
+  // then Servers, GPU and Connections across the whole row, with the three
+  // list panes sharing one row between them. The old grid stacked Backups
+  // under Scheduled jobs beside Services; a flat grid cannot nest, so the
+  // three sit side by side instead and each is as tall as its own list.
   infra: [
     { moduleId: "infra.summary" },
-    { moduleId: "servers" },
-    { moduleId: "gpu" },
-    { moduleId: "backups" },
-    { moduleId: "connections" },
+    { moduleId: "servers", width: "full" },
+    { moduleId: "gpu", width: "full" },
+    { moduleId: "services", width: "standard" },
+    { moduleId: "backups", width: "standard" },
     { moduleId: "crons", width: "standard" },
-    { moduleId: "services" },
+    { moduleId: "connections", width: "full" },
   ],
 
   sites: [

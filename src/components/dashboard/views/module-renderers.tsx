@@ -29,13 +29,19 @@ import { AiUsageWidget } from "../widgets/ai-usage-widget";
 import { FileTreeWidget } from "../widgets/file-explorer-widget";
 import { HomeControlWidget } from "../widgets/home-control-widget";
 import { GpuWidget } from "../widgets/gpu-widget";
+import { InfraSummary } from "../infra/infra-summary";
+import { ServersPane } from "../infra/servers-pane";
+import { BackupsPane } from "../infra/backups-pane";
+import { ConnectionsPane } from "../infra/connections-pane";
+import { CronsPane } from "../infra/crons-pane";
+import { ServicesPane } from "../infra/services-pane";
 
 export interface ModuleRenderContext {
   data: DashboardData | null;
   agentStale: boolean;
   /**
-   * The resolved density. No legacy widget reads it yet; Phase 4 threads it
-   * into the list-heavy ones. It is in the context now so the seam exists.
+   * The resolved density. The Infrastructure list modules read it; the rest
+   * are fixed-density in the catalog and never see anything but "standard".
    */
   density: ModuleDensity;
   layout: LayoutMode;
@@ -44,23 +50,38 @@ export interface ModuleRenderContext {
 /**
  * Catalog id to component. Shared-data modules are only asked for once
  * `data` is present, so the non-null assertions are the caller's contract.
- * Unknown ids, and catalog entries that have no renderer yet (the
- * Infrastructure rollup), return null and the caller skips the frame.
+ * Unknown ids return null and the caller skips the frame.
+ *
+ * The Infrastructure modules have two faces: the converted panes on their
+ * own domain, and the older WidgetTile cards the wall still speaks. The
+ * layout mode picks, so the wall keeps its look when it migrates here.
  */
-export function moduleNode(id: string, { data, agentStale, layout }: ModuleRenderContext): ReactNode {
+export function moduleNode(id: string, { data, agentStale, density, layout }: ModuleRenderContext): ReactNode {
+  const wall = layout === "wall";
   switch (id) {
+    case "infra.summary": return <InfraSummary data={data!} />;
+    case "servers": return wall
+      ? <ServersWidget servers={data!.servers} density={density} />
+      : <ServersPane servers={data!.servers} density={density} />;
+    case "gpu": return <GpuWidget gpu={data!.gpu} history={data!.gpuHistory} />;
+    case "backups": return wall
+      ? <BackupsWidget backups={data!.backups} density={density} />
+      : <BackupsPane backups={data!.backups} density={density} />;
+    case "connections": return wall
+      ? <ConnectionsWidget connections={data!.integrations} density={density} />
+      : <ConnectionsPane connections={data!.integrations} density={density} />;
+    case "crons": return wall
+      ? <CronsWidget crons={data!.crons} density={density} />
+      : <CronsPane crons={data!.crons} density={density} />;
+    case "services": return wall
+      ? <ServicesWidget services={data?.services} density={density} />
+      : <ServicesPane services={data?.services} density={density} />;
     case "alerts-summary": return <AlertsSummaryWidget alerts={data!.alerts} suppressHealthy={agentStale} />;
     case "uptime-grid": return <UptimeGridWidget uptime={data!.uptime} uptimeHistory={data!.uptimeHistory} />;
     case "cityscreens": return <CityScreensWidget displays={data!.cityscreens} />;
     case "domains": return <DomainsWidget domains={data!.domains} />;
     case "umami-plaq": return <UmamiWidget site="plaqstudio" title="Plaq Studio" />;
     case "umami-byb": return <UmamiWidget site="bookyourbox" title="BookYourBox" />;
-    case "servers": return <ServersWidget servers={data!.servers} />;
-    case "gpu": return <GpuWidget gpu={data!.gpu} history={data!.gpuHistory} />;
-    case "backups": return <BackupsWidget backups={data!.backups} />;
-    case "connections": return <ConnectionsWidget connections={data!.integrations} />;
-    case "crons": return <CronsWidget crons={data!.crons} />;
-    case "services": return <ServicesWidget services={data?.services} />;
     case "unbilled": return <UnbilledWidget unbilled={data!.unbilled} />;
     case "bank": return <BankWidget />;
     case "timeentries": return <TimeEntriesWidget entries={data!.timeentries} />;

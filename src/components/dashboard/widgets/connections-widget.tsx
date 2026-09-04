@@ -12,7 +12,10 @@ import {
   CONNECTION_LABEL as STATE_LABEL,
   type ConnectionState,
 } from "@/lib/connection-state";
+import type { ModuleDensity } from "@/lib/layout/types";
 import type { IntegrationHealth } from "@/types";
+import { cutByDensity, foldLabel } from "../infra/density";
+import { DensityFold } from "../infra/density-fold";
 
 // The wallboard's rendering of a connection. Infrastructure has its own
 // converted pane; both read the same state rules from lib/connection-state.
@@ -57,15 +60,16 @@ function CopyStep({ text }: { text: string }) {
   );
 }
 
-function ConnectionRow({ connection }: { connection: IntegrationHealth }) {
+function ConnectionRow({ connection, density }: { connection: IntegrationHealth; density: ModuleDensity }) {
   const state = connectionState(connection);
   const unhealthy = state !== "ok";
   const steps = connection.fix ? fixSteps(connection.fix) : [];
   // The fix belongs on screen at the moment the failure is seen, not one tap
   // behind it. The default is derived, not captured at mount, so a connection
-  // that breaks while the dashboard is open opens its own fix.
+  // that breaks while the dashboard is open opens its own fix. Full opens
+  // every fix, healthy or not: it is the everything-expanded drill-down.
   const [override, setOverride] = useState<boolean | null>(null);
-  const open = override ?? (unhealthy && steps.length > 0);
+  const open = override ?? (steps.length > 0 && (unhealthy || density === "full"));
 
   const checked = ago(connection.last_check_at);
   const flow = ago(connection.last_flow_at);
@@ -149,7 +153,16 @@ function ConnectionRow({ connection }: { connection: IntegrationHealth }) {
   );
 }
 
-export function ConnectionsWidget({ connections }: { connections: IntegrationHealth[] }) {
+export function ConnectionsWidget({
+  connections,
+  density = "standard",
+}: {
+  connections: IntegrationHealth[];
+  density?: ModuleDensity;
+}) {
+  // Local only: "Show all" must not write to the profile and resets on reload.
+  const [expanded, setExpanded] = useState(false);
+
   if (connections.length === 0) {
     return (
       <WidgetTile title="Connections" size="md">
@@ -162,6 +175,8 @@ export function ConnectionsWidget({ connections }: { connections: IntegrationHea
 
   const sorted = sortConnections(connections);
   const working = sorted.filter((connection) => connectionState(connection) === "ok").length;
+  // Unverified is not healthy: a row nobody has checked stays on screen.
+  const cut = cutByDensity(sorted, density, (connection) => connectionState(connection) === "ok", expanded);
 
   return (
     <WidgetTile
@@ -178,11 +193,21 @@ export function ConnectionsWidget({ connections }: { connections: IntegrationHea
         </span>
       }
     >
-      <div className="space-y-1.5">
-        {sorted.map((connection) => (
-          <ConnectionRow key={connection.integration_name} connection={connection} />
-        ))}
-      </div>
+      {cut.rows.length > 0 && (
+        <div className="space-y-1.5">
+          {cut.rows.map((connection) => (
+            <ConnectionRow key={connection.integration_name} connection={connection} density={density} />
+          ))}
+        </div>
+      )}
+      {cut.fold && (
+        <DensityFold
+          label={foldLabel(cut, "connection", "working")}
+          total={cut.total}
+          expanded={expanded}
+          onToggle={() => setExpanded((open) => !open)}
+        />
+      )}
     </WidgetTile>
   );
 }

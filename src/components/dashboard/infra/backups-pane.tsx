@@ -1,7 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { ago } from "@/lib/connection-state";
+import type { ModuleDensity } from "@/lib/layout/types";
 import type { BackupStatus } from "@/types";
+import { cutByDensity, foldLabel } from "./density";
+import { DensityFold } from "./density-fold";
 import { Pane, PaneEmpty, type PaneTone } from "./pane";
 import { StatusRow, toneOf } from "./status-row";
 
@@ -36,15 +40,29 @@ function toneFor(backup: BackupStatus): PaneTone {
   return RANK[derived] < RANK[reported] ? derived : reported;
 }
 
-function intervalNote(backup: BackupStatus): string {
+function intervalNote(backup: BackupStatus, density: ModuleDensity): string {
   const route = [backup.source, backup.target].filter(Boolean).join(" to ");
   const hours = backup.expected_interval_hours;
-  if (!hours || hours <= 0) return route || "route not reported";
-  const every = hours % 24 === 0 ? `${hours / 24}d` : `${hours}h`;
-  return route ? `${route} · expected every ${every}` : `expected every ${every}`;
+  const parts: string[] = [];
+  if (route) parts.push(route);
+  if (hours && hours > 0) parts.push(`expected every ${hours % 24 === 0 ? `${hours / 24}d` : `${hours}h`}`);
+  // Size is only interesting on the drill-down, so Full is the one that gets it.
+  if (density === "full" && backup.size_mb) {
+    parts.push(backup.size_mb >= 1024 ? `${(backup.size_mb / 1024).toFixed(1)} GB` : `${Math.round(backup.size_mb)} MB`);
+  }
+  return parts.length ? parts.join(" · ") : "route not reported";
 }
 
-export function BackupsPane({ backups }: { backups: BackupStatus[] | undefined }) {
+export function BackupsPane({
+  backups,
+  density = "standard",
+}: {
+  backups: BackupStatus[] | undefined;
+  density?: ModuleDensity;
+}) {
+  // Local only: "Show all" must not write to the profile and resets on reload.
+  const [expanded, setExpanded] = useState(false);
+
   if (!backups || backups.length === 0) {
     return (
       <Pane title="Backups" readout="no targets">
@@ -59,6 +77,7 @@ export function BackupsPane({ backups }: { backups: BackupStatus[] | undefined }
 
   const stale = rows.filter((row) => row.tone !== "ok").length;
   const worst = rows[0]?.tone ?? "idle";
+  const cut = cutByDensity(rows, density, (row) => row.tone === "ok", expanded);
 
   return (
     <Pane
@@ -66,18 +85,28 @@ export function BackupsPane({ backups }: { backups: BackupStatus[] | undefined }
       tone={stale > 0 ? worst : "ok"}
       readout={stale > 0 ? `${stale} of ${rows.length} stale` : `${rows.length} fresh`}
     >
-      <ul className="status-list">
-        {rows.map(({ backup, tone }) => (
-          <StatusRow
-            key={backup.backup_name}
-            tone={tone}
-            name={backup.backup_name}
-            note={intervalNote(backup)}
-            right={ago(backup.last_backup_at) ?? "never run"}
-            word={tone === "bad" ? "overdue" : tone === "warn" ? "late" : "fresh"}
-          />
-        ))}
-      </ul>
+      {cut.rows.length > 0 && (
+        <ul className="status-list">
+          {cut.rows.map(({ backup, tone }) => (
+            <StatusRow
+              key={backup.backup_name}
+              tone={tone}
+              name={backup.backup_name}
+              note={intervalNote(backup, density)}
+              right={ago(backup.last_backup_at) ?? "never run"}
+              word={tone === "bad" ? "overdue" : tone === "warn" ? "late" : "fresh"}
+            />
+          ))}
+        </ul>
+      )}
+      {cut.fold && (
+        <DensityFold
+          label={foldLabel(cut, "target", "fresh")}
+          total={cut.total}
+          expanded={expanded}
+          onToggle={() => setExpanded((open) => !open)}
+        />
+      )}
     </Pane>
   );
 }

@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { ago } from "@/lib/connection-state";
+import type { ModuleDensity } from "@/lib/layout/types";
 import type { Service } from "@/types";
+import { cutByDensity, foldLabel } from "./density";
+import { DensityFold } from "./density-fold";
 import { Pane, PaneEmpty } from "./pane";
 import { StatusRow } from "./status-row";
 
@@ -53,9 +56,17 @@ function uptimeLabel(seconds: number): string {
   return `up ${Math.floor(seconds / 86400)}d`;
 }
 
-export function ServicesPane({ services }: { services: Service[] | null | undefined }) {
+export function ServicesPane({
+  services,
+  density = "standard",
+}: {
+  services: Service[] | null | undefined;
+  density?: ModuleDensity;
+}) {
   // Read purely so the heartbeat ages recompute on the tick.
   useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  // Local only: "Show all" must not write to the profile and resets on reload.
+  const [expanded, setExpanded] = useState(false);
 
   if (!services) {
     return (
@@ -80,6 +91,7 @@ export function ServicesPane({ services }: { services: Service[] | null | undefi
     (a, b) => Number(!!a.running) - Number(!!b.running) || a.name.localeCompare(b.name)
   );
   const down = services.filter((service) => !service.running).length;
+  const cut = cutByDensity(sorted, density, (service) => !!service.running, expanded);
 
   return (
     <Pane
@@ -87,27 +99,37 @@ export function ServicesPane({ services }: { services: Service[] | null | undefi
       tone={down > 0 ? "bad" : "ok"}
       readout={down > 0 ? `${down} of ${services.length} down` : `${services.length} up`}
     >
-      <ul className="status-list">
-        {sorted.map((service) => {
-          const running = !!service.running;
-          const beat = ago(service.last_beat);
-          const note = running
-            ? [uptimeLabel(service.uptime_seconds), service.detail].filter(Boolean).join(" · ")
-            : service.detail ?? "not running";
-          return (
-            <StatusRow
-              key={service.name}
-              tone={running ? "ok" : "bad"}
-              name={service.name}
-              note={note}
-              // Only a real heartbeat earns the right-hand slot. Repeating the
-              // uptime there next to the word UP says the same thing twice.
-              right={running && beat ? `beat ${beat}` : undefined}
-              word={running ? "up" : "down"}
-            />
-          );
-        })}
-      </ul>
+      {cut.rows.length > 0 && (
+        <ul className="status-list">
+          {cut.rows.map((service) => {
+            const running = !!service.running;
+            const beat = ago(service.last_beat);
+            const note = running
+              ? [uptimeLabel(service.uptime_seconds), service.detail].filter(Boolean).join(" · ")
+              : service.detail ?? "not running";
+            return (
+              <StatusRow
+                key={service.name}
+                tone={running ? "ok" : "bad"}
+                name={service.name}
+                note={note}
+                // Only a real heartbeat earns the right-hand slot. Repeating the
+                // uptime there next to the word UP says the same thing twice.
+                right={running && beat ? `beat ${beat}` : undefined}
+                word={running ? "up" : "down"}
+              />
+            );
+          })}
+        </ul>
+      )}
+      {cut.fold && (
+        <DensityFold
+          label={foldLabel(cut, "service", "up")}
+          total={cut.total}
+          expanded={expanded}
+          onToggle={() => setExpanded((open) => !open)}
+        />
+      )}
       <LogsLink />
     </Pane>
   );

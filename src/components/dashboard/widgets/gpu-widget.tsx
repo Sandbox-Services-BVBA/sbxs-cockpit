@@ -198,7 +198,7 @@ export function GpuWidget({ gpu, history }: { gpu: GpuStatus | null; history: Gp
         : ageLabel(gpu.captured_at);
 
   return (
-    <Pane title="GPU" wide tone={tone} readout={readout}>
+    <Pane title="GPU" tone={tone} readout={readout}>
       {!gpu ? (
         <PaneEmpty>The cockpit agent has not reported GPU telemetry yet.</PaneEmpty>
       ) : !gpu.available ? (

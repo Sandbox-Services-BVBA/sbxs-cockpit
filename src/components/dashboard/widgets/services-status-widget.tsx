@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import { WidgetTile } from "../widget-tile";
 import { cn } from "@/lib/utils";
+import type { ModuleDensity } from "@/lib/layout/types";
 import type { Service } from "@/types";
+import { cutByDensity, foldLabel } from "../infra/density";
+import { DensityFold } from "../infra/density-fold";
 
 function tsOf(iso: string): number {
   return new Date(iso.includes("T") || iso.endsWith("Z") ? iso : iso.replace(" ", "T") + "Z").getTime();
@@ -22,8 +25,16 @@ function beatAgo(iso: string | null, nowMs: number): string {
   return fmtDuration(Math.round((nowMs - tsOf(iso)) / 1000));
 }
 
-export function ServicesWidget({ services }: { services?: Service[] | null }) {
+export function ServicesWidget({
+  services,
+  density = "standard",
+}: {
+  services?: Service[] | null;
+  density?: ModuleDensity;
+}) {
   const [now, setNow] = useState(() => Date.now());
+  // Local only: "Show all" must not write to the profile and resets on reload.
+  const [expanded, setExpanded] = useState(false);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(t);
@@ -42,6 +53,7 @@ export function ServicesWidget({ services }: { services?: Service[] | null }) {
     (a, b) => Number(!!a.running) - Number(!!b.running) || a.name.localeCompare(b.name)
   );
   const up = services.filter((s) => s.running).length;
+  const cut = cutByDensity(sorted, density, (s) => !!s.running, expanded);
 
   return (
     <WidgetTile
@@ -53,6 +65,7 @@ export function ServicesWidget({ services }: { services?: Service[] | null }) {
         </span>
       }
     >
+      {cut.rows.length > 0 && (
       <table className="w-full table-fixed font-mono text-tiny leading-snug">
         <colgroup>
           <col className="w-3" />
@@ -60,7 +73,7 @@ export function ServicesWidget({ services }: { services?: Service[] | null }) {
           <col />
         </colgroup>
         <tbody>
-          {sorted.map((s) => {
+          {cut.rows.map((s) => {
             const running = !!s.running;
             const beat = beatAgo(s.last_beat, now);
             return (
@@ -91,6 +104,15 @@ export function ServicesWidget({ services }: { services?: Service[] | null }) {
           })}
         </tbody>
       </table>
+      )}
+      {cut.fold && (
+        <DensityFold
+          label={foldLabel(cut, "service", "up")}
+          total={cut.total}
+          expanded={expanded}
+          onToggle={() => setExpanded((open) => !open)}
+        />
+      )}
     </WidgetTile>
   );
 }

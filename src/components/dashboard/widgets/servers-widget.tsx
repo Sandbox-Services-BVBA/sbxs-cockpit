@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { WidgetTile } from "../widget-tile";
 import { cn } from "@/lib/utils";
+import type { ModuleDensity } from "@/lib/layout/types";
 import type { ServerHealth } from "@/types";
+import { cutByDensity, foldLabel } from "../infra/density";
+import { DensityFold } from "../infra/density-fold";
 
 function Bar({ value, color }: { value: number; color: string }) {
   return (
@@ -44,7 +48,22 @@ function MiniServer({ s }: { s: ServerHealth }) {
   );
 }
 
-export function ServersWidget({ servers }: { servers: ServerHealth[] }) {
+// The same 80% line the amber bars use, so a node folded away at summary is
+// one that would have drawn every bar green.
+function headroom(s: ServerHealth): boolean {
+  return s.disk_usage_percent < 80 && s.ram_usage_percent < 80 && s.cpu_usage_percent < 80;
+}
+
+export function ServersWidget({
+  servers,
+  density = "standard",
+}: {
+  servers: ServerHealth[];
+  density?: ModuleDensity;
+}) {
+  // Local only: "Show all" must not write to the profile and resets on reload.
+  const [expanded, setExpanded] = useState(false);
+
   if (servers.length === 0) {
     return (
       <WidgetTile title="Servers" size="lg">
@@ -53,13 +72,25 @@ export function ServersWidget({ servers }: { servers: ServerHealth[] }) {
     );
   }
 
+  const cut = cutByDensity(servers, density, headroom, expanded);
+
   return (
     <WidgetTile title="Servers" size="lg" headerRight={<span className="text-mini text-muted-foreground font-mono">{servers.length} nodes</span>}>
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
-        {servers.map((s) => (
-          <MiniServer key={s.server_name} s={s} />
-        ))}
-      </div>
+      {cut.rows.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
+          {cut.rows.map((s) => (
+            <MiniServer key={s.server_name} s={s} />
+          ))}
+        </div>
+      )}
+      {cut.fold && (
+        <DensityFold
+          label={foldLabel(cut, "node", "with headroom")}
+          total={cut.total}
+          expanded={expanded}
+          onToggle={() => setExpanded((open) => !open)}
+        />
+      )}
     </WidgetTile>
   );
 }

@@ -1,7 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { ago } from "@/lib/connection-state";
+import type { ModuleDensity } from "@/lib/layout/types";
 import type { CronJob } from "@/types";
+import { cutByDensity, foldLabel } from "./density";
+import { DensityFold } from "./density-fold";
 import { Pane, PaneEmpty } from "./pane";
 import { StatusRow, toneOf } from "./status-row";
 
@@ -17,7 +21,16 @@ function note(cron: CronJob): string {
   return `${where}${when}`;
 }
 
-export function CronsPane({ crons }: { crons: CronJob[] | undefined }) {
+export function CronsPane({
+  crons,
+  density = "standard",
+}: {
+  crons: CronJob[] | undefined;
+  density?: ModuleDensity;
+}) {
+  // Local only: "Show all" must not write to the profile and resets on reload.
+  const [expanded, setExpanded] = useState(false);
+
   if (!crons || crons.length === 0) {
     return (
       <Pane title="Scheduled jobs" readout="no jobs">
@@ -33,6 +46,7 @@ export function CronsPane({ crons }: { crons: CronJob[] | undefined }) {
   // The pane's headline follows its worst row rather than flattening a failed
   // job into a generic warning.
   const worst = toneOf(sorted[0]?.status ?? "unknown");
+  const cut = cutByDensity(sorted, density, (cron) => cron.status === "ok", expanded);
 
   return (
     <Pane
@@ -40,17 +54,38 @@ export function CronsPane({ crons }: { crons: CronJob[] | undefined }) {
       tone={failing > 0 ? worst : "ok"}
       readout={failing > 0 ? `${failing} of ${crons.length} off schedule` : `${crons.length} on schedule`}
     >
-      <ul className="status-list">
-        {sorted.map((cron) => (
-          <StatusRow
-            key={`${cron.server_name}-${cron.cron_name}`}
-            tone={toneOf(cron.status)}
-            name={cron.cron_name}
-            note={note(cron)}
-            right={ago(cron.last_run_at) ?? "never run"}
-          />
-        ))}
-      </ul>
+      {cut.rows.length > 0 && (
+        <ul className="status-list">
+          {cut.rows.map((cron) => (
+            <StatusRow
+              key={`${cron.server_name}-${cron.cron_name}`}
+              tone={toneOf(cron.status)}
+              name={cron.cron_name}
+              note={
+                // Full is the only density that prints the last output line;
+                // it is the drill-down, not the glance.
+                density === "full" && cron.output_snippet ? (
+                  <>
+                    {note(cron)}
+                    <span className="status-row__extra">{cron.output_snippet}</span>
+                  </>
+                ) : (
+                  note(cron)
+                )
+              }
+              right={ago(cron.last_run_at) ?? "never run"}
+            />
+          ))}
+        </ul>
+      )}
+      {cut.fold && (
+        <DensityFold
+          label={foldLabel(cut, "job", "on schedule")}
+          total={cut.total}
+          expanded={expanded}
+          onToggle={() => setExpanded((open) => !open)}
+        />
+      )}
     </Pane>
   );
 }

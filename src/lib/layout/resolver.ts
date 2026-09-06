@@ -8,21 +8,17 @@
 
 import { VIEW_BY_ID } from "@/lib/views";
 import { MODULE_BY_ID } from "./catalog";
-import { DEFAULT_DOMAIN_ORDER, DEFAULT_LAYOUTS, DEFAULT_MOBILE_PINS } from "./default-layouts";
+import { DEFAULT_LAYOUTS } from "./default-layouts";
 import {
   EMPTY_PROFILE,
   LAYOUT_SCHEMA_VERSION,
-  MOBILE_PIN_COUNT,
-  type DomainOverride,
   type LayoutProfile,
   type ModuleDensity,
   type ModuleOverride,
   type ModuleWidth,
-  type ResolvedDomain,
-  type ResolvedLayout,
   type ResolvedModule,
   type ResolvedView,
-  type ViewId,
+  type SurfaceId,
   type ViewOverride,
 } from "./types";
 
@@ -33,7 +29,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isViewId(value: string): value is ViewId {
+function isSurfaceId(value: string): value is SurfaceId {
   return Object.prototype.hasOwnProperty.call(VIEW_BY_ID, value);
 }
 
@@ -74,17 +70,6 @@ function normalizeViewOverride(raw: unknown): ViewOverride | undefined {
   return view;
 }
 
-function normalizeDomainOverride(raw: unknown): DomainOverride | undefined {
-  if (!isRecord(raw)) return undefined;
-  const domain: DomainOverride = {};
-  const visible = optionalBoolean(raw.visible);
-  const mobilePinned = optionalBoolean(raw.mobilePinned);
-  if (visible !== undefined) domain.visible = visible;
-  if (mobilePinned !== undefined) domain.mobilePinned = mobilePinned;
-  if (typeof raw.order === "number" && Number.isFinite(raw.order)) domain.order = raw.order;
-  return domain;
-}
-
 /**
  * Coerce whatever came off the wire or out of the database into a profile
  * the resolver can trust. Anything of the wrong schema version resolves to
@@ -102,19 +87,10 @@ export function normalizeProfile(raw: unknown): LayoutProfile {
         ? raw.revision
         : 0,
   };
-  if (isRecord(raw.domains)) {
-    const domains: LayoutProfile["domains"] = {};
-    for (const [id, value] of Object.entries(raw.domains)) {
-      if (!isViewId(id)) continue;
-      const domain = normalizeDomainOverride(value);
-      if (domain) domains[id] = domain;
-    }
-    profile.domains = domains;
-  }
   if (isRecord(raw.views)) {
     const views: LayoutProfile["views"] = {};
     for (const [id, value] of Object.entries(raw.views)) {
-      if (!isViewId(id)) continue;
+      if (!isSurfaceId(id)) continue;
       const view = normalizeViewOverride(value);
       if (view) views[id] = view;
     }
@@ -124,14 +100,14 @@ export function normalizeProfile(raw: unknown): LayoutProfile {
 }
 
 /** The wall is a shared screen: private data and write controls stay off it. */
-function allowedOnView(viewId: ViewId, moduleId: string): boolean {
+function allowedOnView(viewId: SurfaceId, moduleId: string): boolean {
   const definition = MODULE_BY_ID[moduleId];
   if (!definition || !definition.allowedViews.includes(viewId)) return false;
   if (viewId === "wall" && definition.sensitivity !== "normal") return false;
   return true;
 }
 
-export function resolveView(viewId: ViewId, profile: LayoutProfile | null): ResolvedView {
+export function resolveView(viewId: SurfaceId, profile: LayoutProfile | null): ResolvedView {
   const saved = normalizeProfile(profile).views?.[viewId];
   const overrides = saved?.modules ?? {};
 
@@ -178,62 +154,4 @@ export function resolveView(viewId: ViewId, profile: LayoutProfile | null): Reso
     modules: ordered.filter((entry) => entry.enabled),
     hidden: ordered.filter((entry) => !entry.enabled),
   };
-}
-
-/** A domain before pins are settled: `pinned` is the raw saved flag, if any. */
-interface DomainState {
-  viewId: ViewId;
-  visible: boolean;
-  pinned?: boolean;
-}
-
-function resolveDomains(profile: LayoutProfile): DomainState[] {
-  const overrides = profile.domains ?? {};
-  return DEFAULT_DOMAIN_ORDER.map((viewId, index) => ({
-    viewId,
-    index,
-    visible: overrides[viewId]?.visible ?? true,
-    pinned: overrides[viewId]?.mobilePinned,
-    order: overrides[viewId]?.order ?? index,
-  }))
-    // A saved order wins; unspecified domains keep their default slot, and
-    // ties fall back to the default order so the sort is deterministic.
-    .sort((a, b) => a.order - b.order || a.index - b.index)
-    .map(({ viewId, visible, pinned }) => ({ viewId, visible, pinned }));
-}
-
-/**
- * Exactly MOBILE_PIN_COUNT ids for the bottom bar. A profile that has saved
- * any pin at all replaces the default set outright; one that never touched
- * pins keeps the defaults. Either way only visible domains count, the
- * visible navigation order tops the bar up, and hidden domains fill it only
- * as a last resort: their routes stay valid, and an empty slot on the phone
- * is worse than a hidden one.
- */
-function resolveMobilePins(domains: DomainState[]): ViewId[] {
-  const anySaved = domains.some((domain) => domain.pinned !== undefined);
-  const visible = domains.filter((domain) => domain.visible);
-  const preferred = visible.filter((domain) =>
-    anySaved ? domain.pinned === true : DEFAULT_MOBILE_PINS.includes(domain.viewId)
-  );
-
-  const pins: ViewId[] = [];
-  for (const domain of [...preferred, ...visible, ...domains]) {
-    if (pins.length >= MOBILE_PIN_COUNT) break;
-    if (!pins.includes(domain.viewId)) pins.push(domain.viewId);
-  }
-  return pins;
-}
-
-export function resolveLayout(profile: LayoutProfile | null): ResolvedLayout {
-  const clean = normalizeProfile(profile);
-  const allDomains = resolveDomains(clean);
-  const mobilePins = resolveMobilePins(allDomains);
-  const domains: ResolvedDomain[] = allDomains
-    .filter((domain) => domain.visible)
-    .map(({ viewId, visible }) => ({ viewId, visible, mobilePinned: mobilePins.includes(viewId) }));
-  const views = Object.fromEntries(
-    DEFAULT_DOMAIN_ORDER.map((viewId) => [viewId, resolveView(viewId, clean)])
-  ) as Record<ViewId, ResolvedView>;
-  return { domains, mobilePins, views };
 }

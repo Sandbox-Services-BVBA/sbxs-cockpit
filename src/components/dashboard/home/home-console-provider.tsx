@@ -8,17 +8,55 @@
 // themselves a hidden-or-reordered layout would poll several times over and
 // show charts for different windows. This provider owns the single useSWR
 // call for /api/energy; modules read it through useHomeConsole().
+//
+// The timeframe itself is held outside React, in a tiny store, because the
+// canvas asks `homeModuleNode(id)` for a tile synchronously and expects null
+// for one that does not apply to the current mode. A plain function cannot
+// read a context, so the mode has to be readable without a hook; the store
+// is written from the timeframe buttons, never during a render, and the
+// provider subscribes to it like any other component.
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import useSWR from "swr";
 import { buildRange, type Range, type TFMode } from "@/lib/energy-range";
 import type { Live } from "@/lib/energy-format";
+import { homeModeFor, type HomeMode } from "@/lib/layout/home-modules";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 /** Live poll interval; also the pulse period the house visuals animate on. */
 export const LIVE_MS = 3000;
 const PERIOD_MS = 30000;
+
+let timeframe: TFMode = "live";
+const listeners = new Set<() => void>();
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function setTimeframe(next: TFMode) {
+  if (next === timeframe) return;
+  timeframe = next;
+  listeners.forEach((notify) => notify());
+}
+
+const readTimeframe = () => timeframe;
+const serverTimeframe = (): TFMode => "live";
+
+/** The mode right now, for code that renders outside the React tree. */
+export function homeModeNow(): HomeMode {
+  return homeModeFor(timeframe === "live");
+}
+
+/** Rerenders on live/period switches only, not on every 3 second sample. */
+export function useHomeMode(): HomeMode {
+  const mode = useSyncExternalStore(subscribe, readTimeframe, serverTimeframe);
+  return homeModeFor(mode === "live");
+}
 
 export interface HomeConsoleValue {
   mode: TFMode;
@@ -38,7 +76,7 @@ const HomeConsoleContext = createContext<HomeConsoleValue | null>(null);
 
 export function HomeConsoleProvider({ children }: { children: ReactNode }) {
   const [tick, setTick] = useState(0);
-  const [mode, setMode] = useState<TFMode>("live");
+  const mode = useSyncExternalStore(subscribe, readTimeframe, serverTimeframe);
   const [offset, setOffset] = useState(0);
   const isLive = mode === "live";
 
@@ -49,7 +87,7 @@ export function HomeConsoleProvider({ children }: { children: ReactNode }) {
   });
 
   const changeMode = useCallback((next: TFMode) => {
-    setMode(next);
+    setTimeframe(next);
     setOffset(0); // jump back to the current period when switching granularity
   }, []);
 

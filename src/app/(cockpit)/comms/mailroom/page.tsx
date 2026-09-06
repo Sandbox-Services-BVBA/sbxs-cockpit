@@ -4,9 +4,11 @@ import { ViewLede } from "@/components/dashboard/views/view-chrome";
 
 export const metadata: Metadata = { title: "Mailroom trail — SBXS Cockpit" };
 
+// A drill-down console, not a tile: it keeps its own route and fills the
+// viewport under the header. The shell offers the way back to the canvas.
 export default function Page() {
   return (
-    <div className="cockpit-view flex h-[calc(100dvh-var(--header-total)-var(--navbar-height)-3rem)] min-h-[32rem] flex-col gap-4">
+    <div className="cockpit-view flex h-[calc(100dvh-var(--header-total)-3rem)] min-h-[32rem] flex-col gap-4">
       <ViewLede>
         Use Decisions for the model explanation and requested action. Use Daemon for the Gmail
         action that actually ran, including archive, forwarding, queueing, retries, and failures.

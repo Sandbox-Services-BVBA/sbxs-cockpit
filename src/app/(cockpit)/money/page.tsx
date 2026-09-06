@@ -1,8 +1,7 @@
-import type { Metadata } from "next";
-import { DomainView } from "@/components/dashboard/views/domain-view";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Finance — SBXS Cockpit" };
-
+// The domain pages are gone: every module lives on the canvas at `/`. This
+// route stays so old bookmarks and home-screen shortcuts still land.
 export default function Page() {
-  return <DomainView category="money" />;
+  redirect("/");
 }

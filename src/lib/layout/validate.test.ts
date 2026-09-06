@@ -8,7 +8,7 @@ const FAKE_CATALOG: ModuleDefinition[] = [
     id: "sites.uptime",
     title: "Uptime",
     ownerView: "sites",
-    allowedViews: ["sites", "wall"],
+    allowedViews: ["canvas", "sites", "wall"],
     defaultWidth: "standard",
     allowedWidths: ["standard", "wide"],
     defaultDensity: "standard",
@@ -20,7 +20,7 @@ const FAKE_CATALOG: ModuleDefinition[] = [
     id: "money.bank",
     title: "Bank",
     ownerView: "money",
-    allowedViews: ["money", "wall"],
+    allowedViews: ["canvas", "money", "wall"],
     defaultWidth: "compact",
     allowedWidths: ["compact", "standard"],
     defaultDensity: "standard",
@@ -33,7 +33,7 @@ const FAKE_CATALOG: ModuleDefinition[] = [
     id: "dev.files",
     title: "Files",
     ownerView: "dev",
-    allowedViews: ["dev"],
+    allowedViews: ["canvas", "dev"],
     defaultWidth: "wide",
     allowedWidths: ["wide"],
     defaultDensity: "standard",
@@ -45,7 +45,7 @@ const FAKE_CATALOG: ModuleDefinition[] = [
     id: "alerts.queue",
     title: "Attention queue",
     ownerView: "alerts",
-    allowedViews: ["alerts"],
+    allowedViews: ["canvas", "alerts"],
     defaultWidth: "full",
     allowedWidths: ["full"],
     defaultDensity: "full",
@@ -91,17 +91,16 @@ describe("validateProfile shape", () => {
   });
 
   it("rejects an oversized payload", () => {
-    const raw = { schemaVersion: 1, views: { sites: { order: Array(9000).fill("sites.uptime") } } };
+    const raw = { schemaVersion: 1, views: { canvas: { order: Array(9000).fill("sites.uptime") } } };
     expectError(raw, /64 KB/);
   });
 
   it("rejects structurally wrong types", () => {
     expectError({ schemaVersion: 1, views: [] }, /views must be an object/);
-    expectError({ schemaVersion: 1, views: { sites: { order: "sites.uptime" } } }, /order must be an array/);
-    expectError({ schemaVersion: 1, views: { sites: { order: [1, 2] } } }, /order must be an array/);
-    expectError({ schemaVersion: 1, views: { sites: { modules: [] } } }, /modules must be an object/);
-    expectError({ schemaVersion: 1, views: { sites: { modules: { "sites.uptime": { enabled: "no" } } } } }, /enabled must be a boolean/);
-    expectError({ schemaVersion: 1, domains: { sites: { visible: 1 } } }, /visible must be a boolean/);
+    expectError({ schemaVersion: 1, views: { canvas: { order: "sites.uptime" } } }, /order must be an array/);
+    expectError({ schemaVersion: 1, views: { canvas: { order: [1, 2] } } }, /order must be an array/);
+    expectError({ schemaVersion: 1, views: { canvas: { modules: [] } } }, /modules must be an object/);
+    expectError({ schemaVersion: 1, views: { canvas: { modules: { "sites.uptime": { enabled: "no" } } } } }, /enabled must be a boolean/);
   });
 
   it("accepts an empty profile and returns only overrides", () => {
@@ -115,34 +114,44 @@ describe("validateProfile catalog rules", () => {
     const result = validateProfile({
       schemaVersion: 1,
       views: {
-        sites: {
+        canvas: {
           order: ["sites.uptime", "gone.module", "money.bank", "sites.uptime"],
           modules: { "gone.module": { enabled: false }, "money.bank": { width: "compact" } },
         },
         nowhere: { order: ["sites.uptime"] },
       },
+      // Navigation is gone, so a stale domains block is dropped, not rejected.
       domains: { nowhere: { visible: false } },
     });
     expect(result).toEqual({
       ok: true,
-      profile: { schemaVersion: 1, revision: 0, views: { sites: { order: ["sites.uptime"] } } },
+      profile: {
+        schemaVersion: 1,
+        revision: 0,
+        views: {
+          canvas: {
+            order: ["sites.uptime", "money.bank"],
+            modules: { "money.bank": { width: "compact" } },
+          },
+        },
+      },
     });
   });
 
   it("rejects a width the module does not support", () => {
     expectError(
-      { schemaVersion: 1, views: { sites: { modules: { "sites.uptime": { width: "full" } } } } },
+      { schemaVersion: 1, views: { canvas: { modules: { "sites.uptime": { width: "full" } } } } },
       /width "full" is not supported/
     );
     expectError(
-      { schemaVersion: 1, views: { sites: { modules: { "sites.uptime": { width: "huge" } } } } },
+      { schemaVersion: 1, views: { canvas: { modules: { "sites.uptime": { width: "huge" } } } } },
       /width must be one of/
     );
   });
 
   it("rejects a density the module does not support", () => {
     expectError(
-      { schemaVersion: 1, views: { sites: { modules: { "sites.uptime": { density: "full" } } } } },
+      { schemaVersion: 1, views: { canvas: { modules: { "sites.uptime": { density: "full" } } } } },
       /density "full" is not supported/
     );
   });
@@ -153,7 +162,7 @@ describe("validateProfile catalog rules", () => {
       /may not appear on the wallboard/
     );
     // The same module is fine in its owner view.
-    const ok = validateProfile({ schemaVersion: 1, views: { money: { modules: { "money.bank": { enabled: true } } } } });
+    const ok = validateProfile({ schemaVersion: 1, views: { canvas: { modules: { "money.bank": { enabled: true } } } } });
     expect(ok.ok).toBe(true);
   });
 
@@ -169,33 +178,18 @@ describe("validateProfile catalog rules", () => {
 
   it("refuses to disable a required module", () => {
     expectError(
-      { schemaVersion: 1, views: { alerts: { modules: { "alerts.queue": { enabled: false } } } } },
+      { schemaVersion: 1, views: { canvas: { modules: { "alerts.queue": { enabled: false } } } } },
       /required and cannot be hidden/
     );
   });
 
-  it("requires exactly four mobile pins when any pin is specified", () => {
-    expectError({ schemaVersion: 1, domains: { sites: { mobilePinned: true } } }, /exactly 4/);
-    const ok = validateProfile({
-      schemaVersion: 1,
-      domains: {
-        house: { mobilePinned: true },
-        sites: { mobilePinned: true },
-        money: { mobilePinned: true },
-        dev: { mobilePinned: true },
-        infra: { mobilePinned: false },
-      },
-    });
-    expect(ok.ok).toBe(true);
-  });
 
   it("keeps a valid override set intact", () => {
     const result = validateProfile({
       schemaVersion: 1,
       revision: 2,
-      domains: { personal: { visible: false, order: 8 } },
       views: {
-        sites: { order: ["sites.uptime"], modules: { "sites.uptime": { width: "wide", density: "summary" } } },
+        canvas: { order: ["sites.uptime"], modules: { "sites.uptime": { width: "wide", density: "summary" } } },
       },
     });
     expect(result).toEqual({
@@ -203,9 +197,8 @@ describe("validateProfile catalog rules", () => {
       profile: {
         schemaVersion: 1,
         revision: 2,
-        domains: { personal: { visible: false, order: 8 } },
         views: {
-          sites: { order: ["sites.uptime"], modules: { "sites.uptime": { width: "wide", density: "summary" } } },
+        canvas: { order: ["sites.uptime"], modules: { "sites.uptime": { width: "wide", density: "summary" } } },
         },
       },
     });

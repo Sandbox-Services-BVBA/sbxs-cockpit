@@ -2,8 +2,8 @@ import { MODULE_BY_ID } from "@/lib/layout/catalog";
 import type { ModuleDefinition } from "@/lib/layout/types";
 import { VIEW_BY_ID } from "@/lib/views";
 
-// One line per module saying what it is, for the editor row. The catalog is
-// deliberately metadata-only, so this copy lives with the editor that reads
+// One line per module saying what it is, for the Add widget tray. The catalog is
+// deliberately metadata-only, so this copy lives with the tray that reads
 // it. A module without a note falls back to its owner domain's description.
 
 const NOTES: Record<string, string> = {

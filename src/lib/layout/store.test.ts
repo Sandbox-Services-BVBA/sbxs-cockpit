@@ -24,7 +24,7 @@ afterAll(() => {
 const SAVED: LayoutProfile = {
   schemaVersion: 1,
   revision: 0,
-  views: { sites: { order: ["sites.uptime"], modules: { "sites.uptime": { width: "wide" } } } },
+  views: { canvas: { order: ["sites.uptime"], modules: { "sites.uptime": { width: "wide" } } } },
 };
 
 describe("layout store", () => {
@@ -43,13 +43,17 @@ describe("layout store", () => {
   });
 
   it("returns the current profile on a stale revision without writing", () => {
-    const stale = store.writeProfile({ schemaVersion: 1, revision: 0, domains: { personal: { visible: false } } }, 0);
+    const stale = store.writeProfile(
+      { schemaVersion: 1, revision: 0, views: { wall: { order: ["servers"] } } },
+      0
+    );
     expect(stale.ok).toBe(false);
     if (!stale.ok) {
       expect(stale.conflict).toBe(true);
       expect(stale.profile).toEqual({ ...SAVED, revision: 1 });
     }
-    expect(store.readProfile().domains).toBeUndefined();
+    // The rejected write must leave the stored profile exactly as it was.
+    expect(store.readProfile()).toEqual({ ...SAVED, revision: 1 });
   });
 
   it("ignores a revision smuggled in through the body", () => {

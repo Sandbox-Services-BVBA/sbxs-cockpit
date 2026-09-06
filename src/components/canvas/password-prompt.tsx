@@ -7,6 +7,10 @@ import { useLayout } from "@/lib/layout/client";
 // length of the request and is cleared on every outcome; nothing writes it
 // to storage, the URL or the profile. The server answers with a cookie the
 // browser keeps for itself.
+//
+// It opens on the first change made without a session, and again if a
+// write comes back 401. The change that triggered it is applied once the
+// password is accepted; Cancel drops that change.
 
 export function PasswordPrompt() {
   const { authPrompt } = useLayout();
@@ -30,7 +34,7 @@ function PasswordForm() {
     return () => window.removeEventListener("keydown", onKey);
   }, [dismissAuthPrompt]);
 
-  // The shell behind the prompt is inert, so Tab past the last button would
+  // The page behind the prompt is inert, so Tab past the last button would
   // otherwise fall off the page. Wrap it around inside the form instead.
   const trapTab = (event: ReactKeyboardEvent<HTMLFormElement>) => {
     if (event.key !== "Tab") return;
@@ -73,10 +77,10 @@ function PasswordForm() {
         onKeyDown={trapTab}
       >
         <h2 id="password-heading" className="serif editor-dialog__title">
-          Log in to save
+          Log in to keep changes
         </h2>
         <p id="password-help" className="editor-dialog__help">
-          Saving the layout needs the cockpit password. The session lasts 30 days on this device.
+          Arranging the cockpit needs its password once per device. The session lasts 30 days.
         </p>
         <label className="editor-field editor-field--stack" htmlFor="cockpit-password">
           <span>Cockpit password</span>
@@ -103,7 +107,7 @@ function PasswordForm() {
             Cancel
           </button>
           <button type="submit" className="editor-btn editor-btn--primary" disabled={busy || password.length === 0}>
-            {busy ? "Checking" : "Log in and save"}
+            {busy ? "Checking" : "Log in"}
           </button>
         </div>
       </form>

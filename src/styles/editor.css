@@ -1,65 +1,10 @@
-/* Layout editor. Imported from app/globals.css.
+/* Canvas chrome and the shared controls. Imported from app/globals.css.
 
-   Normal mode owns no rule in this file: everything here is scoped to the
-   editing header, the editor list, the Sections tab, the password prompt,
-   and the safety fallbacks the shell shows when Attention is hidden. */
-
-/* --- Header while editing -------------------------------------------------
-   Doubled selectors on purpose: globals.css sets .app-header's fixed height
-   after this file is imported, so an equal-specificity rule would lose. */
-
-.app-header.app-header--editing {
-  height: auto;
-  flex-wrap: wrap;
-  padding-bottom: 0;
-}
-
-.app-header.app-header--editing .app-header__title,
-.app-header.app-header--editing .app-header__status {
-  min-height: var(--header-height);
-  justify-content: center;
-}
-
-.editor-bar {
-  display: flex;
-  flex-basis: 100%;
-  flex-direction: column;
-  gap: 8px;
-  padding: 8px 0 10px;
-  border-top: 1px solid var(--line-soft);
-}
-
-.editor-bar__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.editor-tabs {
-  display: inline-flex;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--ink) 3%, transparent);
-}
-
-.editor-tab {
-  min-height: 28px;
-  padding: 0 12px;
-  border-radius: 9px;
-  color: var(--ink-muted);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  transition: background 150ms ease, color 150ms ease;
-}
-
-.editor-tab.is-active {
-  background: color-mix(in srgb, var(--domain-accent) 16%, transparent);
-  color: var(--domain-accent);
-}
+   The cockpit is one page of tiles arranged in place, so most of what is
+   here is the strip above every tile (grip, menu, close), the + tray, the
+   autosave status, the undo toast and the password prompt. The editor-btn,
+   editor-field and editor-note classes are kept under their old names
+   because the prompt and the tray still use them. */
 
 /* --- Buttons and fields --------------------------------------------------- */
 
@@ -116,10 +61,7 @@
 }
 
 .editor-btn:focus-visible,
-.editor-tab:focus-visible,
-.editor-select:focus-visible,
 .editor-input:focus-visible,
-.editor-switch input:focus-visible,
 .editor-link:focus-visible,
 .app-alert-pill:focus-visible {
   outline: 2px solid var(--domain-accent);
@@ -152,7 +94,6 @@
   width: 100%;
 }
 
-.editor-select,
 .editor-input {
   min-height: 34px;
   padding: 0 10px;
@@ -162,36 +103,6 @@
   color: var(--ink);
   font-size: 0.8125rem;
   font-weight: 600;
-}
-
-.editor-select:disabled {
-  opacity: 0.6;
-}
-
-.editor-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ink);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.editor-switch input {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  accent-color: var(--domain-accent);
-  cursor: pointer;
-}
-
-.editor-switch input:disabled {
-  cursor: not-allowed;
-}
-
-.editor-switch:has(input:disabled) {
-  opacity: 0.55;
 }
 
 /* --- Notes ---------------------------------------------------------------- */
@@ -229,49 +140,6 @@
   color: var(--blue);
 }
 
-/* --- The editor body ------------------------------------------------------ */
-
-.editor-split {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
-}
-
-@media (min-width: 1024px) {
-  .editor-split {
-    grid-template-columns: minmax(360px, 460px) minmax(0, 1fr);
-    align-items: start;
-  }
-}
-
-.editor {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.editor--note {
-  max-width: 62ch;
-}
-
-.editor__title {
-  font-size: 1.25rem;
-  line-height: 1.1;
-}
-
-.editor__lede {
-  max-width: 62ch;
-  color: var(--ink-muted);
-  font-size: 0.9375rem;
-  line-height: 1.5;
-}
-
-/* The conflict note the shell shows after a refused save closes the editor. */
-.app-main__note {
-  margin-bottom: 12px;
-}
-
 button.editor-link {
   padding: 0;
   border: 0;
@@ -281,189 +149,382 @@ button.editor-link {
 }
 
 .editor-link {
-  color: var(--domain-accent);
+  color: var(--domain-accent, var(--teal));
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.editor-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* The conflict note the shell shows after a refused save. */
+.app-main__note {
+  margin-bottom: 12px;
 }
 
-.editor-row {
+/* --- Tile chrome ---------------------------------------------------------- */
+
+.canvas-tile {
+  position: relative;
+}
+
+.canvas-tile__bar {
   display: flex;
-  flex-direction: column;
+  min-height: 26px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 2px 4px;
+  color: var(--ink-quiet);
+}
+
+/* The grip is the drag handle and the keyboard handle in one. It carries
+   the title so the target is wide enough for a thumb, and so what is being
+   dragged is named where the eye already is. */
+.canvas-tile__grip {
+  display: inline-flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 7px 0 4px;
+  border-radius: 8px;
+  color: inherit;
+  cursor: grab;
+  text-align: left;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.canvas-tile__grip:hover {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  color: var(--ink);
+}
+
+.canvas-tile__grip:active {
+  cursor: grabbing;
+}
+
+.canvas-tile__grip-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.canvas-tile__name {
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.canvas-tile__actions {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.canvas-tile__btn {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--ink-quiet);
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.canvas-tile__btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.canvas-tile__btn:hover {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  color: var(--ink);
+}
+
+.canvas-tile__close:hover {
+  background: color-mix(in srgb, var(--rose) 12%, transparent);
+  color: var(--rose);
+}
+
+.canvas-tile__lock {
+  cursor: help;
+}
+
+.canvas-tile__grip:focus-visible,
+.canvas-tile__btn:focus-visible,
+.canvas-add:focus-visible,
+.canvas-toast__undo:focus-visible,
+.canvas-status__action:focus-visible,
+.canvas-tray__reset:focus-visible {
+  outline: 2px solid var(--domain-accent, var(--teal));
+  outline-offset: 2px;
+}
+
+/* SortableJS states. The ghost is the tile in its would-be landing spot,
+   the chosen one is the tile under the pointer. */
+.canvas-tile--ghost {
+  opacity: 0.45;
+}
+
+.canvas-tile--ghost > :not(.canvas-tile__bar) {
+  outline: 2px dashed var(--domain-accent, var(--teal));
+  outline-offset: 3px;
+  border-radius: 0.875rem;
+}
+
+.canvas-tile--chosen > :not(.canvas-tile__bar) {
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+}
+
+.canvas-tile--drag {
+  opacity: 0.95;
+}
+
+/* --- Dock: status and the + button ---------------------------------------- */
+
+.canvas-dock {
+  position: fixed;
+  z-index: 45;
+  right: max(18px, var(--safe-right));
+  bottom: calc(18px + var(--safe-bottom));
+  display: flex;
+  align-items: center;
   gap: 10px;
-  padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  border-radius: 13px;
-  background: color-mix(in srgb, var(--card) 94%, transparent);
+}
+
+.canvas-add {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px 0 12px;
+  border-radius: 22px;
+  background: var(--domain-accent, var(--teal));
+  color: var(--background);
+  font-size: 0.875rem;
+  font-weight: 700;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--domain-accent, var(--teal)) 40%, transparent);
+  transition: filter 150ms ease, transform 150ms ease;
+}
+
+.canvas-add:hover {
+  filter: brightness(1.08);
+}
+
+.canvas-add:active {
+  transform: scale(0.97);
+}
+
+.canvas-add svg {
+  width: 18px;
+  height: 18px;
+}
+
+.canvas-add__count {
+  display: grid;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  place-items: center;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--background) 28%, transparent);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  font-weight: 800;
+}
+
+.canvas-status {
+  display: inline-flex;
+  min-height: 34px;
+  max-width: min(60vw, 420px);
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: color-mix(in srgb, var(--card) 96%, transparent);
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
   box-shadow: var(--panel-shadow);
 }
 
-.editor-row__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.editor-row__text {
-  min-width: 0;
-  flex: 1;
-}
-
-.editor-row__title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.9375rem;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.editor-row__index {
-  min-width: 1.4em;
-  color: var(--ink-quiet);
-  font-family: var(--mono);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.editor-row__icon {
-  width: 15px;
-  height: 15px;
+.canvas-status svg {
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
-  color: var(--ink-muted);
 }
 
-.editor-row__tag {
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--domain-accent) 14%, transparent);
-  color: var(--domain-accent);
-  font-family: var(--mono);
-  font-size: 0.5625rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+.canvas-status--ok {
+  color: var(--green, var(--teal));
 }
 
-.editor-row__note {
-  margin-top: 3px;
-  color: var(--ink-muted);
-  font-size: 0.8125rem;
-  line-height: 1.45;
-}
-
-.editor-row__reason {
+.canvas-status--warn {
+  border-color: color-mix(in srgb, var(--amber) 44%, transparent);
   color: var(--amber);
-  font-size: 0.75rem;
-  line-height: 1.4;
 }
 
-.editor-row__controls {
+.canvas-status--bad {
+  border-color: color-mix(in srgb, var(--rose) 44%, transparent);
+  color: var(--rose);
+}
+
+.canvas-status__spin {
+  animation: canvas-spin 900ms linear infinite;
+}
+
+@keyframes canvas-spin {
+  to { transform: rotate(360deg); }
+}
+
+.canvas-status__action {
+  margin-left: 2px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: var(--rose);
+  color: #fff;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* --- Undo toast ----------------------------------------------------------- */
+
+.canvas-toast {
+  position: fixed;
+  z-index: 46;
+  bottom: calc(18px + var(--safe-bottom));
+  left: 50%;
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 10px 14px;
-}
-
-.editor-move {
-  display: inline-flex;
-  gap: 4px;
-  margin-left: auto;
-}
-
-/* --- Hidden-modules tray -------------------------------------------------- */
-
-.editor-tray {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px 14px;
-  border: 1px dashed var(--line);
-  border-radius: 13px;
-}
-
-.editor-tray__list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.editor-tray__item {
-  display: flex;
+  max-width: calc(100vw - 32px);
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.editor-tray__empty {
-  color: var(--ink-muted);
-  font-size: 0.8125rem;
-}
-
-.editor-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding-top: 4px;
-}
-
-.editor-pins {
-  padding: 10px 12px;
-  border: 1px solid var(--line);
+  gap: 14px;
+  padding: 10px 14px;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--ink) 3%, transparent);
+  background: var(--ink);
+  color: var(--background);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+  transform: translateX(-50%);
+  animation: canvas-toast-in 180ms ease-out both;
+}
+
+@keyframes canvas-toast-in {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.canvas-toast__undo {
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--background) 16%, transparent);
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* On a phone the toast and the dock share the bottom edge; lift the toast
+   above the + button so neither hides the other. */
+@media (max-width: 640px) {
+  .canvas-toast {
+    bottom: calc(74px + var(--safe-bottom));
+  }
+}
+
+/* --- The + tray ----------------------------------------------------------- */
+
+.canvas-tray {
+  --domain-accent: var(--teal);
+  overflow-y: auto;
+  border-color: var(--line);
+  background: var(--background);
+  color: var(--ink);
+}
+
+.canvas-tray__title {
+  font-size: 1.25rem;
+  line-height: 1.1;
+}
+
+.canvas-tray__lede {
   color: var(--ink-muted);
   font-size: 0.875rem;
   line-height: 1.45;
 }
 
-.editor-pins b {
-  color: var(--ink);
-  font-weight: 700;
+.canvas-tray__list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0 16px;
 }
 
-/* --- Live preview (desktop only) ----------------------------------------- */
+.canvas-tray__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line-soft);
+}
 
-.editor-preview {
+.canvas-tray__text {
   min-width: 0;
 }
 
-.editor-preview__label {
-  margin-bottom: 8px;
+.canvas-tray__name {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
-/* Scaled down so the desktop grid keeps its real column count in the side
-   column: the canvas is laid out at roughly the main region's full width and
-   shown at two thirds. `inert` keeps it out of the tab order. */
-.editor-preview__canvas {
-  zoom: 0.66;
-  user-select: none;
+.canvas-tray__note {
+  margin-top: 3px;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  line-height: 1.4;
 }
 
-.module-frame--editing {
-  outline: 1px dashed color-mix(in srgb, var(--domain-accent) 55%, transparent);
-  outline-offset: 4px;
-  border-radius: 0.875rem;
+.canvas-tray__foot {
+  margin-top: auto;
+  padding: 14px 16px calc(16px + var(--safe-bottom));
+  border-top: 1px solid var(--line-soft);
 }
 
-.module-frame__caption {
-  margin-bottom: 6px;
-  color: var(--domain-accent);
+.canvas-tray__reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.canvas-tray__reset svg {
+  width: 14px;
+  height: 14px;
+}
+
+.canvas-tray__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* --- Tile menu ------------------------------------------------------------ */
+
+.canvas-menu {
+  min-width: 188px;
+  width: auto;
+  border-color: var(--line);
+  background: var(--background);
+  color: var(--ink);
 }
 
 /* --- Password prompt ------------------------------------------------------ */

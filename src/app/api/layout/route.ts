@@ -28,8 +28,7 @@ function summarize(profile: LayoutProfile): string {
   const views = Object.values(profile.views ?? {});
   const modules = views.reduce((n, view) => n + Object.keys(view?.modules ?? {}).length, 0);
   const ordered = views.filter((view) => view?.order?.length).length;
-  const domains = Object.keys(profile.domains ?? {}).length;
-  return `views=${views.length} ordered=${ordered} modules=${modules} domains=${domains}`;
+  return `views=${views.length} ordered=${ordered} modules=${modules}`;
 }
 
 export async function GET() {

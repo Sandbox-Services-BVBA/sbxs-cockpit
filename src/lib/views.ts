@@ -1,24 +1,17 @@
-import {
-  Activity,
-  Code2,
-  Globe2,
-  HeartPulse,
-  House,
-  Inbox,
-  LayoutGrid,
-  Presentation,
-  ServerCog,
-  WalletCards,
-  type LucideIcon,
-} from "lucide-react";
+// The cockpit is one page. There is no domain navigation any more: every
+// module lives on the canvas at `/`, and the only other surface is the
+// wallboard, an unattended shared display that is reached by URL, not by a
+// menu. This file names those two surfaces plus the drill-down tools that
+// keep a route of their own, so the shell can title the page and route back.
+//
+// The old domain ids (house, alerts, infra, ...) survive as ViewIds because
+// the catalog still tags every module with the domain that owns it, and the
+// canvas's Add tray groups by that tag. They are labels now, not pages: each
+// of their routes redirects to `/`.
 
-// The cockpit's domains, each one a real route. This is the single source of
-// truth for navigation: the rail, the bottom bar and every page title read it.
-// Order is Bob's priority order — Home first, because it is the view he lives
-// in, then the attention queue, then the operational domains.
+export type SurfaceId = "canvas" | "wall";
 
-export type ViewId =
-  | "canvas"
+export type DomainId =
   | "house"
   | "alerts"
   | "sites"
@@ -26,113 +19,83 @@ export type ViewId =
   | "money"
   | "comms"
   | "dev"
-  | "personal"
-  | "wall";
+  | "personal";
+
+export type ViewId = SurfaceId | DomainId;
 
 export interface ViewMeta {
   id: ViewId;
   href: string;
   label: string;
-  /** Bottom-bar label: one word, because it sits under a 20px icon. */
-  short: string;
   description: string;
-  icon: LucideIcon;
 }
 
+/** The surfaces that render a module layout. Both are real routes. */
 export const VIEWS: ViewMeta[] = [
   {
     id: "canvas",
     href: "/",
     label: "Cockpit",
-    short: "Cockpit",
     description: "Everything at once, arranged the way you left it",
-    icon: LayoutGrid,
-  },
-  {
-    id: "house",
-    href: "/",
-    label: "Home",
-    short: "Home",
-    description: "Live power, energy, gas, water, climate, ventilation, and office control",
-    icon: House,
-  },
-  {
-    id: "alerts",
-    href: "/attention",
-    label: "Attention",
-    short: "Alerts",
-    description: "Active incidents, warnings, and stale sources",
-    icon: Activity,
-  },
-  {
-    id: "infra",
-    href: "/infra",
-    label: "Infrastructure",
-    short: "Infra",
-    description: "Servers, services, backups, connections, and scheduled jobs",
-    icon: ServerCog,
-  },
-  {
-    id: "sites",
-    href: "/sites",
-    label: "Client sites",
-    short: "Sites",
-    description: "Availability, domains, screens, and traffic",
-    icon: Globe2,
-  },
-  {
-    id: "money",
-    href: "/money",
-    label: "Finance",
-    short: "Money",
-    description: "Billing, cash position, and recorded time",
-    icon: WalletCards,
-  },
-  {
-    id: "comms",
-    href: "/comms",
-    label: "Communications",
-    short: "Comms",
-    description: "Inbox load and automated mail processing",
-    icon: Inbox,
-  },
-  {
-    id: "dev",
-    href: "/dev",
-    label: "Development",
-    short: "Dev",
-    description: "Active agents, projects, files, and activity",
-    icon: Code2,
-  },
-  {
-    id: "personal",
-    href: "/personal",
-    label: "Personal",
-    short: "Personal",
-    description: "Private health and asset signals",
-    icon: HeartPulse,
   },
   {
     id: "wall",
     href: "/wall",
     label: "Wallboard",
-    short: "Wall",
     description: "A calm, non-sensitive operations display",
-    icon: Presentation,
   },
 ];
 
-export const VIEW_BY_ID = Object.fromEntries(
-  VIEWS.map((view) => [view.id, view])
-) as Record<ViewId, ViewMeta>;
+/** What the catalog's owner tags mean to a human, for grouping in the tray. */
+export const DOMAIN_LABELS: Record<DomainId, string> = {
+  house: "Home",
+  alerts: "Attention",
+  infra: "Infrastructure",
+  sites: "Client sites",
+  money: "Finance",
+  comms: "Communications",
+  dev: "Development",
+  personal: "Personal",
+};
 
-/** Views the phone's bottom bar reaches in one tap. The rest live behind More. */
-export const BOTTOM_BAR_IDS: ViewId[] = ["house", "alerts", "infra", "sites"];
+// Owner tags get a meta entry too so anything indexed by ViewId keeps
+// resolving; their href is the canvas, which is where their route lands.
+export const VIEW_BY_ID = {
+  ...Object.fromEntries(VIEWS.map((view) => [view.id, view])),
+  ...Object.fromEntries(
+    (Object.keys(DOMAIN_LABELS) as DomainId[]).map((id) => [
+      id,
+      { id, href: "/", label: DOMAIN_LABELS[id], description: DOMAIN_LABELS[id] },
+    ])
+  ),
+} as Record<ViewId, ViewMeta>;
 
-export function viewForPath(pathname: string): ViewMeta {
-  if (pathname === "/") return VIEW_BY_ID.house;
-  const match = VIEWS.find(
-    (view) => view.href !== "/" && (pathname === view.href || pathname.startsWith(`${view.href}/`))
-  );
-  return match ?? VIEW_BY_ID.house;
+/** Read-only tools that keep their own route because they are consoles, not tiles. */
+export interface DrillDown {
+  href: string;
+  label: string;
+}
+
+export const DRILL_DOWNS: DrillDown[] = [
+  { href: "/infra/logs", label: "Service logs" },
+  { href: "/comms/mailroom", label: "Mailroom trail" },
+];
+
+export interface PageMeta {
+  /** The surface whose layout applies. Drill-downs belong to the canvas. */
+  view: ViewMeta;
+  title: string;
+  /** True on a drill-down route, where the header offers a way back to `/`. */
+  drillDown: boolean;
+}
+
+export function pageForPath(pathname: string): PageMeta {
+  const wall = VIEWS[1];
+  if (pathname === wall.href || pathname.startsWith(`${wall.href}/`)) {
+    return { view: wall, title: wall.label, drillDown: false };
+  }
+  const tool = DRILL_DOWNS.find((entry) => pathname === entry.href);
+  const canvas = VIEWS[0];
+  if (tool) return { view: canvas, title: tool.label, drillDown: true };
+  return { view: canvas, title: canvas.label, drillDown: false };
 }

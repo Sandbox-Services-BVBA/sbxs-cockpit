@@ -5,9 +5,9 @@
 // takes on disk and on the wire. Catalog, resolver, store, API and editor all
 // import from this file and nothing imports back into them from here.
 
-import type { ViewId } from "@/lib/views";
+import type { SurfaceId, ViewId } from "@/lib/views";
 
-export type { ViewId };
+export type { SurfaceId, ViewId };
 
 /** Bump when the saved JSON shape changes in a way the resolver must migrate. */
 export const LAYOUT_SCHEMA_VERSION = 1;
@@ -70,18 +70,11 @@ export interface ViewOverride {
   modules?: Record<string, ModuleOverride>;
 }
 
-export interface DomainOverride {
-  visible?: boolean;
-  order?: number;
-  mobilePinned?: boolean;
-}
-
 export interface LayoutProfile {
   schemaVersion: number;
   /** Optimistic concurrency. A stale PUT is rejected with 409. */
   revision: number;
-  domains?: Partial<Record<ViewId, DomainOverride>>;
-  views?: Partial<Record<ViewId, ViewOverride>>;
+  views?: Partial<Record<SurfaceId, ViewOverride>>;
 }
 
 /** What the resolver hands the renderer for one module in one view. */
@@ -94,25 +87,11 @@ export interface ResolvedModule {
 }
 
 export interface ResolvedView {
-  viewId: ViewId;
+  viewId: SurfaceId;
   /** Enabled modules, in canonical order. */
   modules: ResolvedModule[];
   /** Disabled but available modules, for the editor's "Add module" tray. */
   hidden: ResolvedModule[];
-}
-
-export interface ResolvedDomain {
-  viewId: ViewId;
-  visible: boolean;
-  mobilePinned: boolean;
-}
-
-export interface ResolvedLayout {
-  /** Navigation order, hidden domains excluded. */
-  domains: ResolvedDomain[];
-  /** Exactly four ids, in navigation order, for the phone's bottom bar. */
-  mobilePins: ViewId[];
-  views: Record<ViewId, ResolvedView>;
 }
 
 export const EMPTY_PROFILE: LayoutProfile = {
@@ -120,5 +99,3 @@ export const EMPTY_PROFILE: LayoutProfile = {
   revision: 0,
 };
 
-/** The phone's bottom bar holds exactly this many domains. */
-export const MOBILE_PIN_COUNT = 4;

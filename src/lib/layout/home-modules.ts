@@ -2,66 +2,43 @@
 //
 // Home is not a grid of independent cards: every section reads one shared
 // timeframe and one live feed, so its modules are `context` modules and the
-// console provides that context. Kept in its own file so the Home migration
-// never has to touch the shared catalog.
+// console provider supplies that context. Kept in its own file so the Home
+// modules never have to touch the shared catalog.
 //
 // Live/period availability is part of the definition, not a rendering hack.
 // Live answers "what is happening right now" (rates, controls, the flow
 // picture); period answers "what did we use" (totals over the range). A
-// module that does not apply to the current mode is simply not placed, and
-// its anchor disappears with it. One canonical order serves both modes.
+// module that does not apply to the current mode is simply not rendered.
+// Now that the timeframe is global to the whole page, the same rule applies
+// on the canvas: switching to a period hides the controls and shows gas and
+// water, in whatever order Bob dragged them into.
 
-import type { ModuleDefinition, ModulePlacement, ModuleWidth, ResolvedModule } from "./types";
+import type { ModuleDefinition, ModuleWidth, ResolvedModule } from "./types";
 
 export type HomeMode = "live" | "period";
 
-export interface HomeAnchor {
-  /** The section's DOM id, also the hash the sticky nav scrolls to. */
-  id: string;
-  /** Dutch, like the rest of the Home UI. */
-  label: string;
-  /** Keep the DOM id (deep links still land) but leave it out of the sticky nav. */
-  inNav?: boolean;
-}
-
 export interface HomeModuleMeta {
   modes: HomeMode[];
-  /** Per mode, because the same block reads differently: Verloop vs Energie. */
-  anchor?: Partial<Record<HomeMode, HomeAnchor>>;
 }
 
 const BOTH: HomeMode[] = ["live", "period"];
 const LIVE: HomeMode[] = ["live"];
 const PERIOD: HomeMode[] = ["period"];
 
-const both = (id: string, label: string): HomeModuleMeta["anchor"] => ({
-  live: { id, label },
-  period: { id, label },
-});
-
 /**
- * Mode availability and anchors, keyed by module id. `home-control` (Office)
- * is defined in the shared catalog, so it only gets its Home meta here.
+ * Mode availability, keyed by module id. `home-control` (Office) is defined
+ * in the shared catalog, so it only gets its Home meta here.
  */
 export const HOME_MODULE_META: Record<string, HomeModuleMeta> = {
-  "home.house": { modes: BOTH, anchor: both("huis", "Huis") },
-  "home.energy": {
-    modes: BOTH,
-    anchor: { live: { id: "verloop", label: "Verloop" }, period: { id: "energie", label: "Energie" } },
-  },
-  // The battery section shows in both modes, but the period nav has never
-  // listed it: five entries plus Batteries is what the console always drew.
-  "home.batteries": {
-    modes: BOTH,
-    anchor: { live: { id: "batterij", label: "Batterij" }, period: { id: "batterij", label: "Batterij", inNav: false } },
-  },
-  "home.gas": { modes: PERIOD, anchor: { period: { id: "gas", label: "Gas" } } },
-  "home.water": { modes: PERIOD, anchor: { period: { id: "water", label: "Water" } } },
-  "home.climate": { modes: BOTH, anchor: both("klimaat", "Klimaat") },
-  "home.ventilation": { modes: LIVE, anchor: { live: { id: "ventilatie", label: "Ventilatie" } } },
-  "home.airco": { modes: LIVE, anchor: { live: { id: "airco", label: "Airco" } } },
-  "home-control": { modes: LIVE, anchor: { live: { id: "office", label: "Office" } } },
-  // Raw metrics sits beside Office without an anchor of its own, as today.
+  "home.house": { modes: BOTH },
+  "home.energy": { modes: BOTH },
+  "home.batteries": { modes: BOTH },
+  "home.gas": { modes: PERIOD },
+  "home.water": { modes: PERIOD },
+  "home.climate": { modes: BOTH },
+  "home.ventilation": { modes: LIVE },
+  "home.airco": { modes: LIVE },
+  "home-control": { modes: LIVE },
   "home.raw-metrics": { modes: LIVE },
 };
 
@@ -75,8 +52,8 @@ interface HomeSpec {
   dataMode?: ModuleDefinition["dataMode"];
 }
 
-// Home modules stay on Home in this release and none may reach the wall:
-// the house visual alone shows who is home, what is running and when.
+// Home modules may live on the canvas, and none may reach the wall: the
+// house visual alone shows who is home, what is running and when.
 function defineHome(id: string, spec: HomeSpec): ModuleDefinition {
   return {
     id,
@@ -126,49 +103,24 @@ export const HOME_MODULES: ModuleDefinition[] = [
 ];
 
 /**
- * Today's Home, in one canonical order. Filtered per mode this gives
- * live: Huis, Verloop, Batterij, Klimaat, Ventilatie, Airco, Office (+ raw)
+ * The house sections in one canonical order, the fallback for a module the
+ * canvas profile has never placed. Filtered per mode this gives
+ * live: Huis, Energie, Batterij, Klimaat, Ventilatie, Airco, Office (+ raw)
  * period: Huis, Energie, Batterij, Gas, Water, Klimaat.
  */
-export const HOME_LAYOUT: ModulePlacement[] = [
-  { moduleId: "home.house" },
-  { moduleId: "home.energy" },
-  { moduleId: "home.batteries" },
-  { moduleId: "home.gas" },
-  { moduleId: "home.water" },
-  { moduleId: "home.climate" },
-  { moduleId: "home.ventilation" },
-  { moduleId: "home.airco" },
-  { moduleId: "home-control" },
-  { moduleId: "home.raw-metrics" },
-];
-
 export function homeModeFor(isLive: boolean): HomeMode {
   return isLive ? "live" : "period";
 }
 
+/** True for a non-Home module: the mode only ever hides Home modules. */
+export function homeModuleApplies(moduleId: string, mode: HomeMode): boolean {
+  const meta = HOME_MODULE_META[moduleId];
+  return meta ? meta.modes.includes(mode) : true;
+}
+
 /** The resolved Home modules that apply to this mode, order preserved. */
 export function homeModulesFor(mode: HomeMode, modules: ResolvedModule[]): ResolvedModule[] {
-  return modules.filter((entry) => HOME_MODULE_META[entry.moduleId]?.modes.includes(mode));
-}
-
-export interface HomeNavEntry {
-  moduleId: string;
-  id: string;
-  label: string;
-}
-
-/** The sticky nav, derived from what is actually placed: hide a module, lose its anchor. */
-export function homeAnchorsFor(mode: HomeMode, modules: ResolvedModule[]): HomeNavEntry[] {
-  const entries: HomeNavEntry[] = [];
-  for (const entry of homeModulesFor(mode, modules)) {
-    const anchor = HOME_MODULE_META[entry.moduleId]?.anchor?.[mode];
-    if (anchor && anchor.inNav !== false) entries.push({ moduleId: entry.moduleId, id: anchor.id, label: anchor.label });
-  }
-  return entries;
-}
-
-/** The DOM id a placed module gets in this mode, if it is an anchor target. */
-export function homeAnchorId(mode: HomeMode, moduleId: string): string | undefined {
-  return HOME_MODULE_META[moduleId]?.anchor?.[mode]?.id;
+  return modules.filter(
+    (entry) => HOME_MODULE_META[entry.moduleId] !== undefined && homeModuleApplies(entry.moduleId, mode)
+  );
 }

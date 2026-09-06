@@ -8,8 +8,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // after the next commit and puts it back, skipping any candidate that has
 // become disabled (a row that just reached the top loses its "up" button).
 //
-// It also owns the polite live region text, because every focus restore in
-// the editor is paired with an announcement of what just happened.
+// It also owns the polite live region text, because every focus restore on
+// the canvas is paired with an announcement of what just happened.
 
 export function useFocusAfter() {
   const nodes = useRef(new Map<string, HTMLElement>());

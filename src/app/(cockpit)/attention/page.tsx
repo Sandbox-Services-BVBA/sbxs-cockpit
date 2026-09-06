@@ -1,8 +1,7 @@
-import type { Metadata } from "next";
-import { AttentionView } from "@/components/dashboard/views/attention-view";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Attention — SBXS Cockpit" };
-
+// The domain pages are gone: every module lives on the canvas at `/`. This
+// route stays so old bookmarks and home-screen shortcuts still land.
 export default function Page() {
-  return <AttentionView />;
+  redirect("/");
 }

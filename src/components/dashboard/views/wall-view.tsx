@@ -5,7 +5,6 @@ import { getDashboardHealth } from "@/lib/dashboard-health";
 import { useLayout, useResolvedView } from "@/lib/layout/client";
 import type { ResolvedView } from "@/lib/layout/types";
 import { VIEW_BY_ID } from "@/lib/views";
-import { ViewEditor } from "@/components/layout-editor";
 import { CockpitSummary } from "../cockpit-summary";
 import { AlertsSummaryWidget } from "../widgets/alerts-summary-widget";
 import { ModuleErrorBoundary } from "./module-frame";
@@ -20,23 +19,14 @@ import { SourceFreshnessNotice, ViewError, ViewLede } from "./view-chrome";
  * one there. The summary strip and the attention queue above the matrix are
  * chrome, not placements.
  *
- * There is no Customize button on this route because the wall runs
- * unattended. Open Customize on any domain and navigate here to edit it; the
- * profile is server-synced, so the display picks the change up on its own.
+ * The wall runs unattended, so it has no controls of its own. Its
+ * placements come from the same server-synced profile as the canvas.
  */
 export function WallView() {
   const { data, error } = useDashboardData();
-  const { editing, ready } = useLayout();
+  const { ready } = useLayout();
   const health = getDashboardHealth(data);
   const resolved = useResolvedView("wall");
-
-  if (editing) {
-    return (
-      <div className="cockpit-view">
-        <ViewEditor viewId="wall" resolved={resolved} />
-      </div>
-    );
-  }
 
   return (
     <div className="cockpit-view space-y-5">

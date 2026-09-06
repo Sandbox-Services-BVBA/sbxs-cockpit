@@ -1,13 +1,11 @@
 import { getModule } from "@/lib/layout/catalog";
 import {
   LAYOUT_SCHEMA_VERSION,
-  MOBILE_PIN_COUNT,
-  type DomainOverride,
   type LayoutProfile,
   type ModuleDensity,
   type ModuleOverride,
   type ModuleWidth,
-  type ViewId,
+  type SurfaceId,
   type ViewOverride,
 } from "@/lib/layout/types";
 import { VIEWS } from "@/lib/views";
@@ -40,13 +38,13 @@ function fail(error: string): ValidationResult {
   return { ok: false, error };
 }
 
-function isViewId(value: string): value is ViewId {
+function isSurfaceId(value: string): value is SurfaceId {
   return VIEW_IDS.has(value);
 }
 
 type ModuleCheck = { ok: true; override: ModuleOverride | null } | { ok: false; error: string };
 
-function checkModuleOverride(viewId: ViewId, moduleId: string, raw: unknown): ModuleCheck {
+function checkModuleOverride(viewId: SurfaceId, moduleId: string, raw: unknown): ModuleCheck {
   if (!isPlainObject(raw)) return { ok: false, error: `views.${viewId}.modules.${moduleId} must be an object` };
 
   const definition = getModule(moduleId);
@@ -98,7 +96,7 @@ function checkModuleOverride(viewId: ViewId, moduleId: string, raw: unknown): Mo
 
 type ViewCheck = { ok: true; override: ViewOverride | null } | { ok: false; error: string };
 
-function checkViewOverride(viewId: ViewId, raw: unknown): ViewCheck {
+function checkViewOverride(viewId: SurfaceId, raw: unknown): ViewCheck {
   if (!isPlainObject(raw)) return { ok: false, error: `views.${viewId} must be an object` };
   const override: ViewOverride = {};
 
@@ -132,32 +130,6 @@ function checkViewOverride(viewId: ViewId, raw: unknown): ViewCheck {
   return { ok: true, override: Object.keys(override).length > 0 ? override : null };
 }
 
-type DomainCheck = { ok: true; override: DomainOverride | null } | { ok: false; error: string };
-
-function checkDomainOverride(viewId: ViewId, raw: unknown): DomainCheck {
-  if (!isPlainObject(raw)) return { ok: false, error: `domains.${viewId} must be an object` };
-  const override: DomainOverride = {};
-
-  if (raw.visible !== undefined) {
-    if (typeof raw.visible !== "boolean") return { ok: false, error: `domains.${viewId}.visible must be a boolean` };
-    override.visible = raw.visible;
-  }
-  if (raw.order !== undefined) {
-    if (typeof raw.order !== "number" || !Number.isInteger(raw.order)) {
-      return { ok: false, error: `domains.${viewId}.order must be an integer` };
-    }
-    override.order = raw.order;
-  }
-  if (raw.mobilePinned !== undefined) {
-    if (typeof raw.mobilePinned !== "boolean") {
-      return { ok: false, error: `domains.${viewId}.mobilePinned must be a boolean` };
-    }
-    override.mobilePinned = raw.mobilePinned;
-  }
-
-  return { ok: true, override: Object.keys(override).length > 0 ? override : null };
-}
-
 export function validateProfile(raw: unknown): ValidationResult {
   if (!isPlainObject(raw)) return fail("profile must be an object");
 
@@ -184,35 +156,12 @@ export function validateProfile(raw: unknown): ValidationResult {
 
   const profile: LayoutProfile = { schemaVersion, revision: typeof revision === "number" ? revision : 0 };
 
-  if (raw.domains !== undefined) {
-    if (!isPlainObject(raw.domains)) return fail("domains must be an object");
-    const domains: Partial<Record<ViewId, DomainOverride>> = {};
-    let pinsSpecified = false;
-    let pinned = 0;
-    for (const [key, value] of Object.entries(raw.domains)) {
-      if (!isViewId(key)) continue;
-      const checked = checkDomainOverride(key, value);
-      if (!checked.ok) return fail(checked.error);
-      if (!checked.override) continue;
-      domains[key] = checked.override;
-      if (checked.override.mobilePinned !== undefined) {
-        pinsSpecified = true;
-        if (checked.override.mobilePinned) pinned += 1;
-      }
-    }
-    // The bottom bar has exactly four slots. A partial pin set would make the
-    // resolver guess which defaults to keep, so require the full set or none.
-    if (pinsSpecified && pinned !== MOBILE_PIN_COUNT) {
-      return fail(`mobilePinned must select exactly ${MOBILE_PIN_COUNT} domains (got ${pinned})`);
-    }
-    if (Object.keys(domains).length > 0) profile.domains = domains;
-  }
 
   if (raw.views !== undefined) {
     if (!isPlainObject(raw.views)) return fail("views must be an object");
-    const views: Partial<Record<ViewId, ViewOverride>> = {};
+    const views: Partial<Record<SurfaceId, ViewOverride>> = {};
     for (const [key, value] of Object.entries(raw.views)) {
-      if (!isViewId(key)) continue;
+      if (!isSurfaceId(key)) continue;
       const checked = checkViewOverride(key, value);
       if (!checked.ok) return fail(checked.error);
       if (checked.override) views[key] = checked.override;

@@ -40,6 +40,17 @@ function HouseVisual() {
  * feed was absent or failing, now per tile: a section handed a sample that
  * is really an error payload would throw into its error boundary instead.
  */
+/**
+ * Home's sections come from the standalone energy console, where each one is
+ * as tall as it needs to be. On the board a tile has the height it was
+ * dragged to, so the section is given that box and scrolls inside it, the
+ * same contract WidgetTile gives every other widget. `@container` makes the
+ * tile the query root for anything inside that asks.
+ */
+function HomeTile({ children }: { children: ReactNode }) {
+  return <div className="@container h-full min-h-0 overflow-y-auto">{children}</div>;
+}
+
 function FeedGate({ children }: { children: ReactNode }) {
   const { live } = useHomeConsole();
   if (live?.error) {
@@ -81,15 +92,20 @@ export function homeModuleHidden(id: string): boolean {
 export function homeModuleNode(id: string, ctx: HomeRenderContext): ReactNode {
   void ctx; // no Home module has a density choice yet
   if (homeModuleHidden(id)) return null;
+  const gated = (node: ReactNode) => (
+    <HomeTile>
+      <FeedGate>{node}</FeedGate>
+    </HomeTile>
+  );
   switch (id) {
-    case "home.house": return <FeedGate><HouseVisual /></FeedGate>;
-    case "home.energy": return <FeedGate><EnergySection /></FeedGate>;
-    case "home.batteries": return <FeedGate><Batteries /></FeedGate>;
-    case "home.gas": return <FeedGate><Gas /></FeedGate>;
-    case "home.water": return <FeedGate><Water /></FeedGate>;
-    case "home.climate": return <FeedGate><Climate /></FeedGate>;
-    case "home.ventilation": return <FeedGate><Ventilation /></FeedGate>;
-    case "home.airco": return <FeedGate><Airco /></FeedGate>;
+    case "home.house": return gated(<HouseVisual />);
+    case "home.energy": return gated(<EnergySection />);
+    case "home.batteries": return gated(<Batteries />);
+    case "home.gas": return gated(<Gas />);
+    case "home.water": return gated(<Water />);
+    case "home.climate": return gated(<Climate />);
+    case "home.ventilation": return gated(<Ventilation />);
+    case "home.airco": return gated(<Airco />);
     // Office and raw metrics poll their own endpoints; the feed gate would
     // only hide working tiles behind an unrelated outage.
     case "home-control": return <HomeControlWidget />;

@@ -191,12 +191,17 @@ function FileViewer({ path }: { path: string }) {
 }
 
 // ─── Lightweight dashboard widget: tree only, opens files in the modal ───────
-export function FileTreeWidget({ layout = "grid" }: { layout?: LayoutMode }) {
+/**
+ * The tree fills its tile rather than scrolling inside it: the breadcrumb has
+ * to stay put while the listing moves, so this is one of the panes that takes
+ * a filling body and does its own scrolling one level down. Width and height
+ * are the frame's business, so the widget states neither.
+ */
+export function FileTreeWidget({ layout }: { layout?: LayoutMode }) {
+  void layout;
   return (
-    <WidgetTile title="Files" size="sm" className="sm:col-span-2 lg:col-span-3 xl:col-span-3">
-      <div className={cn(layout === "columns" ? "h-[calc(100vh-168px)]" : layout === "wall" ? "h-[420px]" : "h-[60vh]")}>
-        <FileTree onOpenFile={openFile} />
-      </div>
+    <WidgetTile title="Files" size="sm" bodyClassName="flex min-h-0 flex-col overflow-hidden">
+      <FileTree onOpenFile={openFile} />
     </WidgetTile>
   );
 }

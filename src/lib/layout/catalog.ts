@@ -10,8 +10,10 @@ import type {
   ModuleDensity,
   ModuleSensitivity,
   ModuleWidth,
+  TileSize,
   ViewId,
 } from "./types";
+import { MIN_TILE_SIZE, TILE_SIZES } from "./grid";
 import { HOME_MODULES } from "./home-modules";
 
 const LIST_DENSITIES: ModuleDensity[] = ["summary", "standard", "full"];
@@ -24,6 +26,14 @@ interface ModuleSpec {
   alsoIn?: ViewId[];
   defaultWidth: ModuleWidth;
   allowedWidths: ModuleWidth[];
+  /**
+   * Canvas size. A named house size keeps the board regular; the point of
+   * naming them is that most tiles are the same height, so the page reads
+   * as a board rather than a heap.
+   */
+  size?: keyof typeof TILE_SIZES;
+  /** Raise the floor for a module that is unreadable at the global minimum. */
+  min?: TileSize;
   /** Only list-heavy modules get a density choice; the rest are fixed. */
   listy?: boolean;
   sensitivity?: ModuleSensitivity;
@@ -42,6 +52,8 @@ function define(id: string, spec: ModuleSpec): ModuleDefinition {
     allowedViews: ["canvas", spec.ownerView, ...(spec.alsoIn ?? [])],
     defaultWidth: spec.defaultWidth,
     allowedWidths: spec.allowedWidths,
+    defaultSize: TILE_SIZES[spec.size ?? "list"],
+    minSize: spec.min ?? MIN_TILE_SIZE,
     defaultDensity: "standard",
     allowedDensities: spec.listy ? LIST_DENSITIES : FIXED_DENSITY,
     sensitivity: spec.sensitivity ?? "normal",
@@ -58,6 +70,8 @@ const CORE_MODULES: ModuleDefinition[] = [
   // Required and list-heavy: density may fold warnings into a count, never a
   // critical. The widget enforces that; the catalog only offers the choice.
   define("alerts-summary", {
+    size: "strip",
+    min: { w: 8, h: 6 },
     title: "Active Alerts",
     ownerView: "alerts",
     defaultWidth: "full",
@@ -68,6 +82,8 @@ const CORE_MODULES: ModuleDefinition[] = [
 
   // Client sites
   define("uptime-grid", {
+    size: "wide",
+    min: { w: 6, h: 8 },
     title: "Uptime Monitor",
     ownerView: "sites",
     alsoIn: WALL,
@@ -91,6 +107,8 @@ const CORE_MODULES: ModuleDefinition[] = [
     listy: true,
   }),
   define("umami-plaq", {
+    size: "chart",
+    min: { w: 4, h: 8 },
     title: "Plaq Studio",
     ownerView: "sites",
     defaultWidth: "compact",
@@ -98,6 +116,8 @@ const CORE_MODULES: ModuleDefinition[] = [
     selfFetch: true,
   }),
   define("umami-byb", {
+    size: "chart",
+    min: { w: 4, h: 8 },
     title: "BookYourBox",
     ownerView: "sites",
     defaultWidth: "compact",
@@ -108,12 +128,15 @@ const CORE_MODULES: ModuleDefinition[] = [
   // Infrastructure. Six placements plus GPU; InfraView renders all of them
   // through the resolver, and the list panes honour density.
   define("infra.summary", {
+    size: "strip",
+    min: { w: 8, h: 6 },
     title: "Infrastructure rollup",
     ownerView: "infra",
     defaultWidth: "full",
     allowedWidths: ["full"],
   }),
   define("servers", {
+    size: "chart",
     title: "Servers",
     ownerView: "infra",
     alsoIn: WALL,
@@ -122,6 +145,7 @@ const CORE_MODULES: ModuleDefinition[] = [
     listy: true,
   }),
   define("gpu", {
+    size: "chart",
     title: "GPU",
     ownerView: "infra",
     alsoIn: WALL,
@@ -129,6 +153,7 @@ const CORE_MODULES: ModuleDefinition[] = [
     allowedWidths: ["standard", "wide", "full"],
   }),
   define("thermals", {
+    size: "chart",
     title: "Thermals",
     ownerView: "infra",
     alsoIn: WALL,
@@ -171,12 +196,14 @@ const CORE_MODULES: ModuleDefinition[] = [
 
   // Finance
   define("unbilled", {
+    size: "stat",
     title: "Unbilled",
     ownerView: "money",
     defaultWidth: "standard",
     allowedWidths: ["compact", "standard", "wide"],
   }),
   define("bank", {
+    size: "stat",
     title: "Bank",
     ownerView: "money",
     defaultWidth: "standard",
@@ -193,6 +220,7 @@ const CORE_MODULES: ModuleDefinition[] = [
 
   // Communications
   define("inbox", {
+    size: "stat",
     title: "Inboxes",
     ownerView: "comms",
     alsoIn: WALL,
@@ -216,6 +244,8 @@ const CORE_MODULES: ModuleDefinition[] = [
 
   // Development
   define("agents", {
+    size: "wide",
+    min: { w: 5, h: 8 },
     title: "Agents",
     ownerView: "dev",
     defaultWidth: "standard",
@@ -223,6 +253,8 @@ const CORE_MODULES: ModuleDefinition[] = [
     selfFetch: true,
   }),
   define("file-activity", {
+    size: "wide",
+    min: { w: 5, h: 8 },
     title: "File Activity",
     ownerView: "dev",
     defaultWidth: "wide",
@@ -239,6 +271,7 @@ const CORE_MODULES: ModuleDefinition[] = [
     listy: true,
   }),
   define("ai-usage", {
+    size: "stat",
     title: "AI Usage",
     ownerView: "dev",
     defaultWidth: "compact",
@@ -247,6 +280,8 @@ const CORE_MODULES: ModuleDefinition[] = [
   // The registry calls this `sm`, but the tree widget has always forced its
   // own half-width span because a file tree is unreadable any narrower.
   define("file-explorer", {
+    size: "wide",
+    min: { w: 5, h: 8 },
     title: "Files",
     ownerView: "dev",
     defaultWidth: "wide",
@@ -257,6 +292,7 @@ const CORE_MODULES: ModuleDefinition[] = [
 
   // Home: only the office teaser is a module; the console itself is Phase 5.
   define("home-control", {
+    size: "chart",
     title: "Office",
     ownerView: "house",
     defaultWidth: "standard",
@@ -267,6 +303,7 @@ const CORE_MODULES: ModuleDefinition[] = [
 
   // Personal
   define("weight", {
+    size: "stat",
     title: "Weight",
     ownerView: "personal",
     defaultWidth: "standard",
@@ -275,6 +312,7 @@ const CORE_MODULES: ModuleDefinition[] = [
     selfFetch: true,
   }),
   define("btc", {
+    size: "stat",
     title: "Bitcoin",
     ownerView: "personal",
     defaultWidth: "standard",

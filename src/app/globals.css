@@ -664,8 +664,10 @@
 
 /* --- Panes ----------------------------------------------------------------
    The converted language, currently worn by Infrastructure. A pane is a
-   bordered block with a serif title and a mono readout, and it is exactly as
-   tall as its contents: nothing here is stretched to match a neighbour.
+   bordered block with a serif title and a mono readout. On the canvas it
+   fills the height of the tile it was dragged to and scrolls its own body,
+   the same contract WidgetTile has; the utilities that do that are on the
+   component, because only the tile knows how tall it is.
 
    Tone is carried by a word in every case (the readout, the row's state word)
    and only reinforced by --pane-tone, so the panes survive being read in
@@ -738,13 +740,9 @@
 .tally-strip {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-@media (min-width: 780px) {
-  .tally-strip {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+  /* Sized against the tile, not the window: the same strip can be four
+     columns wide on the board and twenty, in the same window. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
 }
 
 .tally {

@@ -80,7 +80,7 @@ export function moduleNode(id: string, { data, agentStale, density, layout }: Mo
       ? <ServicesWidget services={data?.services} density={density} />
       : <ServicesPane services={data?.services} density={density} />;
     case "alerts-summary": return <AlertsSummaryWidget alerts={data!.alerts} density={density} suppressHealthy={agentStale} />;
-    case "uptime-grid": return <UptimeGridWidget uptime={data!.uptime} uptimeHistory={data!.uptimeHistory} />;
+    case "uptime-grid": return <UptimeGridWidget uptime={data!.uptime} uptimeHistory={data!.uptimeHistory} density={density} />;
     case "cityscreens": return <CityScreensWidget displays={data!.cityscreens} />;
     case "domains": return <DomainsWidget domains={data!.domains} />;
     case "umami-plaq": return <UmamiWidget site="plaqstudio" title="Plaq Studio" />;

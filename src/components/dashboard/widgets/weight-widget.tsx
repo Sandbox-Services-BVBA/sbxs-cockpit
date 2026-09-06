@@ -74,10 +74,12 @@ export function WeightWidget() {
   const avg = allValues.length > 0 ? allValues.reduce((a, b) => a + b, 0) / allValues.length : null;
 
   return (
-    <WidgetTile title="Weight" size="md">
-      <div className="space-y-3">
+    // The chart is the widget: it takes whatever height the tile has left over
+    // instead of scrolling a 112px picture inside a 400px box.
+    <WidgetTile title="Weight" size="md" bodyClassName="flex min-h-0 flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
         {/* Big number + period toggles */}
-        <div className="flex items-start justify-between">
+        <div className="flex shrink-0 items-start justify-between">
           <div>
             {latestWeight ? (
               <div className="flex items-baseline gap-1.5">
@@ -121,7 +123,7 @@ export function WeightWidget() {
 
         {/* Line chart */}
         {chartData.length > 1 ? (
-          <div className="h-28 -mx-1">
+          <div className="-mx-1 min-h-20 min-w-0 flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
                 <YAxis
@@ -152,13 +154,13 @@ export function WeightWidget() {
             </ResponsiveContainer>
           </div>
         ) : chartData.length === 1 ? (
-          <p className="text-xs text-muted-foreground h-28 flex items-center justify-center">Only 1 entry in this period</p>
+          <p className="flex min-h-20 flex-1 items-center justify-center text-xs text-muted-foreground">Only 1 entry in this period</p>
         ) : (
-          <p className="text-xs text-muted-foreground h-28 flex items-center justify-center">No data for this period</p>
+          <p className="flex min-h-20 flex-1 items-center justify-center text-xs text-muted-foreground">No data for this period</p>
         )}
 
         {/* Footer stats */}
-        <div className="flex items-center justify-between text-tiny text-muted-foreground">
+        <div className="flex shrink-0 items-center justify-between text-tiny text-muted-foreground">
           <span>{chartData.length} entries</span>
           {totalCount !== undefined && totalCount > chartData.length && (
             <span>{totalCount} total stored</span>

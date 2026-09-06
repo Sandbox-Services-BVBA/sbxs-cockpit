@@ -6,7 +6,9 @@
 // `standard` here; `lg` is `wide`; `xl` is `full`. Change a placement here
 // and the view changes; the catalog's defaultWidth is only the fallback.
 
-import type { ModulePlacement, SurfaceId } from "./types";
+import { MODULE_BY_ID } from "./catalog";
+import { TILE_SIZES, packRects } from "./grid";
+import type { ModulePlacement, SurfaceId, TileRect } from "./types";
 
 export const DEFAULT_LAYOUTS: Record<SurfaceId, ModulePlacement[]> = {
   // The canvas is the whole app: one flat page holding every module, arranged
@@ -82,3 +84,19 @@ export const DEFAULT_LAYOUTS: Record<SurfaceId, ModulePlacement[]> = {
   ],
 };
 
+/**
+ * Where each tile starts on the canvas plane.
+ *
+ * Positions are packed from the order above rather than written out by hand:
+ * sizes live on the module (catalog `defaultSize`), order is the priority
+ * model, and first-fit turns the two into coordinates. Adding a module is
+ * therefore one line in the list above, not a coordinate puzzle, and the
+ * result is the same on every device that has never been arranged.
+ */
+export const CANVAS_DEFAULT_RECTS: Record<string, TileRect> = packRects(
+  DEFAULT_LAYOUTS.canvas.map((placement) => {
+    const size =
+      placement.size ?? MODULE_BY_ID[placement.moduleId]?.defaultSize ?? TILE_SIZES.list;
+    return { moduleId: placement.moduleId, w: size.w, h: size.h };
+  })
+);

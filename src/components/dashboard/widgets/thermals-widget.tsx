@@ -123,14 +123,14 @@ function LegendDot({ color, label }: { color: string; label: string }) {
 function HistoryCharts({ points }: { points: ChartPoint[] }) {
   if (points.length < 2) {
     return (
-      <div className="flex min-h-32 items-center justify-center rounded-xl border border-dashed border-line px-4 text-center text-petite text-ink-quiet sm:min-h-40">
+      <div className="flex min-h-32 items-center justify-center rounded-xl border border-dashed border-line px-4 text-center text-petite text-ink-quiet @xl:min-h-40">
         24-hour history will appear after the next agent sample.
       </div>
     );
   }
 
   return (
-    <div className="grid min-w-0 gap-3 lg:grid-cols-2">
+    <div className="grid min-w-0 gap-3 @3xl:grid-cols-2">
       <figure
         className="min-w-0 rounded-xl border border-line-soft bg-ink/[0.018] p-2.5"
         aria-label="Proxmox host CPU temperature over the last 24 hours"
@@ -142,7 +142,7 @@ function HistoryCharts({ points }: { points: ChartPoint[] }) {
             <LegendDot color={CCD_COLOR} label="Tccd1" />
           </span>
         </figcaption>
-        <div className="h-36 w-full sm:h-40">
+        <div className="h-36 w-full @xl:h-40">
           <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 320, height: 144 }}>
             <ComposedChart data={points} margin={{ top: 6, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid stroke="var(--line-soft)" strokeDasharray="2 5" vertical={false} />
@@ -184,7 +184,7 @@ function HistoryCharts({ points }: { points: ChartPoint[] }) {
             <LegendDot color={CASE_COLOR} label="case" />
           </span>
         </figcaption>
-        <div className="h-36 w-full sm:h-40">
+        <div className="h-36 w-full @xl:h-40">
           <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 320, height: 144 }}>
             <ComposedChart data={points} margin={{ top: 6, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid stroke="var(--line-soft)" strokeDasharray="2 5" vertical={false} />
@@ -267,7 +267,7 @@ export function ThermalsWidget({
             </p>
           )}
 
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 @lg:grid-cols-4">
             <Metric
               label="CPU"
               value={num(thermals.cpu_tctl_c, 1, " °C")}

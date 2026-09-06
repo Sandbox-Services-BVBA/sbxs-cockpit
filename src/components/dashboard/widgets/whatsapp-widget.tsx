@@ -256,7 +256,7 @@ export function WhatsAppWidget() {
             </p>
           )
         ) : (
-          <div className="max-h-80 space-y-1.5 overflow-y-auto">
+          <div className="space-y-1.5">
             {[...messages].reverse().map((m) => (
               <div key={m.event_id} className="flex gap-2 text-petite leading-snug">
                 <span className="w-9 shrink-0 font-mono text-mini text-muted-foreground tabular-nums">
@@ -296,7 +296,7 @@ export function WhatsAppWidget() {
               className="w-full bg-transparent text-petite outline-none placeholder:text-muted-foreground"
             />
           </div>
-          <div className="max-h-80 space-y-0.5 overflow-y-auto">
+          <div className="space-y-0.5">
             {visibleChats.map((c) => (
               <button
                 key={c.room_id}

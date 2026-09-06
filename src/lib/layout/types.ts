@@ -10,9 +10,33 @@ import type { SurfaceId, ViewId } from "@/lib/views";
 export type { SurfaceId, ViewId };
 
 /** Bump when the saved JSON shape changes in a way the resolver must migrate. */
-export const LAYOUT_SCHEMA_VERSION = 1;
+export const LAYOUT_SCHEMA_VERSION = 2;
 
-/** Semantic width. The grid maps these to spans; modules never set spans. */
+/**
+ * Where a tile sits on the canvas plane, in grid cells. x and y count from
+ * the top-left corner, w and h are the span. Pixels are the grid's business
+ * (lib/layout/grid.ts); nothing outside it converts between the two.
+ *
+ * Only the canvas uses rectangles. The wallboard is not arranged by hand and
+ * keeps the twelve-column flow, so it reads `order` and `width` instead.
+ */
+export interface TileRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** A tile's size in grid cells, without a position. */
+export interface TileSize {
+  w: number;
+  h: number;
+}
+
+/**
+ * Semantic width, for the wallboard's flow grid only. The canvas resizes
+ * freely and stores a rectangle instead.
+ */
 export type ModuleWidth = "compact" | "standard" | "wide" | "full";
 
 /** How much a list-heavy module prints. Summary never hides unhealthy rows. */
@@ -41,6 +65,10 @@ export interface ModuleDefinition {
   allowedViews: ViewId[];
   defaultWidth: ModuleWidth;
   allowedWidths: ModuleWidth[];
+  /** The size the module takes on the canvas before Bob touches it. */
+  defaultSize: TileSize;
+  /** The floor a resize may not go below, because it stops being readable. */
+  minSize: TileSize;
   defaultDensity: ModuleDensity;
   allowedDensities: ModuleDensity[];
   sensitivity: ModuleSensitivity;
@@ -53,6 +81,8 @@ export interface ModuleDefinition {
 export interface ModulePlacement {
   moduleId: string;
   width?: ModuleWidth;
+  /** Canvas size in cells. Position is packed from the declaration order. */
+  size?: TileSize;
   density?: ModuleDensity;
   /** Off by default but offerable from the hidden tray. */
   enabled?: boolean;
@@ -60,8 +90,11 @@ export interface ModulePlacement {
 
 export interface ModuleOverride {
   enabled?: boolean;
+  /** Wallboard only. */
   width?: ModuleWidth;
   density?: ModuleDensity;
+  /** Canvas only: where Bob dragged and resized the tile to. */
+  rect?: TileRect;
 }
 
 export interface ViewOverride {
@@ -82,6 +115,8 @@ export interface ResolvedModule {
   moduleId: string;
   definition: ModuleDefinition;
   width: ModuleWidth;
+  /** Canvas placement. Resolved for every view; the wallboard ignores it. */
+  rect: TileRect;
   density: ModuleDensity;
   enabled: boolean;
 }

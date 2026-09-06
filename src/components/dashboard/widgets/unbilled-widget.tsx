@@ -41,7 +41,7 @@ export function UnbilledWidget({ unbilled }: { unbilled: UnbilledData | null }) 
         </div>
         {clients.length > 0 && (
           <div className="space-y-0.5">
-            {clients.slice(0, 5).map(([name, amount]) => (
+            {clients.map(([name, amount]) => (
               <div key={name} className="flex justify-between text-mini font-mono">
                 <span className="text-muted-foreground truncate mr-2">{name}</span>
                 <span>{Math.round(amount)}</span>

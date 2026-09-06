@@ -7,9 +7,16 @@ export type PaneTone = "ok" | "warn" | "bad" | "idle";
 
 /**
  * A pane in the converted visual language: serif title, mono readout, a hairline
- * accent tick, and a body that is exactly as tall as its content. Nothing here
- * forces a uniform card height, and nothing here decides width or order: the
- * placement frame owns both, the pane owns content only.
+ * accent tick. It is the tile the Infrastructure modules draw inside, the way
+ * WidgetTile is the tile everything else draws inside, so it obeys the same two
+ * canvas rules: it fills the box it is given rather than growing to fit its
+ * contents, and the body scrolls on its own. A pane that sized itself would
+ * tear the board apart every time a list got longer.
+ *
+ * `@container` makes the pane the query root, because nothing above it is one:
+ * the placement frame owns width and order, and a pane can be three columns
+ * wide or twenty. The utilities sit alongside the `pane` classes rather than
+ * replacing them; they only add properties globals.css leaves unset.
  */
 export function Pane({
   title,
@@ -24,12 +31,12 @@ export function Pane({
   children: ReactNode;
 }) {
   return (
-    <section className="pane" data-tone={tone}>
-      <header className="pane__head">
+    <section className="pane @container h-full min-h-0 overflow-hidden" data-tone={tone}>
+      <header className="pane__head shrink-0">
         <h2 className="serif pane__title">{title}</h2>
         {readout !== undefined && <span className="pane__readout">{readout}</span>}
       </header>
-      <div className="pane__body">{children}</div>
+      <div className="pane__body min-h-0 flex-1 overflow-y-auto overflow-x-hidden">{children}</div>
     </section>
   );
 }

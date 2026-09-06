@@ -45,14 +45,6 @@ const RANGES = [
   { days: 90, label: "90d" },
 ] as const;
 
-function wideCls(layout: LayoutMode) {
-  return layout === "columns"
-    ? "energy-wide"
-    : layout === "wall"
-      ? ""
-      : "sm:col-span-2 lg:col-span-4 xl:col-span-6 3xl:col-span-8 4xl:col-span-12";
-}
-
 function fmt(n: number, d = 1) {
   return n.toLocaleString("nl-BE", { minimumFractionDigits: d, maximumFractionDigits: d });
 }
@@ -93,25 +85,26 @@ function Stat({ label, value, unit, sub }: { label: string; value: string; unit?
   );
 }
 
-export function GasWidget({ layout = "grid" }: { layout?: LayoutMode }) {
+export function GasWidget({ layout }: { layout?: LayoutMode }) {
   const [days, setDays] = useState<number>(30);
   const { data } = useSWR<GasData>(`/api/energy?gas=1&days=${days}`, fetcher, {
     refreshInterval: REFRESH_MS,
     keepPreviousData: true,
   });
 
-  const cls = wideCls(layout);
+  // The placement frame owns the span; the widget only owns its contents.
+  void layout;
 
   if (data?.error) {
     return (
-      <WidgetTile title="Gas" size="sm" className={cls}>
+      <WidgetTile title="Gas" size="sm">
         <p className="text-petite text-[#ff4444]">Monitor: {data.error}</p>
       </WidgetTile>
     );
   }
   if (!data) {
     return (
-      <WidgetTile title="Gas" size="sm" className={cls}>
+      <WidgetTile title="Gas" size="sm">
         <p className="text-petite text-muted-foreground">Verbinden met energy-monitor...</p>
       </WidgetTile>
     );
@@ -132,7 +125,7 @@ export function GasWidget({ layout = "grid" }: { layout?: LayoutMode }) {
     <WidgetTile
       title="Gas"
       size="sm"
-      className={cls}
+     
       headerRight={
         <span className="flex items-center gap-1.5 text-tiny font-mono text-muted-foreground">
           <Flame className="h-3.5 w-3.5" style={{ color: GAS_COLOR }} />
@@ -163,7 +156,7 @@ export function GasWidget({ layout = "grid" }: { layout?: LayoutMode }) {
         </div>
 
         {/* Summary stats */}
-        <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-1 @xl:grid-cols-4">
           <Stat label="Vandaag" value={today ? fmt(today.m3, 2) : "—"} unit="m³" sub={today ? `€ ${fmt(today.eur, 2)}` : undefined} />
           <Stat label="Gem./dag" value={fmt(avgM3, 2)} unit="m³" sub={`${fmt(avgM3 * data.kwh_per_m3, 0)} kWh`} />
           <Stat label={`Totaal ${days}d`} value={fmt(totalM3, 1)} unit="m³" sub={`${fmt(totalM3 * data.kwh_per_m3, 0)} kWh`} />

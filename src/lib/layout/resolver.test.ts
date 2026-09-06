@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MODULE_CATALOG } from "./catalog";
 import { DEFAULT_LAYOUTS } from "./default-layouts";
+import { CANVAS_COLS, CANVAS_MAX_ROWS, rectsOverlap } from "./grid";
 import { normalizeProfile, resolveView } from "./resolver";
 import { LAYOUT_SCHEMA_VERSION, type LayoutProfile } from "./types";
 
@@ -213,8 +214,9 @@ describe("normalizeProfile", () => {
     ["null", null],
     ["a string", "profile"],
     ["an array", []],
-    ["a wrong schema version", { schemaVersion: 99, revision: 3, views: { canvas: { order: ["domains"] } } }],
+    ["a schema version from the future", { schemaVersion: 99, revision: 3, views: { canvas: { order: ["domains"] } } }],
     ["a missing schema version", { revision: 3 }],
+    ["a schema version below one", { schemaVersion: 0, revision: 3 }],
   ])("resolves %s to the defaults", (_label, raw) => {
     expect(normalizeProfile(raw)).toEqual({ schemaVersion: LAYOUT_SCHEMA_VERSION, revision: 0 });
     expect(resolveView("canvas", raw as LayoutProfile)).toEqual(defaults);
@@ -248,5 +250,91 @@ describe("normalizeProfile", () => {
       views: { canvas: { order: ["bank", "servers"], modules: { servers: { width: "full" } } } },
     });
     expect(normalizeProfile(good)).toEqual(good);
+  });
+});
+
+describe("canvas rectangles", () => {
+  const rectOf = (view: ReturnType<typeof resolveView>, id: string) =>
+    view.modules.find((m) => m.moduleId === id)!.rect;
+
+  it("gives every default tile a place on the plane, none of them overlapping", () => {
+    const rects = resolveView("canvas", null).modules.map((m) => m.rect);
+    expect(rects).toHaveLength(MODULE_CATALOG.length);
+    for (const rect of rects) {
+      expect(rect.x).toBeGreaterThanOrEqual(0);
+      expect(rect.x + rect.w).toBeLessThanOrEqual(CANVAS_COLS);
+      expect(rect.y + rect.h).toBeLessThanOrEqual(CANVAS_MAX_ROWS);
+    }
+    for (let i = 0; i < rects.length; i += 1) {
+      for (let j = i + 1; j < rects.length; j += 1) {
+        expect(rectsOverlap(rects[i], rects[j])).toBe(false);
+      }
+    }
+  });
+
+  it("honours a saved rectangle", () => {
+    const view = resolveView("canvas", profile({
+      views: { canvas: { modules: { servers: { rect: { x: 9, y: 21, w: 7, h: 11 } } } } },
+    }));
+    expect(rectOf(view, "servers")).toEqual({ x: 9, y: 21, w: 7, h: 11 });
+    // A tile with no override is untouched by its neighbour moving.
+    expect(rectOf(view, "crons")).toEqual(resolveView("canvas", null).modules.find((m) => m.moduleId === "crons")!.rect);
+  });
+
+  it("drops a malformed or out-of-bounds rectangle back to the default", () => {
+    const fallback = rectOf(resolveView("canvas", null), "bank");
+    const malformed: unknown[] = [
+      { x: 1, y: 1, w: 4 },
+      { x: -1, y: 0, w: 4, h: 6 },
+      { x: 1.5, y: 0, w: 4, h: 6 },
+      { x: CANVAS_COLS - 1, y: 0, w: 4, h: 6 },
+      { x: 0, y: CANVAS_MAX_ROWS, w: 4, h: 6 },
+      "somewhere",
+      null,
+    ];
+    for (const rect of malformed) {
+      const view = resolveView("canvas", {
+        schemaVersion: LAYOUT_SCHEMA_VERSION,
+        revision: 1,
+        views: { canvas: { modules: { bank: { rect } } } },
+      } as unknown as LayoutProfile);
+      expect(rectOf(view, "bank"), JSON.stringify(rect)).toEqual(fallback);
+    }
+  });
+
+  it("grows a rectangle saved below the module's minimum back up to it", () => {
+    const view = resolveView("canvas", profile({
+      views: { canvas: { modules: { "home.house": { rect: { x: 0, y: 0, w: 1, h: 1 } } } } },
+    }));
+    const house = view.modules.find((m) => m.moduleId === "home.house")!;
+    expect(house.rect.w).toBe(house.definition.minSize.w);
+    expect(house.rect.h).toBe(house.definition.minSize.h);
+  });
+
+  it("keeps a clamped tile on the plane rather than pushing it off the right edge", () => {
+    const view = resolveView("canvas", profile({
+      views: { canvas: { modules: { "home.house": { rect: { x: CANVAS_COLS - 1, y: 3, w: 1, h: 1 } } } } },
+    }));
+    const rect = rectOf(view, "home.house");
+    expect(rect.x + rect.w).toBeLessThanOrEqual(CANVAS_COLS);
+    expect(rect.y).toBe(3);
+  });
+});
+
+describe("reading an older profile", () => {
+  it("keeps a version 1 profile's choices and reports it as current", () => {
+    // Version 2 only added rectangles. Discarding a version 1 profile would
+    // silently reopen every tile Bob had closed.
+    const old = { schemaVersion: 1, revision: 9, views: { canvas: { modules: { btc: { enabled: false } } } } };
+    expect(normalizeProfile(old)).toEqual({
+      schemaVersion: LAYOUT_SCHEMA_VERSION,
+      revision: 9,
+      views: { canvas: { modules: { btc: { enabled: false } } } },
+    });
+    const view = resolveView("canvas", old as unknown as LayoutProfile);
+    expect(view.modules.map((m) => m.moduleId)).not.toContain("btc");
+    expect(view.hidden.map((m) => m.moduleId)).toContain("btc");
+    // And it still gets a place on the plane the moment it is reopened.
+    expect(view.hidden.find((m) => m.moduleId === "btc")!.rect.w).toBeGreaterThan(0);
   });
 });

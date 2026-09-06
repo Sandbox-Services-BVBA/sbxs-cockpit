@@ -159,6 +159,18 @@ button.editor-link {
   margin-bottom: 12px;
 }
 
+/* On the canvas the plane fills everything below the timeframe strip, so a
+   notice cannot sit above it in the flow. It floats instead: rare, brief,
+   and never worth giving up a permanent band of board for. */
+/* A notice sits above the board rather than floating over it. Floating kept
+   the board a few pixels taller and covered whatever was underneath, which
+   on this page is the alert queue: the one tile a warning must never hide.
+   It costs height only while something is actually wrong. */
+.canvas > .canvas-notice {
+  flex-shrink: 0;
+  margin-bottom: 10px;
+}
+
 /* --- Tile chrome ---------------------------------------------------------- */
 
 .canvas-tile {
@@ -263,24 +275,171 @@ button.editor-link {
   outline-offset: 2px;
 }
 
-/* SortableJS states. The ghost is the tile in its would-be landing spot,
-   the chosen one is the tile under the pointer. */
-.canvas-tile--ghost {
-  opacity: 0.45;
+/* --- The plane ------------------------------------------------------------
+
+   The canvas is the only view that is a viewport rather than a document: the
+   board is bigger than the window in both directions and is scrolled inside
+   a box that fills whatever the header and the timeframe strip leave. That
+   is done with flex rather than a calc() against the header height, so the
+   strip can change height without the board silently overflowing.        */
+
+.app-shell[data-domain="canvas"] {
+  height: 100svh;
 }
 
-.canvas-tile--ghost > :not(.canvas-tile__bar) {
-  outline: 2px dashed var(--domain-accent, var(--teal));
-  outline-offset: 3px;
+.app-shell[data-domain="canvas"] .app-main {
+  display: flex;
+  min-height: 0;
+  max-width: none;
+  flex-direction: column;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+.canvas {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.canvas-plane {
+  min-height: 0;
+  flex: 1;
+  /* Out of app-main's gutter to the window edge: on a board you scroll, the
+     margin is wasted board. The plane brings its own inner padding. */
+  margin-right: calc(var(--main-pad-right) * -1);
+  margin-left: calc(var(--main-pad-left) * -1);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.canvas-plane__inner {
+  /* Width is set inline from the grid geometry; the tail of empty rows is
+     what lets the bottom tiles be scrolled into the middle of the screen. */
+  padding-bottom: 40vh;
+}
+
+/* The stacked fallback below desktop width. */
+.canvas-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding-bottom: 88px;
+}
+
+/* --- react-grid-layout ----------------------------------------------------
+
+   The library's own stylesheet is not imported. It carries a red placeholder
+   and handle chrome that belong to its demo, and everything actually load
+   bearing is the dozen rules below, themed to the cockpit.               */
+
+.react-grid-layout {
+  position: relative;
+}
+
+.react-grid-item {
+  transition: transform 180ms ease, width 180ms ease, height 180ms ease;
+}
+
+/* While a gesture is running the tile must track the pointer exactly, so
+   the easing that makes a settled move look calm is turned off. */
+.react-grid-item.resizing,
+.react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 3;
+}
+
+.react-grid-item.react-draggable-dragging {
+  cursor: grabbing;
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.34);
+}
+
+/* Where the tile will land. It is drawn behind the tile being dragged, so
+   it reads as a slot rather than as a second copy of the tile. */
+.react-grid-item.react-grid-placeholder {
+  z-index: 2;
   border-radius: 0.875rem;
+  background: color-mix(in srgb, var(--domain-accent, var(--teal)) 16%, transparent);
+  outline: 2px dashed color-mix(in srgb, var(--domain-accent, var(--teal)) 60%, transparent);
+  outline-offset: -2px;
+  transition-duration: 100ms;
+  user-select: none;
 }
 
-.canvas-tile--chosen > :not(.canvas-tile__bar) {
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+/* Resize handles: out of the way until the tile is hovered or something
+   inside it has focus, so the board is quiet to read and grabbable the
+   moment you go looking for an edge. */
+.canvas-tile > .react-resizable-handle {
+  position: absolute;
+  z-index: 4;
+  opacity: 0;
+  transition: opacity 140ms ease;
 }
 
-.canvas-tile--drag {
-  opacity: 0.95;
+.canvas-tile:hover > .react-resizable-handle,
+.canvas-tile:focus-within > .react-resizable-handle {
+  opacity: 1;
+}
+
+.canvas-tile > .react-resizable-handle::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--domain-accent, var(--teal)) 55%, transparent);
+}
+
+.canvas-tile > .react-resizable-handle-e {
+  top: 24px;
+  right: -3px;
+  bottom: 14px;
+  width: 12px;
+  cursor: ew-resize;
+}
+
+.canvas-tile > .react-resizable-handle-e::after {
+  top: 50%;
+  right: 4px;
+  width: 3px;
+  height: 34px;
+  transform: translateY(-50%);
+}
+
+.canvas-tile > .react-resizable-handle-s {
+  right: 14px;
+  bottom: -3px;
+  left: 14px;
+  height: 12px;
+  cursor: ns-resize;
+}
+
+.canvas-tile > .react-resizable-handle-s::after {
+  bottom: 4px;
+  left: 50%;
+  width: 34px;
+  height: 3px;
+  transform: translateX(-50%);
+}
+
+.canvas-tile > .react-resizable-handle-se {
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: se-resize;
+}
+
+.canvas-tile > .react-resizable-handle-se::after {
+  right: 4px;
+  bottom: 4px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid color-mix(in srgb, var(--domain-accent, var(--teal)) 70%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--domain-accent, var(--teal)) 70%, transparent);
+  border-radius: 0 0 3px 0;
+  background: none;
 }
 
 /* --- Dock: status and the + button ---------------------------------------- */

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { EMPTY_PROFILE, type LayoutProfile } from "@/lib/layout/types";
+import { EMPTY_PROFILE, LAYOUT_SCHEMA_VERSION, type LayoutProfile } from "@/lib/layout/types";
 
 // The store opens the shared db singleton lazily, so pointing COCKPIT_DB_PATH
 // at a temp file before the first import keeps these tests off cockpit.db.
@@ -22,7 +22,7 @@ afterAll(() => {
 });
 
 const SAVED: LayoutProfile = {
-  schemaVersion: 1,
+  schemaVersion: LAYOUT_SCHEMA_VERSION,
   revision: 0,
   views: { canvas: { order: ["sites.uptime"], modules: { "sites.uptime": { width: "wide" } } } },
 };
@@ -44,7 +44,7 @@ describe("layout store", () => {
 
   it("returns the current profile on a stale revision without writing", () => {
     const stale = store.writeProfile(
-      { schemaVersion: 1, revision: 0, views: { wall: { order: ["servers"] } } },
+      { schemaVersion: LAYOUT_SCHEMA_VERSION, revision: 0, views: { wall: { order: ["servers"] } } },
       0
     );
     expect(stale.ok).toBe(false);
@@ -66,7 +66,7 @@ describe("layout store", () => {
     const reset = store.resetProfile();
     expect(reset.revision).toBe(3);
     expect(reset.views).toBeUndefined();
-    expect(store.readProfile()).toEqual({ schemaVersion: 1, revision: 3 });
+    expect(store.readProfile()).toEqual({ schemaVersion: LAYOUT_SCHEMA_VERSION, revision: 3 });
     // A device still holding revision 2 must lose.
     const late = store.writeProfile(SAVED, 2);
     expect(late.ok).toBe(false);

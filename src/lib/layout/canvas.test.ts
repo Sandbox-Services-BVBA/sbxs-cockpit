@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { MODULE_BY_ID, MODULE_CATALOG } from "./catalog";
-import { applyModuleOverride, applyOrder, currentOrder, moveAmongVisible, placeBefore } from "./client";
+import { applyModuleOverride, applyOrder, applyRects, currentOrder, moveAmongVisible, placeBefore } from "./client";
 import { DEFAULT_LAYOUTS } from "./default-layouts";
 import { resolveView } from "./resolver";
-import { EMPTY_PROFILE, LAYOUT_SCHEMA_VERSION, type LayoutProfile } from "./types";
+import { EMPTY_PROFILE, LAYOUT_SCHEMA_VERSION, type LayoutProfile, type TileRect } from "./types";
 
 // The canvas is direct manipulation over the profile: close, drag, add,
 // width, density. These are the mutations the tiles make, checked against
@@ -108,5 +108,74 @@ describe("reordering", () => {
       expect(MODULE_BY_ID[id].allowedViews).toContain("canvas");
     }
     expect(currentOrder(EMPTY_PROFILE, "canvas")).toEqual(defaults);
+  });
+});
+
+describe("dragging and resizing", () => {
+  const rect = (x: number, y: number, w: number, h: number): TileRect => ({ x, y, w, h });
+
+  /** What the grid hands back after a gesture: the whole board, not a diff. */
+  const board = (base: LayoutProfile, moved: Record<string, TileRect> = {}) => ({
+    ...Object.fromEntries(resolveView("canvas", base).modules.map((m) => [m.moduleId, m.rect])),
+    ...moved,
+  });
+
+  it("pins the whole board on the first gesture", () => {
+    // Until something is dragged, no tile has a saved rectangle: every one
+    // of them is wherever the code defaults put it. The first drag is
+    // therefore the moment the arrangement becomes Bob's, and writing all
+    // of it is the point: a later change to the defaults must not shuffle
+    // his board around the one tile he happened to move.
+    const next = applyRects(profile(), "canvas", board(profile(), { servers: rect(11, 30, 7, 13) }));
+    const written = next.views!.canvas!.modules!;
+    expect(Object.keys(written)).toHaveLength(MODULE_CATALOG.length);
+    expect(written.servers.rect).toEqual(rect(11, 30, 7, 13));
+  });
+
+  it("writes only what moved once the board is pinned", () => {
+    const pinned = applyRects(profile(), "canvas", board(profile()));
+    const next = applyRects(pinned, "canvas", board(pinned, { crons: rect(2, 44, 5, 9) }));
+    const was = pinned.views!.canvas!.modules!;
+    const now = next.views!.canvas!.modules!;
+    const differing = Object.keys(now).filter((id) => JSON.stringify(now[id]) !== JSON.stringify(was[id]));
+    expect(differing).toEqual(["crons"]);
+    expect(now.crons.rect).toEqual(rect(2, 44, 5, 9));
+  });
+
+  it("returns the same profile when the board reports what is already saved", () => {
+    // The grid reports its layout on mount, not only after a gesture. If
+    // that counted as a change, simply opening the page would queue a save
+    // and climb the revision on every device that looked at it.
+    const before = applyRects(profile(), "canvas", { servers: rect(11, 30, 7, 13) });
+    const again = applyRects(before, "canvas", { servers: rect(11, 30, 7, 13) });
+    expect(again).toBe(before);
+  });
+
+  it("ignores a tile the catalog has never heard of", () => {
+    const before = profile();
+    expect(applyRects(before, "canvas", { "gone.module": rect(0, 0, 4, 4) })).toBe(before);
+  });
+
+  it("does not disturb the other settings on the same tile", () => {
+    const withDensity = applyModuleOverride(profile(), "canvas", "servers", { density: "summary" });
+    const next = applyRects(withDensity, "canvas", { servers: rect(2, 2, 6, 6) });
+    expect(next.views!.canvas!.modules!.servers).toEqual({ density: "summary", rect: rect(2, 2, 6, 6) });
+  });
+
+  it("survives a round trip through the resolver", () => {
+    const next = applyRects(profile(), "canvas", { crons: rect(20, 40, 5, 9) });
+    const shown = resolveView("canvas", next).modules.find((m) => m.moduleId === "crons")!;
+    expect(shown.rect).toEqual(rect(20, 40, 5, 9));
+  });
+});
+
+describe("reopening a tile", () => {
+  it("comes back enabled and at the place the caller found for it", () => {
+    const closed = applyModuleOverride(profile(), "canvas", CLOSABLE, { enabled: false });
+    const spot = { x: 24, y: 60, w: 6, h: 13 };
+    const reopened = applyModuleOverride(closed, "canvas", CLOSABLE, { enabled: true, rect: spot });
+    const shown = resolveView("canvas", reopened).modules.find((m) => m.moduleId === CLOSABLE);
+    expect(shown?.rect).toEqual(spot);
+    expect(resolveView("canvas", reopened).hidden.map((m) => m.moduleId)).not.toContain(CLOSABLE);
   });
 });

@@ -42,15 +42,17 @@ export function IntegrationHealthSection({ integrations }: { integrations: Integ
 
   const healthyCount = integrations.filter((i) => i.status === "ok").length;
 
+  // Its own query root: this section is not drawn inside a WidgetTile, so
+  // nothing above it makes the cards read against the box they sit in.
   return (
-    <section>
+    <section className="@container">
       <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
         <Plug className="h-5 w-5" /> Integrations
         <span className="text-xs text-muted-foreground font-normal ml-auto">
           {healthyCount}/{integrations.length} healthy
         </span>
       </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 @sm:grid-cols-2 @2xl:grid-cols-3 @4xl:grid-cols-4">
         {integrations.map((i) => (
           <IntegrationCard key={i.integration_name} integration={i} />
         ))}

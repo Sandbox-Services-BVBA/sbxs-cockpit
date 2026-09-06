@@ -16,7 +16,9 @@ export function TimeframeStrip() {
   const { range, changeMode, step } = useHomeConsole();
 
   return (
-    <div className="bleed-x sticky top-header-total z-20 border-b border-border/70 bg-background/90 py-2.5 backdrop-blur-xl">
+    // Not sticky: the page itself no longer scrolls. The plane below is its
+    // own scroller, so the strip simply sits above it and stays put.
+    <div className="bleed-x z-20 shrink-0 border-b border-border/70 bg-background/90 py-2.5 backdrop-blur-xl">
       <div className="flex flex-wrap items-center justify-center gap-2 sm:flex-nowrap">
         <div className="min-w-0 flex-1">
           <TimeframeBar range={range} onMode={changeMode} onStep={step} />

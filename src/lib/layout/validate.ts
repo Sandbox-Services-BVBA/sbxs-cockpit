@@ -1,4 +1,5 @@
 import { getModule } from "@/lib/layout/catalog";
+import { CANVAS_COLS, CANVAS_MAX_ROWS } from "@/lib/layout/grid";
 import {
   LAYOUT_SCHEMA_VERSION,
   type LayoutProfile,
@@ -6,6 +7,7 @@ import {
   type ModuleOverride,
   type ModuleWidth,
   type SurfaceId,
+  type TileRect,
   type ViewOverride,
 } from "@/lib/layout/types";
 import { VIEWS } from "@/lib/views";
@@ -40,6 +42,36 @@ function fail(error: string): ValidationResult {
 
 function isSurfaceId(value: string): value is SurfaceId {
   return VIEW_IDS.has(value);
+}
+
+type RectCheck = { ok: true; rect: TileRect } | { ok: false; error: string };
+
+/**
+ * A rectangle from the wire. Unlike an unknown module id, a malformed or
+ * out-of-bounds rectangle is not something that merely went away: it is a
+ * client that has miscalculated, and storing it would put a tile off the
+ * plane or shrink it past legibility with no way back. So this rejects the
+ * whole document rather than dropping the field.
+ */
+function checkRect(raw: unknown, where: string, min: { w: number; h: number }): RectCheck {
+  if (!isPlainObject(raw)) return { ok: false, error: `${where}.rect must be an object` };
+  const { x, y, w, h } = raw;
+  for (const [name, value] of [["x", x], ["y", y], ["w", w], ["h", h]] as const) {
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+      return { ok: false, error: `${where}.rect.${name} must be a non-negative integer` };
+    }
+  }
+  const rect = { x, y, w, h } as TileRect;
+  if (rect.w < min.w || rect.h < min.h) {
+    return { ok: false, error: `${where}.rect is smaller than this module's minimum of ${min.w}x${min.h}` };
+  }
+  if (rect.x + rect.w > CANVAS_COLS) {
+    return { ok: false, error: `${where}.rect runs past the right edge of the plane (${CANVAS_COLS} columns)` };
+  }
+  if (rect.y + rect.h > CANVAS_MAX_ROWS) {
+    return { ok: false, error: `${where}.rect runs past the bottom of the plane (${CANVAS_MAX_ROWS} rows)` };
+  }
+  return { ok: true, rect };
 }
 
 type ModuleCheck = { ok: true; override: ModuleOverride | null } | { ok: false; error: string };
@@ -79,6 +111,19 @@ function checkModuleOverride(viewId: SurfaceId, moduleId: string, raw: unknown):
       return { ok: false, error: `${where}.width "${raw.width}" is not supported by this module` };
     }
     override.width = raw.width as ModuleWidth;
+  }
+
+  if (raw.rect !== undefined) {
+    // Rectangles are the canvas's arrangement. The wallboard flows, so a
+    // rectangle aimed at it is stale weight from a confused client rather
+    // than a policy breach: drop it and keep the rest.
+    if (viewId !== "canvas") {
+      // fall through without recording it
+    } else {
+      const rect = checkRect(raw.rect, where, definition.minSize);
+      if (!rect.ok) return { ok: false, error: rect.error };
+      override.rect = rect.rect;
+    }
   }
 
   if (raw.density !== undefined) {

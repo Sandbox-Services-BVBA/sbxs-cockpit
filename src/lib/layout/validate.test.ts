@@ -11,6 +11,8 @@ const FAKE_CATALOG: ModuleDefinition[] = [
     allowedViews: ["canvas", "sites", "wall"],
     defaultWidth: "standard",
     allowedWidths: ["standard", "wide"],
+    defaultSize: { w: 4, h: 13 },
+    minSize: { w: 3, h: 5 },
     defaultDensity: "standard",
     allowedDensities: ["summary", "standard"],
     sensitivity: "normal",
@@ -23,6 +25,8 @@ const FAKE_CATALOG: ModuleDefinition[] = [
     allowedViews: ["canvas", "money", "wall"],
     defaultWidth: "compact",
     allowedWidths: ["compact", "standard"],
+    defaultSize: { w: 3, h: 13 },
+    minSize: { w: 3, h: 5 },
     defaultDensity: "standard",
     allowedDensities: ["standard"],
     sensitivity: "private",
@@ -36,6 +40,8 @@ const FAKE_CATALOG: ModuleDefinition[] = [
     allowedViews: ["canvas", "dev"],
     defaultWidth: "wide",
     allowedWidths: ["wide"],
+    defaultSize: { w: 3, h: 13 },
+    minSize: { w: 3, h: 5 },
     defaultDensity: "standard",
     allowedDensities: ["standard"],
     sensitivity: "private",
@@ -48,6 +54,8 @@ const FAKE_CATALOG: ModuleDefinition[] = [
     allowedViews: ["canvas", "alerts"],
     defaultWidth: "full",
     allowedWidths: ["full"],
+    defaultSize: { w: 8, h: 6 },
+    minSize: { w: 6, h: 4 },
     defaultDensity: "full",
     allowedDensities: ["summary", "full"],
     sensitivity: "normal",
@@ -200,6 +208,57 @@ describe("validateProfile catalog rules", () => {
         views: {
         canvas: { order: ["sites.uptime"], modules: { "sites.uptime": { width: "wide", density: "summary" } } },
         },
+      },
+    });
+  });
+});
+
+describe("validateProfile rectangles", () => {
+  const rect = (raw: unknown) => ({
+    schemaVersion: 1,
+    views: { canvas: { modules: { "sites.uptime": { rect: raw } } } },
+  });
+
+  it("keeps a rectangle that fits the plane and the module's minimum", () => {
+    const result = validateProfile(rect({ x: 4, y: 9, w: 6, h: 11 }));
+    expect(result).toEqual({
+      ok: true,
+      profile: {
+        schemaVersion: 1,
+        revision: 0,
+        views: { canvas: { modules: { "sites.uptime": { rect: { x: 4, y: 9, w: 6, h: 11 } } } } },
+      },
+    });
+  });
+
+  it("rejects a rectangle that is not four non-negative integers", () => {
+    expectError(rect({ x: 0, y: 0, w: 6 }), /rect\.h must be a non-negative integer/);
+    expectError(rect({ x: -1, y: 0, w: 6, h: 6 }), /rect\.x must be a non-negative integer/);
+    expectError(rect({ x: 0, y: 0, w: 6.5, h: 6 }), /rect\.w must be a non-negative integer/);
+    expectError(rect("middle"), /rect must be an object/);
+  });
+
+  it("rejects a rectangle that runs off the plane", () => {
+    expectError(rect({ x: 30, y: 0, w: 6, h: 6 }), /past the right edge/);
+    expectError(rect({ x: 0, y: 399, w: 6, h: 6 }), /past the bottom/);
+  });
+
+  it("rejects a rectangle smaller than the module's own minimum", () => {
+    expectError(rect({ x: 0, y: 0, w: 1, h: 6 }), /smaller than this module's minimum/);
+    expectError(rect({ x: 0, y: 0, w: 6, h: 1 }), /smaller than this module's minimum/);
+  });
+
+  it("drops a rectangle aimed at the wallboard, which does not arrange by hand", () => {
+    const result = validateProfile({
+      schemaVersion: 1,
+      views: { wall: { modules: { "sites.uptime": { rect: { x: 0, y: 0, w: 6, h: 6 }, density: "summary" } } } },
+    });
+    expect(result).toEqual({
+      ok: true,
+      profile: {
+        schemaVersion: 1,
+        revision: 0,
+        views: { wall: { modules: { "sites.uptime": { density: "summary" } } } },
       },
     });
   });

@@ -47,10 +47,13 @@ export function BtcWidget() {
   const minEur = allEur.length > 0 ? Math.min(...allEur) - 500 : 0;
   const maxEur = allEur.length > 0 ? Math.max(...allEur) + 500 : 100000;
 
+  // The chart is the widget: it takes whatever height the tile has left over
+  // instead of scrolling a fixed 160px picture inside a 400px box.
   return (
     <WidgetTile
       title="Bitcoin"
       size="md"
+      bodyClassName="flex min-h-0 flex-col overflow-hidden"
       headerRight={
         <select
           value={days}
@@ -63,9 +66,9 @@ export function BtcWidget() {
         </select>
       }
     >
-      <div className="space-y-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-2">
         {/* Price + portfolio */}
-        <div className="flex items-start justify-between">
+        <div className="flex shrink-0 items-start justify-between">
           <div>
             {current ? (
               <>
@@ -110,7 +113,7 @@ export function BtcWidget() {
 
         {/* Chart */}
         {chart.length > 1 ? (
-          <div className="h-40 -mx-0.5">
+          <div className="-mx-0.5 min-h-24 min-w-0 flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chart} margin={{ top: 2, right: 2, bottom: 0, left: -24 }}>
                 <YAxis
@@ -134,7 +137,7 @@ export function BtcWidget() {
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="h-40 flex items-center justify-center text-mini text-muted-foreground">Loading chart...</div>
+          <div className="flex min-h-24 flex-1 items-center justify-center text-mini text-muted-foreground">Loading chart...</div>
         )}
       </div>
     </WidgetTile>

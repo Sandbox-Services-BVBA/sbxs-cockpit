@@ -49,32 +49,30 @@ export function AgentsWidget() {
       {windows.length === 0 ? (
         <p className="text-xs text-muted-foreground">{data?.error ? "Dev server unreachable" : "No tmux agents"}</p>
       ) : (
-        <div className="max-h-[55vh] overflow-y-auto">
-          <table className="w-full table-fixed font-mono text-tiny leading-snug">
-            <colgroup>
-              <col className="w-3" />
-              <col className="w-28" />
-              <col />
-              <col className="w-9" />
-            </colgroup>
-            <tbody>
-              {windows.map((w) => {
-                const age = now - w.activity;
-                const dot = age < 60 ? "bg-emerald-500" : age < 600 ? "bg-cyan-500" : age < 3600 ? "bg-amber-500/70" : "bg-zinc-600";
-                return (
-                  <tr key={`${w.session}:${w.index}`} className={cn(age < 60 && "bg-emerald-500/5")}>
-                    <td className="align-top">
-                      <span className={cn("inline-block h-1.5 w-1.5 rounded-full", dot, age < 60 && "animate-pulse")} />
-                    </td>
-                    <td className="truncate pr-2 text-foreground" title={w.session}>{w.session}</td>
-                    <td className="truncate text-muted-foreground" title={`${w.window} — ${w.path}`}>{w.window}</td>
-                    <td className="text-right tabular-nums text-muted-foreground">{ago(age)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <table className="w-full table-fixed font-mono text-tiny leading-snug">
+          <colgroup>
+            <col className="w-3" />
+            <col className="w-28" />
+            <col />
+            <col className="w-9" />
+          </colgroup>
+          <tbody>
+            {windows.map((w) => {
+              const age = now - w.activity;
+              const dot = age < 60 ? "bg-emerald-500" : age < 600 ? "bg-cyan-500" : age < 3600 ? "bg-amber-500/70" : "bg-zinc-600";
+              return (
+                <tr key={`${w.session}:${w.index}`} className={cn(age < 60 && "bg-emerald-500/5")}>
+                  <td className="align-top">
+                    <span className={cn("inline-block h-1.5 w-1.5 rounded-full", dot, age < 60 && "animate-pulse")} />
+                  </td>
+                  <td className="truncate pr-2 text-foreground" title={w.session}>{w.session}</td>
+                  <td className="truncate text-muted-foreground" title={`${w.window} — ${w.path}`}>{w.window}</td>
+                  <td className="text-right tabular-nums text-muted-foreground">{ago(age)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       )}
     </WidgetTile>
   );

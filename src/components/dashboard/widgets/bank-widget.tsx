@@ -45,10 +45,13 @@ export function BankWidget() {
   const minBal = dataMin < 0 ? dataMin - 500 : 0;
   const maxBal = allBal.length > 0 ? Math.max(...allBal) + 500 : 30000;
 
+  // The chart is the widget: it takes whatever height the tile has left over
+  // instead of scrolling a fixed 160px picture inside a 400px box.
   return (
     <WidgetTile
       title="Bank Account"
       size="md"
+      bodyClassName="flex min-h-0 flex-col overflow-hidden"
       headerRight={
         <select
           value={period}
@@ -61,8 +64,8 @@ export function BankWidget() {
         </select>
       }
     >
-      <div className="space-y-2">
-        <div className="flex items-start justify-between">
+      <div className="flex min-h-0 flex-1 flex-col gap-2">
+        <div className="flex shrink-0 items-start justify-between">
           <div>
             {balance ? (
               <>
@@ -96,7 +99,7 @@ export function BankWidget() {
 
         {/* Chart */}
         {chart.length > 1 ? (
-          <div className="h-40 -mx-0.5">
+          <div className="-mx-0.5 min-h-24 min-w-0 flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chart} margin={{ top: 2, right: 2, bottom: 0, left: -24 }}>
                 <YAxis
@@ -120,7 +123,7 @@ export function BankWidget() {
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="h-40 flex items-center justify-center text-mini text-muted-foreground">Loading chart...</div>
+          <div className="flex min-h-24 flex-1 items-center justify-center text-mini text-muted-foreground">Loading chart...</div>
         )}
       </div>
     </WidgetTile>

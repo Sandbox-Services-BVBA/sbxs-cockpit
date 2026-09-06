@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ChevronDown, Copy } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 import { WidgetTile } from "../widget-tile";
 import { cn } from "@/lib/utils";
 import {
@@ -65,11 +65,10 @@ function ConnectionRow({ connection, density }: { connection: IntegrationHealth;
   const unhealthy = state !== "ok";
   const steps = connection.fix ? fixSteps(connection.fix) : [];
   // The fix belongs on screen at the moment the failure is seen, not one tap
-  // behind it. The default is derived, not captured at mount, so a connection
-  // that breaks while the dashboard is open opens its own fix. Full opens
-  // every fix, healthy or not: it is the everything-expanded drill-down.
-  const [override, setOverride] = useState<boolean | null>(null);
-  const open = override ?? (steps.length > 0 && (unhealthy || density === "full"));
+  // behind it, and nothing here folds open: a tile is a fixed box now, so the
+  // steps are simply printed and scrolled to. Full prints every fix, healthy
+  // or not: it is the everything-expanded drill-down.
+  const showFix = steps.length > 0 && (unhealthy || density === "full");
 
   const checked = ago(connection.last_check_at);
   const flow = ago(connection.last_flow_at);
@@ -120,34 +119,20 @@ function ConnectionRow({ connection, density }: { connection: IntegrationHealth;
         <span>flow {flow ?? "not recorded"}</span>
       </div>
 
-      {steps.length > 0 && (
-        <div className="mt-2">
-          <button
-            type="button"
-            onClick={() => setOverride(!open)}
-            aria-expanded={open}
-            className="flex items-center gap-1 text-mini font-bold text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} aria-hidden="true" />
-            {open ? "Hide fix" : `Show fix (${steps.length} steps)`}
-          </button>
-
-          {open && (
-            <ol className="mt-1.5 space-y-1">
-              {steps.map((step, index) => (
-                <li key={`${index}-${step}`} className="flex items-start gap-1.5">
-                  <span className="mt-1 w-3 shrink-0 text-right font-mono text-mini text-muted-foreground tabular-nums">
-                    {index + 1}
-                  </span>
-                  <code className="min-w-0 flex-1 break-words rounded bg-muted/60 px-1.5 py-1 font-mono text-mini leading-snug">
-                    {step}
-                  </code>
-                  <CopyStep text={step} />
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
+      {showFix && (
+        <ol className="mt-2 space-y-1">
+          {steps.map((step, index) => (
+            <li key={`${index}-${step}`} className="flex items-start gap-1.5">
+              <span className="mt-1 w-3 shrink-0 text-right font-mono text-mini text-muted-foreground tabular-nums">
+                {index + 1}
+              </span>
+              <code className="min-w-0 flex-1 break-words rounded bg-muted/60 px-1.5 py-1 font-mono text-mini leading-snug">
+                {step}
+              </code>
+              <CopyStep text={step} />
+            </li>
+          ))}
+        </ol>
       )}
     </div>
   );

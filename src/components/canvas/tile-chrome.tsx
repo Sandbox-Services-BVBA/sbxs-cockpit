@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Ellipsis, GripVertical, Lock, X } from "lucide-react";
+import { Ellipsis, GripVertical, Lock, Maximize2, X } from "lucide-react";
 import type { KeyboardEvent } from "react";
-import type { ModuleDensity, ModuleWidth, ResolvedModule } from "@/lib/layout/types";
+import type { ModuleDensity, ResolvedModule } from "@/lib/layout/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,17 +16,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 // The strip above every tile: the grip on the left, the menu and the close
-// on the right. It is the only chrome the canvas adds; the module below it
-// keeps drawing its own header. Everything a settings screen used to hold
-// (width, density, order, visibility) is reachable from here without
-// leaving the page.
-
-export const WIDTH_LABELS: Record<ModuleWidth, string> = {
-  compact: "Compact",
-  standard: "Standard",
-  wide: "Wide",
-  full: "Full width",
-};
+// on the right. Size is not in the menu any more, because the tile is
+// resized by dragging its edge; what is left is the things a drag cannot
+// express.
 
 export const DENSITY_LABELS: Record<ModuleDensity, string> = {
   summary: "Summary",
@@ -36,49 +28,53 @@ export const DENSITY_LABELS: Record<ModuleDensity, string> = {
 
 export interface TileChromeProps {
   resolved: ResolvedModule;
-  /** Position among the visible tiles, for the disabled state of Move up/down. */
-  index: number;
-  count: number;
-  /** `source` says which control asked, so focus can return to it. */
-  onMove: (delta: number, source: "grip" | "menu") => void;
+  /** Move by whole cells. The caller refuses a move into occupied space. */
+  onNudge: (dx: number, dy: number) => void;
+  /** Grow or shrink by whole cells, same refusal. */
+  onResize: (dw: number, dh: number) => void;
+  onResetSize: () => void;
   onClose: () => void;
-  onWidth: (width: ModuleWidth) => void;
   onDensity: (density: ModuleDensity) => void;
-  /** Focus anchors, so a keyboard move lands back on the control that made it. */
+  /** Focus anchors, so a keyboard change lands back on the control that made it. */
   gripRef: (el: HTMLElement | null) => void;
   menuRef: (el: HTMLElement | null) => void;
+  /** The phone falls back to a stacked list: no dragging, no resizing. */
+  stacked?: boolean;
 }
+
+const DELTAS: Record<string, [number, number]> = {
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+};
 
 export function TileChrome({
   resolved,
-  index,
-  count,
-  onMove,
+  onNudge,
+  onResize,
+  onResetSize,
   onClose,
-  onWidth,
   onDensity,
   gripRef,
   menuRef,
+  stacked = false,
 }: TileChromeProps) {
-  const { definition, width, density } = resolved;
+  const { definition, density } = resolved;
   const title = definition.title;
-  const first = index === 0;
-  const last = index === count - 1;
   const hasDensity = definition.allowedDensities.length > 1;
   const required = definition.required === true;
 
-  // The grip is also the keyboard path: focus it and an arrow moves the tile
-  // one place, with focus staying on the grip so the next arrow keeps going.
+  // The grip is the drag handle and the keyboard handle in one: an arrow
+  // moves the tile a cell, shift and an arrow resizes it by a cell. Focus
+  // stays on the grip, so a run of arrows keeps going.
   const onGripKey = (event: KeyboardEvent<HTMLButtonElement>) => {
-    const delta =
-      event.key === "ArrowUp" || event.key === "ArrowLeft"
-        ? -1
-        : event.key === "ArrowDown" || event.key === "ArrowRight"
-          ? 1
-          : 0;
-    if (delta === 0) return;
+    const delta = DELTAS[event.key];
+    if (!delta) return;
     event.preventDefault();
-    onMove(delta, "grip");
+    const [dx, dy] = delta;
+    if (event.shiftKey) onResize(dx, dy);
+    else onNudge(dx, dy);
   };
 
   return (
@@ -87,11 +83,15 @@ export function TileChrome({
         type="button"
         ref={gripRef}
         className="canvas-tile__grip"
-        aria-label={`${title}: drag to move, or press an arrow key`}
-        title="Drag to move, or use the arrow keys"
-        onKeyDown={onGripKey}
+        aria-label={
+          stacked
+            ? title
+            : `${title}: drag to move, arrow keys to move a cell, shift and arrow keys to resize`
+        }
+        title={stacked ? title : "Drag to move. Arrow keys move, shift and arrows resize."}
+        onKeyDown={stacked ? undefined : onGripKey}
       >
-        <GripVertical className="canvas-tile__grip-icon" aria-hidden="true" />
+        {!stacked && <GripVertical className="canvas-tile__grip-icon" aria-hidden="true" />}
         <span className="canvas-tile__name">{title}</span>
       </button>
 
@@ -101,21 +101,9 @@ export function TileChrome({
             <Ellipsis aria-hidden="true" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="canvas-menu">
-            {/* Base UI requires a group label to sit inside a group. */}
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Width</DropdownMenuLabel>
-              <DropdownMenuRadioGroup value={width} onValueChange={(value) => onWidth(value as ModuleWidth)}>
-                {definition.allowedWidths.map((option) => (
-                  <DropdownMenuRadioItem key={option} value={option} closeOnClick>
-                    {WIDTH_LABELS[option]}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuGroup>
-
             {hasDensity && (
               <>
-                <DropdownMenuSeparator />
+                {/* Base UI requires a group label to sit inside a group. */}
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>Detail</DropdownMenuLabel>
                   <DropdownMenuRadioGroup
@@ -129,20 +117,18 @@ export function TileChrome({
                     ))}
                   </DropdownMenuRadioGroup>
                 </DropdownMenuGroup>
+                <DropdownMenuSeparator />
               </>
             )}
 
-            <DropdownMenuSeparator />
-            <DropdownMenuItem disabled={first} onClick={() => onMove(-1, "menu")}>
-              <ArrowUp aria-hidden="true" />
-              Move up
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={last} onClick={() => onMove(1, "menu")}>
-              <ArrowDown aria-hidden="true" />
-              Move down
-            </DropdownMenuItem>
+            {!stacked && (
+              <DropdownMenuItem onClick={onResetSize}>
+                <Maximize2 aria-hidden="true" />
+                Reset size
+              </DropdownMenuItem>
+            )}
 
-            <DropdownMenuSeparator />
+            {!stacked && <DropdownMenuSeparator />}
             {required ? (
               <DropdownMenuItem disabled>
                 <Lock aria-hidden="true" />

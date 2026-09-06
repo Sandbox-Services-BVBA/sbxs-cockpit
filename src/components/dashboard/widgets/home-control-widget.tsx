@@ -112,7 +112,7 @@ export function HomeControlWidget() {
     >
       <div className="space-y-2">
         {/* Scenes */}
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-3 gap-1 @xl:grid-cols-4 @3xl:grid-cols-6">
           {scenes.map((s) => {
             const Icon = SCENE_ICONS[s.id] ?? Sun;
             const isActive = active === s.id;
@@ -186,7 +186,7 @@ export function HomeControlWidget() {
         )}
 
         {/* Light status (read-only at-a-glance) */}
-        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 border-t border-border pt-1">
+        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 border-t border-border pt-1 @xl:grid-cols-3 @3xl:grid-cols-4">
           {lights.map((l) => (
             <div key={l.id} className="flex items-center gap-1.5">
               <span

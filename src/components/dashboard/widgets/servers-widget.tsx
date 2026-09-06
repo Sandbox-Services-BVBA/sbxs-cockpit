@@ -77,7 +77,7 @@ export function ServersWidget({
   return (
     <WidgetTile title="Servers" size="lg" headerRight={<span className="text-mini text-muted-foreground font-mono">{servers.length} nodes</span>}>
       {cut.rows.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 gap-2 @lg:grid-cols-3 @3xl:grid-cols-4 @5xl:grid-cols-5">
           {cut.rows.map((s) => (
             <MiniServer key={s.server_name} s={s} />
           ))}

@@ -20,8 +20,10 @@ export function DomainsWidget({ domains }: { domains: Domain[] | null }) {
     );
   }
 
-  // Only show future renewals, sorted by soonest first
-  const upcoming = domains.filter((d) => d.days_left > 0).slice(0, 8);
+  // Only show future renewals, sorted by soonest first. The whole list is
+  // printed: the tile is a fixed box that scrolls, so a cap would only hide
+  // the renewals furthest out with no way to reach them.
+  const upcoming = domains.filter((d) => d.days_left > 0);
   const soonCount = upcoming.filter((d) => d.days_left <= 30).length;
 
   return (
@@ -30,7 +32,7 @@ export function DomainsWidget({ domains }: { domains: Domain[] | null }) {
       size="sm"
       headerRight={
         <span className={cn("text-mini font-mono", soonCount > 0 ? "text-[#ccaa33]" : "text-muted-foreground")}>
-          {domains.filter((d) => d.days_left > 0).length} upcoming
+          {upcoming.length} upcoming
         </span>
       }
     >

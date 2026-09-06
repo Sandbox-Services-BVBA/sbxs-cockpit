@@ -6,7 +6,9 @@ import { cn } from "@/lib/utils";
 import type { Project } from "@/types";
 
 export function ProjectsWidget({ projects }: { projects: Project[] }) {
-  // Sort by last tmux activity (most recently worked on first)
+  // Sort by last tmux activity (most recently worked on first). Every project
+  // is printed rather than the first ten: the tile scrolls its own body, so a
+  // cap would hide the tail with no way to reach it.
   const sorted = [...projects]
     .filter((p) => p.last_activity_at || p.session_active)
     .sort((a, b) => {
@@ -17,8 +19,7 @@ export function ProjectsWidget({ projects }: { projects: Project[] }) {
       const aTime = a.last_activity_at ? new Date(a.last_activity_at).getTime() : 0;
       const bTime = b.last_activity_at ? new Date(b.last_activity_at).getTime() : 0;
       return bTime - aTime;
-    })
-    .slice(0, 10);
+    });
 
   if (sorted.length === 0) {
     return (

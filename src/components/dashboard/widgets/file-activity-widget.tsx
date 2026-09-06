@@ -114,7 +114,10 @@ function Toggle({ on, onClick, label, title }: { on: boolean; onClick: () => voi
   );
 }
 
-export function FileActivityWidget({ layout = "grid" }: { layout?: LayoutMode }) {
+export function FileActivityWidget({ layout }: { layout?: LayoutMode }) {
+  // The tile owns the height now, so the feed no longer picks one per layout;
+  // the shared renderer still passes the mode, so it is read and dropped.
+  void layout;
   const [rows, setRows] = useState<Row[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const [failed, setFailed] = useState(false);
@@ -210,44 +213,42 @@ export function FileActivityWidget({ layout = "grid" }: { layout?: LayoutMode })
       ) : visible.length === 0 ? (
         <p className="text-xs text-muted-foreground">No file changes in the last 3 hours</p>
       ) : (
-        <div className={cn("overflow-y-auto scroll-smooth", layout === "columns" ? "h-[calc(100vh-168px)]" : layout === "wall" ? "h-[420px]" : "h-[60vh]")}>
-          <table className="w-full table-fixed font-mono text-tiny leading-snug">
-            <colgroup>
-              <col className="w-3" />
-              <col className="w-28" />
-              <col />
-              <col className="w-8" />
-              <col className="w-9" />
-            </colgroup>
-            <tbody>
-              {visible.map((r) => (
-                <tr
-                  key={r.path}
-                  className={cn(r.fresh && "animate-in fade-in slide-in-from-top-1 duration-200")}
-                >
-                  <td className={cn("text-center font-bold align-top", ACTION_COLOR[r.action] ?? "text-zinc-400")}>
-                    {ACTION_GLYPH[r.action] ?? "~"}
-                  </td>
-                  <td className="truncate pl-1.5 pr-2 text-muted-foreground" title={r.project ?? ""}>
-                    {r.project ?? ""}
-                  </td>
-                  <td className="truncate" title={`Open ${r.path}`}>
-                    <button
-                      onClick={() => openFile(r.path)}
-                      className="max-w-full truncate text-foreground/90 hover:text-cyan-300 hover:underline"
-                    >
-                      {shortPath(r.path)}
-                    </button>
-                  </td>
-                  <td className="text-right text-muted-foreground/60 tabular-nums">
-                    {r.count > 1 ? `×${r.count}` : ""}
-                  </td>
-                  <td className="text-right text-muted-foreground tabular-nums">{ago(r.changed_at, now)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <table className="w-full table-fixed font-mono text-tiny leading-snug">
+          <colgroup>
+            <col className="w-3" />
+            <col className="w-28" />
+            <col />
+            <col className="w-8" />
+            <col className="w-9" />
+          </colgroup>
+          <tbody>
+            {visible.map((r) => (
+              <tr
+                key={r.path}
+                className={cn(r.fresh && "animate-in fade-in slide-in-from-top-1 duration-200")}
+              >
+                <td className={cn("text-center font-bold align-top", ACTION_COLOR[r.action] ?? "text-zinc-400")}>
+                  {ACTION_GLYPH[r.action] ?? "~"}
+                </td>
+                <td className="truncate pl-1.5 pr-2 text-muted-foreground" title={r.project ?? ""}>
+                  {r.project ?? ""}
+                </td>
+                <td className="truncate" title={`Open ${r.path}`}>
+                  <button
+                    onClick={() => openFile(r.path)}
+                    className="max-w-full truncate text-foreground/90 hover:text-cyan-300 hover:underline"
+                  >
+                    {shortPath(r.path)}
+                  </button>
+                </td>
+                <td className="text-right text-muted-foreground/60 tabular-nums">
+                  {r.count > 1 ? `×${r.count}` : ""}
+                </td>
+                <td className="text-right text-muted-foreground tabular-nums">{ago(r.changed_at, now)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </WidgetTile>
   );

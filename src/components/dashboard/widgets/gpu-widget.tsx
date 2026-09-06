@@ -101,14 +101,14 @@ const TOOLTIP_STYLE = {
 function HistoryCharts({ points }: { points: ChartPoint[] }) {
   if (points.length < 2) {
     return (
-      <div className="flex min-h-32 items-center justify-center rounded-xl border border-dashed border-line px-4 text-center text-petite text-ink-quiet sm:min-h-40">
+      <div className="flex min-h-32 items-center justify-center rounded-xl border border-dashed border-line px-4 text-center text-petite text-ink-quiet @xl:min-h-40">
         24-hour history will appear after the next agent sample.
       </div>
     );
   }
 
   return (
-    <div className="grid min-w-0 gap-3 lg:grid-cols-2">
+    <div className="grid min-w-0 gap-3 @3xl:grid-cols-2">
       <figure className="min-w-0 rounded-xl border border-line-soft bg-ink/[0.018] p-2.5" aria-label="GPU load and video memory over the last 24 hours">
         <figcaption className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1">
           <span className="eyebrow">Load + memory · 24h</span>
@@ -117,7 +117,7 @@ function HistoryCharts({ points }: { points: ChartPoint[] }) {
             <span><i className="mr-1 inline-block h-1.5 w-1.5 rounded-full" style={{ background: MEMORY_COLOR }} />VRAM</span>
           </span>
         </figcaption>
-        <div className="h-36 w-full sm:h-40">
+        <div className="h-36 w-full @xl:h-40">
           <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 320, height: 144 }}>
             <ComposedChart data={points} margin={{ top: 6, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid stroke="var(--line-soft)" strokeDasharray="2 5" vertical={false} />
@@ -139,7 +139,7 @@ function HistoryCharts({ points }: { points: ChartPoint[] }) {
             <span><i className="mr-1 inline-block h-1.5 w-1.5 rounded-full" style={{ background: POWER_COLOR }} />W</span>
           </span>
         </figcaption>
-        <div className="h-36 w-full sm:h-40">
+        <div className="h-36 w-full @xl:h-40">
           <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 320, height: 144 }}>
             <ComposedChart data={points} margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>
               <CartesianGrid stroke="var(--line-soft)" strokeDasharray="2 5" vertical={false} />
@@ -176,7 +176,7 @@ function Device({ device, history }: { device: GpuDeviceMetric; history: GpuMetr
         <h3 className="serif text-base text-ink">{device.gpu_name}</h3>
         <span className="font-mono text-mini text-ink-quiet">GPU {device.gpu_index}</span>
       </div>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 @lg:grid-cols-4">
         <Metric label="GPU load" value={`${formatNumber(device.utilization_percent)}%`} note="current utilisation" />
         <Metric label="VRAM" value={`${formatMemory(device.memory_used_mb)} GB`} note={`${formatMemory(device.memory_total_mb)} GB total · ${formatNumber(vramPercent)}% used`} />
         <Metric label="Temperature" value={`${formatNumber(device.temperature_c)} °C`} note={device.temperature_c !== null && device.temperature_c >= 75 ? "running warm" : "current core temp"} />

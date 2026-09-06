@@ -109,7 +109,7 @@ export function RawMetricsWidget() {
         </div>
 
         {/* Raw metric table, grouped */}
-        <div className="grid grid-cols-1 gap-x-4 gap-y-2 border-t border-border pt-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-2 border-t border-border pt-2 @lg:grid-cols-2 @3xl:grid-cols-3">
           {groups.map((g) => (
             <div key={g.name}>
               <div className="mb-0.5 text-tiny font-bold uppercase tracking-wide" style={{ color: groupColor(g.name) }}>{g.name}</div>

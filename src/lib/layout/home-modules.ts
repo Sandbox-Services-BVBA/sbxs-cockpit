@@ -13,7 +13,8 @@
 // on the canvas: switching to a period hides the controls and shows gas and
 // water, in whatever order Bob dragged them into.
 
-import type { ModuleDefinition, ModuleWidth, ResolvedModule } from "./types";
+import type { ModuleDefinition, ModuleWidth, ResolvedModule, TileSize } from "./types";
+import { MIN_TILE_SIZE, TILE_SIZES } from "./grid";
 
 export type HomeMode = "live" | "period";
 
@@ -46,6 +47,9 @@ interface HomeSpec {
   title: string;
   defaultWidth: ModuleWidth;
   allowedWidths: ModuleWidth[];
+  /** Canvas size, from the same house set the shared catalog uses. */
+  size?: keyof typeof TILE_SIZES;
+  min?: TileSize;
   /** Ventilation and airco write to the house; raw metrics is Bob-only. */
   sensitivity?: ModuleDefinition["sensitivity"];
   /** Raw metrics polls its own endpoints and never reads the provider. */
@@ -62,6 +66,8 @@ function defineHome(id: string, spec: HomeSpec): ModuleDefinition {
     allowedViews: ["canvas", "house"],
     defaultWidth: spec.defaultWidth,
     allowedWidths: spec.allowedWidths,
+    defaultSize: TILE_SIZES[spec.size ?? "chart"],
+    minSize: spec.min ?? MIN_TILE_SIZE,
     defaultDensity: "standard",
     allowedDensities: ["standard"],
     sensitivity: spec.sensitivity ?? "normal",
@@ -73,7 +79,13 @@ const SECTION_WIDTHS: ModuleWidth[] = ["wide", "full"];
 const CHART_WIDTHS: ModuleWidth[] = ["standard", "wide", "full"];
 
 export const HOME_MODULES: ModuleDefinition[] = [
-  defineHome("home.house", { title: "Huis", defaultWidth: "full", allowedWidths: ["full"] }),
+  defineHome("home.house", {
+    title: "Huis",
+    defaultWidth: "full",
+    allowedWidths: ["full"],
+    size: "scene",
+    min: { w: 6, h: 10 },
+  }),
   defineHome("home.energy", { title: "Energie", defaultWidth: "full", allowedWidths: SECTION_WIDTHS }),
   defineHome("home.batteries", { title: "Batterij", defaultWidth: "full", allowedWidths: SECTION_WIDTHS }),
   defineHome("home.gas", { title: "Gas", defaultWidth: "full", allowedWidths: CHART_WIDTHS }),
@@ -95,6 +107,7 @@ export const HOME_MODULES: ModuleDefinition[] = [
   // 2:4 split the old office grid drew.
   defineHome("home.raw-metrics", {
     title: "Live metrics",
+    size: "wide",
     defaultWidth: "wide",
     allowedWidths: SECTION_WIDTHS,
     sensitivity: "private",

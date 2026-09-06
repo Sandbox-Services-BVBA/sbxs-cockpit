@@ -30,6 +30,7 @@ import {
   type ModuleWidth,
   type ResolvedView,
   type SurfaceId,
+  type TileRect,
 } from "./types";
 
 /** How long the canvas waits after the last change before writing it. */
@@ -74,6 +75,14 @@ interface LayoutContextValue {
    */
   setEnabled: (viewId: SurfaceId, moduleId: string, enabled: boolean) => Promise<boolean>;
   setWidth: (viewId: SurfaceId, moduleId: string, width: ModuleWidth) => Promise<boolean>;
+  /**
+   * Where the canvas tiles sit, as one batch. A single drag settles the
+   * whole grid, so the board is written once rather than once per tile
+   * that shifted, and the autosave debounce sees one change.
+   */
+  setRects: (viewId: SurfaceId, rects: Record<string, TileRect>) => Promise<boolean>;
+  /** Brings a closed tile back at a rectangle the caller has found room for. */
+  openModule: (viewId: SurfaceId, moduleId: string, rect: TileRect) => Promise<boolean>;
   setDensity: (viewId: SurfaceId, moduleId: string, density: ModuleDensity) => Promise<boolean>;
   /**
    * Move a module one visible neighbour up or down. Hidden modules sit in
@@ -190,6 +199,42 @@ export function applyModuleOverride(
   const view = next.views[viewId]!;
   view.modules ??= {};
   view.modules[moduleId] = { ...view.modules[moduleId], ...patch };
+  return next;
+}
+
+/** True when two rectangles are the same cell for cell. */
+function sameRect(a: TileRect | undefined, b: TileRect): boolean {
+  return a !== undefined && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h;
+}
+
+/**
+ * Writes a batch of canvas rectangles into a copy of the profile.
+ *
+ * Only rectangles that actually moved are written, and if none did the
+ * original profile comes back unchanged. That matters more than it looks:
+ * the grid reports its layout on mount and on every render, not only after
+ * a gesture, so without this check simply opening the page would queue a
+ * save and climb the revision on every device that looked at it.
+ */
+export function applyRects(
+  profile: LayoutProfile,
+  viewId: SurfaceId,
+  rects: Record<string, TileRect>
+): LayoutProfile {
+  const current = profile.views?.[viewId]?.modules ?? {};
+  const changed = Object.entries(rects).filter(
+    ([moduleId, rect]) => MODULE_BY_ID[moduleId] && !sameRect(current[moduleId]?.rect, rect)
+  );
+  if (changed.length === 0) return profile;
+
+  const next = clone(profile);
+  next.views ??= {};
+  next.views[viewId] ??= {};
+  const view = next.views[viewId]!;
+  view.modules ??= {};
+  for (const [moduleId, rect] of changed) {
+    view.modules[moduleId] = { ...view.modules[moduleId], rect: { ...rect } };
+  }
   return next;
 }
 
@@ -480,6 +525,11 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
 
       setDensity: (viewId, moduleId, density) =>
         mutateProfile((base) => applyModuleOverride(base, viewId, moduleId, { density })),
+
+      setRects: (viewId, rects) => mutateProfile((base) => applyRects(base, viewId, rects)),
+
+      openModule: (viewId, moduleId, rect) =>
+        mutateProfile((base) => applyModuleOverride(base, viewId, moduleId, { enabled: true, rect })),
 
       moveModule: (viewId, moduleId, delta, among) =>
         mutateProfile((base) => {

@@ -82,7 +82,7 @@ function defineHome(id: string, spec: HomeSpec): ModuleDefinition {
     id,
     title: spec.title,
     ownerView: "house",
-    allowedViews: ["house"],
+    allowedViews: ["canvas", "house"],
     defaultWidth: spec.defaultWidth,
     allowedWidths: spec.allowedWidths,
     defaultDensity: "standard",

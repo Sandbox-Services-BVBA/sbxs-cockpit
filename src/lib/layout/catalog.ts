@@ -36,7 +36,10 @@ function define(id: string, spec: ModuleSpec): ModuleDefinition {
     id,
     title: spec.title,
     ownerView: spec.ownerView,
-    allowedViews: [spec.ownerView, ...(spec.alsoIn ?? [])],
+    // The canvas is the one page now: every module may live there. The
+    // owner view still decides where it appears by default, and the wall
+    // keeps its own privacy filter.
+    allowedViews: ["canvas", spec.ownerView, ...(spec.alsoIn ?? [])],
     defaultWidth: spec.defaultWidth,
     allowedWidths: spec.allowedWidths,
     defaultDensity: "standard",

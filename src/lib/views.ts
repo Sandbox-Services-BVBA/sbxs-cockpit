@@ -5,6 +5,7 @@ import {
   HeartPulse,
   House,
   Inbox,
+  LayoutGrid,
   Presentation,
   ServerCog,
   WalletCards,
@@ -17,6 +18,7 @@ import {
 // in, then the attention queue, then the operational domains.
 
 export type ViewId =
+  | "canvas"
   | "house"
   | "alerts"
   | "sites"
@@ -38,6 +40,14 @@ export interface ViewMeta {
 }
 
 export const VIEWS: ViewMeta[] = [
+  {
+    id: "canvas",
+    href: "/",
+    label: "Cockpit",
+    short: "Cockpit",
+    description: "Everything at once, arranged the way you left it",
+    icon: LayoutGrid,
+  },
   {
     id: "house",
     href: "/",

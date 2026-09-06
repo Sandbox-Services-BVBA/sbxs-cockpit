@@ -8,8 +8,21 @@
 
 import type { TileRect, TileSize } from "./types";
 
-/** Columns across the whole plane. Roughly two and a bit desktop screens. */
+/**
+ * Columns the plane starts with, and the packing width for the code-owned
+ * defaults. Roughly two and a bit desktop screens.
+ */
 export const CANVAS_COLS = 32;
+/**
+ * The plane always keeps this much empty board past the outermost tile, and
+ * grows to provide it. Without spare room there is nowhere to drag a tile
+ * *to*: the board would be exactly as big as what is already on it, and
+ * rearranging would mean swapping rather than moving.
+ */
+export const CANVAS_SPARE_COLS = 8;
+export const CANVAS_SPARE_ROWS = 12;
+/** Where growing stops, so a runaway profile cannot ask for a mile of board. */
+export const CANVAS_MAX_COLS = 96;
 /** One column, in pixels, before the gap. */
 export const CANVAS_COL_WIDTH = 92;
 /** One row, in pixels, before the gap. */
@@ -23,14 +36,32 @@ export const CANVAS_GAP = 12;
  */
 export const CANVAS_MAX_ROWS = 400;
 
-/** The width react-grid-layout is told the plane is, gutters included. */
-export const CANVAS_PLANE_WIDTH =
-  CANVAS_COLS * CANVAS_COL_WIDTH + CANVAS_GAP * (CANVAS_COLS + 1);
+/**
+ * How wide the board has to be to hold these tiles and still offer room to
+ * drag one further out. It grows as Bob works outwards and never shrinks
+ * below the starting width, so the board he learned the shape of keeps it.
+ */
+export function planeCols(rects: readonly TileRect[]): number {
+  const furthest = rects.reduce((max, rect) => Math.max(max, rect.x + rect.w), 0);
+  return Math.min(CANVAS_MAX_COLS, Math.max(CANVAS_COLS, furthest + CANVAS_SPARE_COLS));
+}
+
+/** The width react-grid-layout is told a board of `cols` columns is. */
+export function planeWidth(cols: number): number {
+  return cols * CANVAS_COL_WIDTH + CANVAS_GAP * (cols + 1);
+}
+
+
 
 /** Pixel width of a tile that is `w` columns wide, gutters included. */
 export function tileWidthPx(w: number): number {
   return w * CANVAS_COL_WIDTH + (w - 1) * CANVAS_GAP;
 }
+
+/** Centre-to-centre distance between two columns, gutter included. */
+export const CANVAS_COL_PITCH = CANVAS_COL_WIDTH + CANVAS_GAP;
+/** Centre-to-centre distance between two rows, gutter included. */
+export const CANVAS_ROW_PITCH = CANVAS_ROW_HEIGHT + CANVAS_GAP;
 
 /** Distance from the left edge of the plane to column `x`. */
 export function tileLeftPx(x: number): number {
@@ -121,6 +152,11 @@ export function rectsOverlap(a: TileRect, b: TileRect): boolean {
  * tiles in the same cells would simply render on top of each other. Trying
  * `preferred` first means a tile that was closed and immediately reopened
  * lands back where it was.
+ *
+ * `cols` is the width to scan, and it should be the board as it currently
+ * is, not as wide as it may ever grow: scanning the whole maximum would put
+ * a reopened tile out on empty board to the right rather than in the gap it
+ * left behind.
  */
 export function findFreeRect(
   occupied: readonly TileRect[],

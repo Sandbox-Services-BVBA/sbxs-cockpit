@@ -10,7 +10,7 @@ import type { SurfaceId, ViewId } from "@/lib/views";
 export type { SurfaceId, ViewId };
 
 /** Bump when the saved JSON shape changes in a way the resolver must migrate. */
-export const LAYOUT_SCHEMA_VERSION = 2;
+export const LAYOUT_SCHEMA_VERSION = 3;
 
 /**
  * Where a tile sits on the canvas plane, in grid cells. x and y count from
@@ -97,10 +97,34 @@ export interface ModuleOverride {
   rect?: TileRect;
 }
 
+/** How many groups a view may hold, and how long a name may be. */
+export const MAX_GROUPS = 24;
+export const MAX_GROUP_NAME = 48;
+/** Accent slots the UI maps to colours. Kept as an index so no colour string is ever stored. */
+export const GROUP_TONES = 6;
+
+/**
+ * A named set of tiles, drawn as one labelled border around the bounding
+ * box of its members. Purely a layout concern: a group holds no data, moves
+ * nothing on its own, and a module outside every group behaves exactly as
+ * it did before groups existed.
+ */
+export interface TileGroup {
+  /** Stable id, lowercase kebab, generated on creation and never derived from the name. */
+  id: string;
+  name: string;
+  /** Module ids that belong to it. A module may be in at most one group. */
+  modules: string[];
+  /** Accent slot, 0..GROUP_TONES-1. Defaults to 0. */
+  tone?: number;
+}
+
 export interface ViewOverride {
   /** Canonical order for this view. Unknown ids are ignored on resolve. */
   order?: string[];
   modules?: Record<string, ModuleOverride>;
+  /** Canvas only: the tile groups Bob has drawn. */
+  groups?: TileGroup[];
 }
 
 export interface LayoutProfile {
@@ -121,12 +145,30 @@ export interface ResolvedModule {
   enabled: boolean;
 }
 
+/**
+ * A group as the renderer needs it: only the members that are actually on
+ * screen, plus the rectangle their border has to enclose. A closed tile is
+ * not in `moduleIds`, so the border shrinks to what is left rather than
+ * reaching out to where a hidden tile used to be.
+ */
+export interface ResolvedGroup {
+  id: string;
+  name: string;
+  tone: number;
+  /** Members that are actually on screen, in the order given. */
+  moduleIds: string[];
+  /** The bounding box of those members, in grid cells. */
+  rect: TileRect;
+}
+
 export interface ResolvedView {
   viewId: SurfaceId;
   /** Enabled modules, in canonical order. */
   modules: ResolvedModule[];
   /** Disabled but available modules, for the editor's "Add module" tray. */
   hidden: ResolvedModule[];
+  /** Groups with at least one visible member, each with its bounding rectangle. */
+  groups: ResolvedGroup[];
 }
 
 export const EMPTY_PROFILE: LayoutProfile = {

@@ -71,6 +71,7 @@
   --color-amber: var(--amber);
   --color-blue: var(--blue);
   --color-green: var(--green);
+  --color-violet: var(--violet);
   --color-rose: var(--rose);
   --color-purple: var(--purple);
   --color-coral: var(--coral);
@@ -160,6 +161,8 @@
   --amber: #97690c;
   --blue: #2f6ba8;
   --green: #2c7a4d;
+  /* Sixth group tone. The five above were already the status palette. */
+  --violet: #6a56c8;
   --rose: #b0463f;
   --purple: #6a4ea4;
   --coral: #d1442c;
@@ -207,6 +210,7 @@
   --sidebar-border: rgba(255, 255, 255, 0.1);
   --sidebar-ring: #f15f48;
   --grid-line: rgba(21, 59, 62, 0.035);
+  --canvas-mesh: rgba(21, 59, 62, 0.075);
 }
 
 .dark {
@@ -225,6 +229,7 @@
   --amber: #f4bd73;
   --blue: #9bc8f7;
   --green: #9ad5a8;
+  --violet: #c3b6f7;
   --rose: #f0a29c;
   --purple: #c5a8f0;
   --coral: #f8836c;
@@ -268,6 +273,7 @@
   --sidebar-border: #2e3239;
   --sidebar-ring: #f15f48;
   --grid-line: rgba(253, 248, 239, 0.026);
+  --canvas-mesh: rgba(253, 248, 239, 0.055);
 }
 
 @layer base {

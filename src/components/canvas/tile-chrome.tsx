@@ -1,7 +1,7 @@
 "use client";
 
 import { Ellipsis, GripVertical, Lock, Maximize2, X } from "lucide-react";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, PointerEvent } from "react";
 import type { ModuleDensity, ResolvedModule } from "@/lib/layout/types";
 import {
   DropdownMenu,
@@ -15,10 +15,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// The strip above every tile: the grip on the left, the menu and the close
-// on the right. Size is not in the menu any more, because the tile is
-// resized by dragging its edge; what is left is the things a drag cannot
-// express.
+// The controls that belong to a tile rather than to the widget inside it:
+// the grip, the menu and the close. They float over the card's top-right
+// corner and appear on hover, focus or selection, rather than occupying a
+// strip of their own above it. Two reasons: the tile and the card are then
+// the same box, so a resize handle lands on the card's own edge, and the
+// title is printed once, by the card, instead of twice.
+//
+// Size is not in the menu, because the tile is resized by dragging its edge.
+// What is left is the things a drag cannot express.
 
 export const DENSITY_LABELS: Record<ModuleDensity, string> = {
   summary: "Summary",
@@ -35,11 +40,11 @@ export interface TileChromeProps {
   onResetSize: () => void;
   onClose: () => void;
   onDensity: (density: ModuleDensity) => void;
+  /** Click the grip to select the tile; hold shift or meta to add to a selection. */
+  onSelect: (additive: boolean) => void;
   /** Focus anchors, so a keyboard change lands back on the control that made it. */
   gripRef: (el: HTMLElement | null) => void;
   menuRef: (el: HTMLElement | null) => void;
-  /** The phone falls back to a stacked list: no dragging, no resizing. */
-  stacked?: boolean;
 }
 
 const DELTAS: Record<string, [number, number]> = {
@@ -56,14 +61,33 @@ export function TileChrome({
   onResetSize,
   onClose,
   onDensity,
+  onSelect,
   gripRef,
   menuRef,
-  stacked = false,
 }: TileChromeProps) {
   const { definition, density } = resolved;
   const title = definition.title;
   const hasDensity = definition.allowedDensities.length > 1;
   const required = definition.required === true;
+
+  // Clicking the grip selects the tile, but neither a click handler nor a
+  // pointerup handler on the grip ever fires: the drag layer takes pointer
+  // capture on pointerdown, so everything after that is delivered to the
+  // capturing element instead. The release is therefore caught on the
+  // window, where a captured event still bubbles.
+  const onGripDown = (event: PointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) return;
+    const from = { x: event.clientX, y: event.clientY };
+    const onUp = (up: globalThis.PointerEvent) => {
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      // Further than a few pixels was a drag, and a drag is a move.
+      if (Math.abs(up.clientX - from.x) + Math.abs(up.clientY - from.y) > 4) return;
+      onSelect(up.shiftKey || up.metaKey || up.ctrlKey);
+    };
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  };
 
   // The grip is the drag handle and the keyboard handle in one: an arrow
   // moves the tile a cell, shift and an arrow resizes it by a cell. Focus
@@ -83,16 +107,12 @@ export function TileChrome({
         type="button"
         ref={gripRef}
         className="canvas-tile__grip"
-        aria-label={
-          stacked
-            ? title
-            : `${title}: drag to move, arrow keys to move a cell, shift and arrow keys to resize`
-        }
-        title={stacked ? title : "Drag to move. Arrow keys move, shift and arrows resize."}
-        onKeyDown={stacked ? undefined : onGripKey}
+        aria-label={`${title}: drag to move, arrow keys to move a cell, shift and arrow keys to resize`}
+        title="Click to select, drag to move. Arrow keys move, shift and arrows resize."
+        onKeyDown={onGripKey}
+        onPointerDown={onGripDown}
       >
-        {!stacked && <GripVertical className="canvas-tile__grip-icon" aria-hidden="true" />}
-        <span className="canvas-tile__name">{title}</span>
+        <GripVertical className="canvas-tile__grip-icon" aria-hidden="true" />
       </button>
 
       <div className="canvas-tile__actions">
@@ -121,14 +141,12 @@ export function TileChrome({
               </>
             )}
 
-            {!stacked && (
-              <DropdownMenuItem onClick={onResetSize}>
-                <Maximize2 aria-hidden="true" />
-                Reset size
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem onClick={onResetSize}>
+              <Maximize2 aria-hidden="true" />
+              Reset size
+            </DropdownMenuItem>
 
-            {!stacked && <DropdownMenuSeparator />}
+            <DropdownMenuSeparator />
             {required ? (
               <DropdownMenuItem disabled>
                 <Lock aria-hidden="true" />

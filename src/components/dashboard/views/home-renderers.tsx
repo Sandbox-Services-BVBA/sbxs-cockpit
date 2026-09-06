@@ -43,12 +43,12 @@ function HouseVisual() {
 /**
  * Home's sections come from the standalone energy console, where each one is
  * as tall as it needs to be. On the board a tile has the height it was
- * dragged to, so the section is given that box and scrolls inside it, the
- * same contract WidgetTile gives every other widget. `@container` makes the
- * tile the query root for anything inside that asks.
+ * dragged to, so the section is handed that box. The scrolling belongs to
+ * the section's own body, not to this wrapper: scrolling the wrapper would
+ * move the whole card, rounded corners and all, under the clip.
  */
 function HomeTile({ children }: { children: ReactNode }) {
-  return <div className="@container h-full min-h-0 overflow-y-auto">{children}</div>;
+  return <div className="h-full min-h-0">{children}</div>;
 }
 
 function FeedGate({ children }: { children: ReactNode }) {

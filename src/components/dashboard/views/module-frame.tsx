@@ -18,35 +18,42 @@ interface ModuleFrameProps {
    * where a tile is as tall as its contents.
    */
   fill?: boolean;
+  /** Picked out for grouping. Purely visual and never saved. */
+  selected?: boolean;
   className?: string;
 }
 
 /**
  * The wrapper between a placed tile and the module inside it.
  *
- * On the plane the outer element's size is set by the grid, so the frame's
- * whole job is to divide that box: a fixed strip of chrome on top and the
- * module filling what is left. `min-h-0` on the module row is what actually
- * makes the widget's internal scrollbar work; without it the flex child
- * refuses to shrink below its content and the tile grows instead.
+ * The card fills the whole tile and the chrome floats over its top-right
+ * corner, rather than sitting in a strip above it. That is what makes the
+ * tile and the card the same box: the resize handles then land on the card's
+ * own rounded edge instead of on a wrapper a few pixels bigger, and the card
+ * stops printing its title twice. `min-h-0` on the module row is what makes
+ * the widget's internal scrollbar work; without it the flex child refuses to
+ * shrink below its content and the tile grows instead.
  *
  * It also catches a render error, so one broken module cannot blank the
  * board. The `data-module-id` the grid reads back off the DOM belongs to the
  * element the grid positions, one level up, so it is not repeated here.
  */
-export function ModuleFrame({ resolved, children, chrome, fill = false, className }: ModuleFrameProps) {
+export function ModuleFrame({ resolved, children, chrome, fill = false, selected = false, className }: ModuleFrameProps) {
   return (
-    <div className={cn("flex min-w-0 flex-col", fill && "h-full min-h-0", className)}>
-      {chrome && (
-        // Its own boundary: a broken strip must not take the module, let
-        // alone the page, down with it. Nothing is drawn in its place.
-        <ModuleErrorBoundary title={`${resolved.definition.title} controls`} fallback={null}>
-          <div className="shrink-0">{chrome}</div>
-        </ModuleErrorBoundary>
-      )}
+    <div
+      data-selected={selected || undefined}
+      className={cn("canvas-frame relative flex min-w-0 flex-col", fill && "h-full min-h-0", className)}
+    >
       <div className={cn("min-w-0", fill && "min-h-0 flex-1")}>
         <ModuleErrorBoundary title={resolved.definition.title}>{children}</ModuleErrorBoundary>
       </div>
+      {chrome && (
+        // Last, so it paints over the card, and its own boundary, so a
+        // broken strip cannot take the module (let alone the page) with it.
+        <ModuleErrorBoundary title={`${resolved.definition.title} controls`} fallback={null}>
+          {chrome}
+        </ModuleErrorBoundary>
+      )}
     </div>
   );
 }

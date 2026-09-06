@@ -1,9 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { MODULE_BY_ID, MODULE_CATALOG } from "./catalog";
-import { applyModuleOverride, applyOrder, applyRects, currentOrder, moveAmongVisible, placeBefore } from "./client";
+import {
+  applyGroup,
+  applyModuleOverride,
+  applyOrder,
+  applyRects,
+  currentOrder,
+  moveAmongVisible,
+  nextGroupId,
+  placeBefore,
+  removeGroup,
+  renameGroup,
+  setGroupTone,
+} from "./client";
 import { DEFAULT_LAYOUTS } from "./default-layouts";
 import { resolveView } from "./resolver";
-import { EMPTY_PROFILE, LAYOUT_SCHEMA_VERSION, type LayoutProfile, type TileRect } from "./types";
+import {
+  EMPTY_PROFILE,
+  GROUP_TONES,
+  LAYOUT_SCHEMA_VERSION,
+  MAX_GROUPS,
+  MAX_GROUP_NAME,
+  type LayoutProfile,
+  type TileRect,
+} from "./types";
 
 // The canvas is direct manipulation over the profile: close, drag, add,
 // width, density. These are the mutations the tiles make, checked against
@@ -177,5 +197,134 @@ describe("reopening a tile", () => {
     const shown = resolveView("canvas", reopened).modules.find((m) => m.moduleId === CLOSABLE);
     expect(shown?.rect).toEqual(spot);
     expect(resolveView("canvas", reopened).hidden.map((m) => m.moduleId)).not.toContain(CLOSABLE);
+  });
+});
+
+describe("grouping tiles", () => {
+  const groupsOf = (p: LayoutProfile) => p.views?.canvas?.groups;
+
+  it("creates a group and shows it as one border around its members", () => {
+    const next = applyGroup(profile(), "canvas", { id: "g1", name: "Infra", modules: ["servers", "crons"] });
+    expect(groupsOf(next)).toEqual([{ id: "g1", name: "Infra", modules: ["servers", "crons"] }]);
+    const view = resolveView("canvas", next);
+    expect(view.groups.map((g) => g.id)).toEqual(["g1"]);
+    expect(view.groups[0].moduleIds).toEqual(["servers", "crons"]);
+  });
+
+  it("does not touch the profile it was given", () => {
+    const before = profile();
+    applyGroup(before, "canvas", { id: "g1", name: "Infra", modules: ["servers"] });
+    expect(before).toEqual(profile());
+  });
+
+  it("returns the same object when nothing changed", () => {
+    // This is the signal the provider uses to skip a write. Without it,
+    // re-applying a group the profile already holds would climb the
+    // revision and open the password prompt for no change at all.
+    const one = applyGroup(profile(), "canvas", { id: "g1", name: "Infra", modules: ["servers", "crons"] });
+    expect(applyGroup(one, "canvas", { id: "g1", name: "Infra", modules: ["servers", "crons"] })).toBe(one);
+    // A name that only differs by surrounding space is the same name.
+    expect(applyGroup(one, "canvas", { id: "g1", name: " Infra ", modules: ["servers", "crons"] })).toBe(one);
+    // And tone 0 is the default, so stating it is not a change either.
+    expect(applyGroup(one, "canvas", { id: "g1", name: "Infra", modules: ["servers", "crons"], tone: 0 })).toBe(one);
+    expect(renameGroup(one, "canvas", "g1", "Infra")).toBe(one);
+    expect(setGroupTone(one, "canvas", "g1", 0)).toBe(one);
+    expect(removeGroup(one, "canvas", "nope")).toBe(one);
+  });
+
+  it("refuses a group the canvas cannot hold", () => {
+    const before = profile();
+    // A module that is not in the catalog would draw a border around nothing.
+    expect(applyGroup(before, "canvas", { id: "g1", name: "x", modules: ["no-such-module"] })).toBe(before);
+    expect(applyGroup(before, "canvas", { id: "g1", name: "x", modules: [] })).toBe(before);
+    expect(applyGroup(before, "canvas", { id: "Bad Id", name: "x", modules: ["servers"] })).toBe(before);
+    expect(
+      applyGroup(before, "canvas", { id: "g1", name: "n".repeat(MAX_GROUP_NAME + 1), modules: ["servers"] })
+    ).toBe(before);
+    expect(applyGroup(before, "canvas", { id: "g1", name: "x", modules: ["servers"], tone: GROUP_TONES })).toBe(before);
+    expect(applyGroup(before, "canvas", { id: "g1", name: "x", modules: ["servers"], tone: -1 })).toBe(before);
+    expect(renameGroup(before, "canvas", "g1", "x")).toBe(before);
+    expect(setGroupTone(before, "canvas", "g1", 2)).toBe(before);
+  });
+
+  it("takes a module out of its old group rather than putting it in two", () => {
+    // The renderer draws one border per tile, so overlapping membership is
+    // not a state the canvas is ever allowed to reach.
+    const one = applyGroup(profile(), "canvas", { id: "g1", name: "One", modules: ["servers", "crons"] });
+    const two = applyGroup(one, "canvas", { id: "g2", name: "Two", modules: ["crons", "gpu"] });
+    expect(groupsOf(two)).toEqual([
+      { id: "g1", name: "One", modules: ["servers"] },
+      { id: "g2", name: "Two", modules: ["crons", "gpu"] },
+    ]);
+  });
+
+  it("dissolves a group that has been emptied by the move", () => {
+    const one = applyGroup(profile(), "canvas", { id: "g1", name: "One", modules: ["crons"] });
+    const two = applyGroup(one, "canvas", { id: "g2", name: "Two", modules: ["crons"] });
+    expect(groupsOf(two)).toEqual([{ id: "g2", name: "Two", modules: ["crons"] }]);
+  });
+
+  it("replaces a group in place when the same id comes back", () => {
+    const one = applyGroup(profile(), "canvas", { id: "g1", name: "One", modules: ["servers"] });
+    const two = applyGroup(one, "canvas", { id: "g2", name: "Two", modules: ["crons"] });
+    const edited = applyGroup(two, "canvas", { id: "g1", name: "One", modules: ["servers", "gpu"], tone: 2 });
+    expect(groupsOf(edited)).toEqual([
+      { id: "g1", name: "One", modules: ["servers", "gpu"], tone: 2 },
+      { id: "g2", name: "Two", modules: ["crons"] },
+    ]);
+  });
+
+  it("stops at the cap for a new group but still lets an existing one be edited", () => {
+    // One module each, so no group steals a member from another and the
+    // count is purely the cap being reached.
+    expect(MODULE_CATALOG.length).toBeGreaterThan(MAX_GROUPS);
+    let filled = profile();
+    for (let n = 0; n < MAX_GROUPS; n += 1) {
+      filled = applyGroup(filled, "canvas", {
+        id: `f${n}`,
+        name: `Group ${n}`,
+        modules: [MODULE_CATALOG[n].id],
+      });
+    }
+    expect(groupsOf(filled)).toHaveLength(MAX_GROUPS);
+    const spare = MODULE_CATALOG[MAX_GROUPS].id;
+    expect(applyGroup(filled, "canvas", { id: "extra", name: "One too many", modules: [spare] })).toBe(filled);
+    // The cap is on how many borders exist, not on editing the ones there are.
+    expect(renameGroup(filled, "canvas", "f0", "Renamed")).not.toBe(filled);
+  });
+
+  it("renames and recolours without touching membership", () => {
+    const one = applyGroup(profile(), "canvas", { id: "g1", name: "One", modules: ["servers", "crons"] });
+    const renamed = renameGroup(one, "canvas", "g1", "  Client sites  ");
+    expect(groupsOf(renamed)).toEqual([{ id: "g1", name: "Client sites", modules: ["servers", "crons"] }]);
+    const toned = setGroupTone(renamed, "canvas", "g1", 5);
+    expect(groupsOf(toned)).toEqual([
+      { id: "g1", name: "Client sites", modules: ["servers", "crons"], tone: 5 },
+    ]);
+    // Back to the default slot drops the field rather than storing a zero.
+    expect(groupsOf(setGroupTone(toned, "canvas", "g1", 0))).toEqual([
+      { id: "g1", name: "Client sites", modules: ["servers", "crons"] },
+    ]);
+    expect(setGroupTone(toned, "canvas", "g1", GROUP_TONES)).toBe(toned);
+  });
+
+  it("removes the groups key entirely when the last one is dissolved", () => {
+    const one = applyGroup(profile(), "canvas", { id: "g1", name: "One", modules: ["servers"] });
+    const gone = removeGroup(one, "canvas", "g1");
+    expect(groupsOf(gone)).toBeUndefined();
+    expect(resolveView("canvas", gone).groups).toEqual([]);
+  });
+
+  it("hands out the lowest free id and never reads the name", () => {
+    // An id derived from the name would change under a rename, and two
+    // groups are allowed to share a name.
+    const empty = profile();
+    expect(nextGroupId(empty, "canvas")).toBe("g1");
+    const one = applyGroup(empty, "canvas", { id: nextGroupId(empty, "canvas"), name: "One", modules: ["servers"] });
+    expect(nextGroupId(one, "canvas")).toBe("g2");
+    const two = applyGroup(one, "canvas", { id: nextGroupId(one, "canvas"), name: "One", modules: ["crons"] });
+    expect(groupsOf(two)!.map((g) => g.id)).toEqual(["g1", "g2"]);
+    // A hole left by a dissolved group is reused, so ids stay short.
+    expect(nextGroupId(removeGroup(two, "canvas", "g1"), "canvas")).toBe("g1");
   });
 });

@@ -9,17 +9,22 @@
 import { VIEW_BY_ID } from "@/lib/views";
 import { MODULE_BY_ID } from "./catalog";
 import { CANVAS_DEFAULT_RECTS, DEFAULT_LAYOUTS } from "./default-layouts";
-import { CANVAS_COLS, CANVAS_MAX_ROWS } from "./grid";
+import { CANVAS_MAX_COLS, CANVAS_MAX_ROWS } from "./grid";
 import {
   EMPTY_PROFILE,
+  GROUP_TONES,
   LAYOUT_SCHEMA_VERSION,
+  MAX_GROUPS,
+  MAX_GROUP_NAME,
   type LayoutProfile,
   type ModuleDensity,
   type ModuleOverride,
   type ModuleWidth,
+  type ResolvedGroup,
   type ResolvedModule,
   type ResolvedView,
   type SurfaceId,
+  type TileGroup,
   type TileRect,
   type ViewOverride,
 } from "./types";
@@ -57,7 +62,7 @@ function normalizeRect(raw: unknown): TileRect | undefined {
   const { x, y, w, h } = raw;
   if (!isCell(x) || !isCell(y) || !isCell(w) || !isCell(h)) return undefined;
   if (w < 1 || h < 1) return undefined;
-  if (x + w > CANVAS_COLS) return undefined;
+  if (x + w > CANVAS_MAX_COLS) return undefined;
   if (y + h > CANVAS_MAX_ROWS) return undefined;
   return { x, y, w, h };
 }
@@ -76,6 +81,48 @@ function normalizeModuleOverride(raw: unknown): ModuleOverride | undefined {
   return override;
 }
 
+/** The shape a group id is generated in, and the only shape that is read back. */
+const GROUP_ID = /^[a-z0-9-]{1,64}$/;
+
+/**
+ * A group from an untrusted profile. Like a rectangle, a group is all or
+ * nothing: without a usable id there is nothing to rename, recolour or
+ * remove later, so a malformed entry is dropped rather than repaired into
+ * something Bob never drew. Member ids are only filtered for type here;
+ * whether they still exist is the resolver's business, because a module
+ * that comes back to the catalog should rejoin its group.
+ */
+function normalizeGroup(raw: unknown): TileGroup | undefined {
+  if (!isRecord(raw)) return undefined;
+  if (typeof raw.id !== "string" || !GROUP_ID.test(raw.id)) return undefined;
+  if (typeof raw.name !== "string") return undefined;
+  if (!Array.isArray(raw.modules)) return undefined;
+  const modules: string[] = [];
+  for (const id of raw.modules) {
+    if (typeof id === "string" && !modules.includes(id)) modules.push(id);
+  }
+  const group: TileGroup = { id: raw.id, name: raw.name.trim().slice(0, MAX_GROUP_NAME), modules };
+  const tone = raw.tone;
+  if (typeof tone === "number" && Number.isInteger(tone) && tone >= 0 && tone < GROUP_TONES) {
+    group.tone = tone;
+  }
+  return group;
+}
+
+function normalizeGroups(raw: unknown): TileGroup[] {
+  if (!Array.isArray(raw)) return [];
+  const groups: TileGroup[] = [];
+  const seen = new Set<string>();
+  for (const entry of raw) {
+    if (groups.length >= MAX_GROUPS) break;
+    const group = normalizeGroup(entry);
+    if (!group || seen.has(group.id)) continue;
+    seen.add(group.id);
+    groups.push(group);
+  }
+  return groups;
+}
+
 function normalizeViewOverride(raw: unknown): ViewOverride | undefined {
   if (!isRecord(raw)) return undefined;
   const view: ViewOverride = {};
@@ -90,6 +137,9 @@ function normalizeViewOverride(raw: unknown): ViewOverride | undefined {
     }
     view.modules = modules;
   }
+  if (raw.groups !== undefined) {
+    view.groups = normalizeGroups(raw.groups);
+  }
   return view;
 }
 
@@ -99,12 +149,13 @@ function normalizeViewOverride(raw: unknown): ViewOverride | undefined {
  * dropped one by one so a single bad value does not cost Bob the rest of
  * his layout.
  *
- * An older schema is read, not discarded. Version 2 added canvas rectangles
- * and changed nothing else, so every field a version 1 profile carries
- * still means what it meant: a tile Bob closed months ago stays closed, and
- * simply has no saved rectangle until he drags it. A version from the
- * future is a different matter, because we cannot know what its fields
- * mean, so that resolves to the defaults.
+ * An older schema is read, not discarded. Each bump so far has only added
+ * a field: version 2 added canvas rectangles, version 3 added groups. So
+ * every field a version 1 profile carries still means what it meant: a tile
+ * Bob closed months ago stays closed, and simply has no saved rectangle and
+ * no groups until he drags or draws one. A version from the future is a
+ * different matter, because we cannot know what its fields mean, so that
+ * resolves to the defaults.
  */
 export function normalizeProfile(raw: unknown): LayoutProfile {
   const version = isRecord(raw) ? raw.schemaVersion : undefined;
@@ -142,9 +193,9 @@ export function normalizeProfile(raw: unknown): LayoutProfile {
  * floor would otherwise leave a permanently unusable tile with no way back.
  */
 function clampRect(rect: TileRect, min: { w: number; h: number }): TileRect {
-  const w = Math.min(Math.max(rect.w, min.w), CANVAS_COLS);
+  const w = Math.min(Math.max(rect.w, min.w), CANVAS_MAX_COLS);
   const h = Math.max(rect.h, min.h);
-  const x = Math.min(rect.x, CANVAS_COLS - w);
+  const x = Math.min(rect.x, CANVAS_MAX_COLS - w);
   return { x, y: rect.y, w, h };
 }
 
@@ -154,6 +205,54 @@ function allowedOnView(viewId: SurfaceId, moduleId: string): boolean {
   if (!definition || !definition.allowedViews.includes(viewId)) return false;
   if (viewId === "wall" && definition.sensitivity !== "normal") return false;
   return true;
+}
+
+/**
+ * Turns the saved groups into what the border renderer needs.
+ *
+ * Only members that are on screen count. A closed tile is not drawn, so
+ * letting it stretch the bounding box would leave a border reaching into
+ * empty space with nothing inside it, and a group whose members are all
+ * closed would be an empty frame floating over the plane; both disappear
+ * instead. When two groups claim the same module the first one keeps it,
+ * so the answer does not depend on iteration luck and the renderer can
+ * assume a tile belongs to at most one border.
+ */
+function resolveGroups(saved: ViewOverride | undefined, byId: Map<string, ResolvedModule>): ResolvedGroup[] {
+  const resolved: ResolvedGroup[] = [];
+  const claimed = new Set<string>();
+  for (const group of saved?.groups ?? []) {
+    const moduleIds: string[] = [];
+    for (const moduleId of group.modules) {
+      if (claimed.has(moduleId)) continue;
+      const entry = byId.get(moduleId);
+      // Unknown here means unknown to the catalog or not allowed in this
+      // view; either way it is not on screen and must not stretch the box.
+      if (!entry || !entry.enabled) continue;
+      claimed.add(moduleId);
+      moduleIds.push(moduleId);
+    }
+    if (moduleIds.length === 0) continue;
+    let x = Infinity;
+    let y = Infinity;
+    let right = 0;
+    let bottom = 0;
+    for (const moduleId of moduleIds) {
+      const { rect } = byId.get(moduleId)!;
+      x = Math.min(x, rect.x);
+      y = Math.min(y, rect.y);
+      right = Math.max(right, rect.x + rect.w);
+      bottom = Math.max(bottom, rect.y + rect.h);
+    }
+    resolved.push({
+      id: group.id,
+      name: group.name,
+      tone: group.tone ?? 0,
+      moduleIds,
+      rect: { x, y, w: right - x, h: bottom - y },
+    });
+  }
+  return resolved;
 }
 
 export function resolveView(viewId: SurfaceId, profile: LayoutProfile | null): ResolvedView {
@@ -215,5 +314,9 @@ export function resolveView(viewId: SurfaceId, profile: LayoutProfile | null): R
     viewId,
     modules: ordered.filter((entry) => entry.enabled),
     hidden: ordered.filter((entry) => !entry.enabled),
+    // Grouping is a canvas gesture. The wallboard is unattended, has no
+    // pointer and no grouping UI, so it never carries borders whatever a
+    // profile written on the canvas happens to hold.
+    groups: viewId === "canvas" ? resolveGroups(saved, byId) : [],
   };
 }

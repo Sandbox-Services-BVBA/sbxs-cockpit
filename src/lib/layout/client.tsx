@@ -24,12 +24,16 @@ import { MODULE_BY_ID } from "./catalog";
 import { resolveView } from "./resolver";
 import {
   EMPTY_PROFILE,
+  GROUP_TONES,
+  MAX_GROUPS,
+  MAX_GROUP_NAME,
   type LayoutProfile,
   type ModuleDensity,
   type ModuleOverride,
   type ModuleWidth,
   type ResolvedView,
   type SurfaceId,
+  type TileGroup,
   type TileRect,
 } from "./types";
 
@@ -95,6 +99,17 @@ interface LayoutContextValue {
   /** Place a module directly before another visible one, or last when null. */
   placeModule: (viewId: SurfaceId, moduleId: string, beforeId: string | null) => Promise<boolean>;
   setOrder: (viewId: SurfaceId, order: string[]) => Promise<boolean>;
+
+  /**
+   * Grouping. A group is a border and a label around tiles that are
+   * already where they are: nothing moves, nothing resizes, and a module
+   * belongs to at most one group, so grouping tiles that are already in
+   * another border takes them out of it.
+   */
+  groupModules: (viewId: SurfaceId, moduleIds: string[], name: string) => Promise<boolean>;
+  ungroup: (viewId: SurfaceId, groupId: string) => Promise<boolean>;
+  renameGroupBy: (viewId: SurfaceId, groupId: string, name: string) => Promise<boolean>;
+  recolourGroup: (viewId: SurfaceId, groupId: string, tone: number) => Promise<boolean>;
   /** Back to code defaults for every view; needs the password like a save. */
   resetAll: () => Promise<boolean>;
   /** Write whatever is pending now instead of waiting for the debounce. */
@@ -247,6 +262,151 @@ export function applyOrder(profile: LayoutProfile, viewId: SurfaceId, order: str
   next.views[viewId] ??= {};
   next.views[viewId]!.order = [...order];
   return next;
+}
+
+/* --- Groups ---------------------------------------------------------------
+   A group is a named set of module ids. It owns no data and moves nothing:
+   the border the canvas draws is derived from where its members already
+   are, so every mutation here is a list edit. The invariant the renderer
+   leans on is that a module is in at most one group, and `applyGroup` is
+   what keeps it true. */
+
+function viewGroups(profile: LayoutProfile, viewId: SurfaceId): TileGroup[] {
+  return profile.views?.[viewId]?.groups ?? [];
+}
+
+function sameGroup(a: TileGroup, b: TileGroup): boolean {
+  return (
+    a.id === b.id &&
+    a.name === b.name &&
+    (a.tone ?? 0) === (b.tone ?? 0) &&
+    a.modules.length === b.modules.length &&
+    a.modules.every((id, index) => id === b.modules[index])
+  );
+}
+
+function sameGroups(a: TileGroup[], b: TileGroup[]): boolean {
+  return a.length === b.length && a.every((group, index) => sameGroup(group, b[index]));
+}
+
+/** Writes a list of groups for a view, dropping the key when none are left. */
+function withGroups(profile: LayoutProfile, viewId: SurfaceId, groups: TileGroup[]): LayoutProfile {
+  if (sameGroups(viewGroups(profile, viewId), groups)) return profile;
+  const next = clone(profile);
+  next.views ??= {};
+  next.views[viewId] ??= {};
+  const view = next.views[viewId]!;
+  if (groups.length > 0) view.groups = groups;
+  else delete view.groups;
+  return next;
+}
+
+/**
+ * A fresh group id for this view: the lowest free `gN`. Short enough to
+ * read in a saved profile, never derived from the name (renaming a group
+ * must not change its identity, and two groups may share a name), and free
+ * of collisions within the view, which is the only scope that matters
+ * because a concurrent device is already handled by the revision lock.
+ */
+export function nextGroupId(profile: LayoutProfile, viewId: SurfaceId): string {
+  const taken = new Set(viewGroups(profile, viewId).map((group) => group.id));
+  for (let n = 1; ; n += 1) {
+    const id = `g${n}`;
+    if (!taken.has(id)) return id;
+  }
+}
+
+/**
+ * Creates a group, or replaces the one with the same id. The incoming
+ * members are pulled out of every other group first, so a tile dragged
+ * into a new border leaves the old one rather than belonging to both; a
+ * group emptied that way disappears with it.
+ *
+ * Refuses (returns the profile unchanged) an unknown module, an empty set,
+ * an over-long name, a tone outside the palette, or a new group past the
+ * cap. Refusing is how the provider knows not to schedule a write.
+ */
+export function applyGroup(profile: LayoutProfile, viewId: SurfaceId, group: TileGroup): LayoutProfile {
+  if (typeof group.id !== "string" || !/^[a-z0-9-]{1,64}$/.test(group.id)) return profile;
+  if (typeof group.name !== "string" || group.name.trim().length > MAX_GROUP_NAME) return profile;
+  const tone = group.tone ?? 0;
+  if (!Number.isInteger(tone) || tone < 0 || tone >= GROUP_TONES) return profile;
+  if (!Array.isArray(group.modules) || group.modules.length === 0) return profile;
+  const modules: string[] = [];
+  for (const moduleId of group.modules) {
+    if (!MODULE_BY_ID[moduleId]) return profile;
+    if (!modules.includes(moduleId)) modules.push(moduleId);
+  }
+
+  const existing = viewGroups(profile, viewId);
+  const replacing = existing.some((entry) => entry.id === group.id);
+  if (!replacing && existing.length >= MAX_GROUPS) return profile;
+
+  const incoming: TileGroup = { id: group.id, name: group.name.trim(), modules };
+  if (tone !== 0) incoming.tone = tone;
+
+  const claimed = new Set(modules);
+  const next: TileGroup[] = [];
+  for (const entry of existing) {
+    if (entry.id === incoming.id) {
+      next.push(incoming);
+      continue;
+    }
+    const kept = entry.modules.filter((moduleId) => !claimed.has(moduleId));
+    if (kept.length === 0) continue;
+    next.push(kept.length === entry.modules.length ? entry : { ...entry, modules: kept });
+  }
+  if (!replacing) next.push(incoming);
+
+  return withGroups(profile, viewId, next);
+}
+
+/** Dissolves a group. Its tiles stay exactly where they are. */
+export function removeGroup(profile: LayoutProfile, viewId: SurfaceId, groupId: string): LayoutProfile {
+  const existing = viewGroups(profile, viewId);
+  if (!existing.some((group) => group.id === groupId)) return profile;
+  return withGroups(profile, viewId, existing.filter((group) => group.id !== groupId));
+}
+
+/** Renames a group. An empty name is allowed: that is a border with no label. */
+export function renameGroup(
+  profile: LayoutProfile,
+  viewId: SurfaceId,
+  groupId: string,
+  name: string
+): LayoutProfile {
+  if (typeof name !== "string") return profile;
+  const trimmed = name.trim();
+  if (trimmed.length > MAX_GROUP_NAME) return profile;
+  const existing = viewGroups(profile, viewId);
+  if (!existing.some((group) => group.id === groupId)) return profile;
+  return withGroups(
+    profile,
+    viewId,
+    existing.map((group) => (group.id === groupId ? { ...group, name: trimmed } : group))
+  );
+}
+
+/** Moves a group to another accent slot. The colour itself is the UI's business. */
+export function setGroupTone(
+  profile: LayoutProfile,
+  viewId: SurfaceId,
+  groupId: string,
+  tone: number
+): LayoutProfile {
+  if (!Number.isInteger(tone) || tone < 0 || tone >= GROUP_TONES) return profile;
+  const existing = viewGroups(profile, viewId);
+  if (!existing.some((group) => group.id === groupId)) return profile;
+  return withGroups(
+    profile,
+    viewId,
+    existing.map((group) => {
+      if (group.id !== groupId) return group;
+      const next: TileGroup = { id: group.id, name: group.name, modules: group.modules };
+      if (tone !== 0) next.tone = tone;
+      return next;
+    })
+  );
 }
 
 /**
@@ -541,6 +701,19 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
         mutateProfile((base) => applyOrder(base, viewId, placeBefore(currentOrder(base, viewId), moduleId, beforeId))),
 
       setOrder: (viewId, order) => mutateProfile((base) => applyOrder(base, viewId, order)),
+
+      groupModules: (viewId, moduleIds, name) =>
+        mutateProfile((base) =>
+          applyGroup(base, viewId, { id: nextGroupId(base, viewId), name, modules: moduleIds })
+        ),
+
+      ungroup: (viewId, groupId) => mutateProfile((base) => removeGroup(base, viewId, groupId)),
+
+      renameGroupBy: (viewId, groupId, name) =>
+        mutateProfile((base) => renameGroup(base, viewId, groupId, name)),
+
+      recolourGroup: (viewId, groupId, tone) =>
+        mutateProfile((base) => setGroupTone(base, viewId, groupId, tone)),
 
       resetAll: async () => {
         if (authConfigured && !authenticated && !(await ensureAuthenticated())) return false;

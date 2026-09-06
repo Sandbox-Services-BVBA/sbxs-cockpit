@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { MODULE_CATALOG } from "./catalog";
 import { DEFAULT_LAYOUTS } from "./default-layouts";
-import { CANVAS_COLS, CANVAS_MAX_ROWS, rectsOverlap } from "./grid";
+import { CANVAS_COLS, CANVAS_MAX_COLS, CANVAS_MAX_ROWS, rectsOverlap } from "./grid";
 import { normalizeProfile, resolveView } from "./resolver";
-import { LAYOUT_SCHEMA_VERSION, type LayoutProfile } from "./types";
+import { LAYOUT_SCHEMA_VERSION, type LayoutProfile, type TileGroup } from "./types";
 
 function profile(partial: Partial<LayoutProfile>): LayoutProfile {
   return { schemaVersion: LAYOUT_SCHEMA_VERSION, revision: 1, ...partial };
@@ -287,7 +287,7 @@ describe("canvas rectangles", () => {
       { x: 1, y: 1, w: 4 },
       { x: -1, y: 0, w: 4, h: 6 },
       { x: 1.5, y: 0, w: 4, h: 6 },
-      { x: CANVAS_COLS - 1, y: 0, w: 4, h: 6 },
+      { x: CANVAS_MAX_COLS - 1, y: 0, w: 4, h: 6 },
       { x: 0, y: CANVAS_MAX_ROWS, w: 4, h: 6 },
       "somewhere",
       null,
@@ -313,10 +313,10 @@ describe("canvas rectangles", () => {
 
   it("keeps a clamped tile on the plane rather than pushing it off the right edge", () => {
     const view = resolveView("canvas", profile({
-      views: { canvas: { modules: { "home.house": { rect: { x: CANVAS_COLS - 1, y: 3, w: 1, h: 1 } } } } },
+      views: { canvas: { modules: { "home.house": { rect: { x: CANVAS_MAX_COLS - 1, y: 3, w: 1, h: 1 } } } } },
     }));
     const rect = rectOf(view, "home.house");
-    expect(rect.x + rect.w).toBeLessThanOrEqual(CANVAS_COLS);
+    expect(rect.x + rect.w).toBeLessThanOrEqual(CANVAS_MAX_COLS);
     expect(rect.y).toBe(3);
   });
 });
@@ -336,5 +336,117 @@ describe("reading an older profile", () => {
     expect(view.hidden.map((m) => m.moduleId)).toContain("btc");
     // And it still gets a place on the plane the moment it is reopened.
     expect(view.hidden.find((m) => m.moduleId === "btc")!.rect.w).toBeGreaterThan(0);
+  });
+});
+
+
+describe("tile groups", () => {
+  // Fixed rectangles so the bounding box is arithmetic rather than a
+  // restatement of whatever the default packer happens to produce today.
+  const PLACED = {
+    servers: { rect: { x: 2, y: 3, w: 6, h: 8 } },
+    crons: { rect: { x: 10, y: 5, w: 4, h: 12 } },
+    gpu: { rect: { x: 4, y: 20, w: 6, h: 6 } },
+  };
+
+  const grouped = (groups: TileGroup[], modules: Record<string, object> = PLACED) =>
+    resolveView("canvas", profile({ views: { canvas: { modules, groups } } }));
+
+  it("draws one rectangle around every member", () => {
+    const view = grouped([{ id: "g1", name: "Infra", modules: ["servers", "crons"] }]);
+    expect(view.groups).toHaveLength(1);
+    expect(view.groups[0].moduleIds).toEqual(["servers", "crons"]);
+    // x,y is the top-left of the two, w,h reaches the far edge of both.
+    expect(view.groups[0].rect).toEqual({ x: 2, y: 3, w: 12, h: 14 });
+    // No tone saved means the first accent slot, never undefined.
+    expect(view.groups[0].tone).toBe(0);
+  });
+
+  it("keeps a saved tone and name", () => {
+    const view = grouped([{ id: "g2", name: "Boxes", modules: ["servers"], tone: 4 }]);
+    expect(view.groups[0]).toMatchObject({ id: "g2", name: "Boxes", tone: 4 });
+  });
+
+  it("shrinks the border when a member is closed instead of reaching out to it", () => {
+    // A closed tile is not drawn. If it still counted, the border would
+    // enclose empty plane where the tile used to be, which reads as a bug
+    // rather than as a group.
+    const view = grouped([{ id: "g1", name: "Infra", modules: ["servers", "crons", "gpu"] }], {
+      ...PLACED,
+      gpu: { ...PLACED.gpu, enabled: false },
+    });
+    expect(view.groups[0].moduleIds).toEqual(["servers", "crons"]);
+    expect(view.groups[0].rect).toEqual({ x: 2, y: 3, w: 12, h: 14 });
+  });
+
+  it("drops a group whose members are all closed rather than leaving an empty frame", () => {
+    const view = grouped([{ id: "g1", name: "Infra", modules: ["servers", "crons"] }], {
+      servers: { ...PLACED.servers, enabled: false },
+      crons: { ...PLACED.crons, enabled: false },
+    });
+    expect(view.groups).toEqual([]);
+    // The group is still saved: reopening either tile brings the border back.
+    expect(normalizeProfile(profile({
+      views: { canvas: { groups: [{ id: "g1", name: "Infra", modules: ["servers", "crons"] }] } },
+    })).views?.canvas?.groups).toHaveLength(1);
+  });
+
+  it("gives a module claimed by two groups to the first one", () => {
+    // The renderer assumes a tile sits inside at most one border, so the
+    // answer has to be deterministic rather than whichever group is walked
+    // last. First wins, and the second simply does not list it.
+    const view = grouped([
+      { id: "g1", name: "One", modules: ["servers", "crons"] },
+      { id: "g2", name: "Two", modules: ["crons", "gpu"] },
+    ]);
+    expect(view.groups[0].moduleIds).toEqual(["servers", "crons"]);
+    expect(view.groups[1].moduleIds).toEqual(["gpu"]);
+    expect(view.groups[1].rect).toEqual({ x: 4, y: 20, w: 6, h: 6 });
+  });
+
+  it("drops a member the catalog no longer knows", () => {
+    const view = grouped([{ id: "g1", name: "Infra", modules: ["servers", "sobriety", "crons"] }]);
+    expect(view.groups[0].moduleIds).toEqual(["servers", "crons"]);
+  });
+
+  it("never groups on the wallboard, which has no pointer and no grouping UI", () => {
+    const view = resolveView("wall", profile({
+      views: { wall: { groups: [{ id: "g1", name: "Infra", modules: ["servers", "crons"] }] } },
+    }));
+    expect(view.groups).toEqual([]);
+  });
+
+  it("resolves a version 2 profile with no groups at all", () => {
+    // Version 3 only added groups. A profile written before them keeps every
+    // choice it had and simply carries no borders.
+    const old = { schemaVersion: 2, revision: 4, views: { canvas: { modules: { gpu: { enabled: false } } } } };
+    const view = resolveView("canvas", old as unknown as LayoutProfile);
+    expect(view.groups).toEqual([]);
+    expect(view.hidden.map((m) => m.moduleId)).toContain("gpu");
+    expect(normalizeProfile(old).views?.canvas?.groups).toBeUndefined();
+  });
+
+  it("drops malformed group entries one at a time rather than the whole profile", () => {
+    const clean = normalizeProfile({
+      schemaVersion: LAYOUT_SCHEMA_VERSION,
+      revision: 2,
+      views: {
+        canvas: {
+          groups: [
+            { id: "Bad Id", name: "shouty", modules: ["servers"] },
+            { id: "g1", name: "  Infra  ", modules: ["servers", 7, "crons"], tone: 99 },
+            { id: "g1", name: "duplicate id", modules: ["gpu"] },
+            "not a group",
+            { name: "no id", modules: ["gpu"] },
+            { id: "g2", name: "no modules array" },
+          ],
+        },
+      },
+    });
+    expect(clean.views?.canvas?.groups).toEqual([
+      // Name trimmed, the non-string member dropped, the impossible tone dropped.
+      { id: "g1", name: "Infra", modules: ["servers", "crons"] },
+    ]);
+    expect(() => resolveView("canvas", clean)).not.toThrow();
   });
 });

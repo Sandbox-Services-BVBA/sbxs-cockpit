@@ -177,30 +177,52 @@ button.editor-link {
   position: relative;
 }
 
+/* The floating control pill. Out of the way until the tile is pointed at,
+   because on a board of thirty-odd tiles a permanent row of buttons on each
+   one is most of what you see. */
 .canvas-tile__bar {
+  position: absolute;
+  z-index: 3;
+  top: 5px;
+  right: 5px;
   display: flex;
-  min-height: 26px;
   align-items: center;
-  gap: 4px;
-  padding: 0 2px 4px;
+  gap: 1px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 92%, transparent);
   color: var(--ink-quiet);
+  opacity: 0;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  transition: opacity 140ms ease;
 }
 
-/* The grip is the drag handle and the keyboard handle in one. It carries
-   the title so the target is wide enough for a thumb, and so what is being
-   dragged is named where the eye already is. */
+.canvas-tile:hover .canvas-tile__bar,
+.canvas-tile:focus-within .canvas-tile__bar,
+.canvas-frame[data-selected] .canvas-tile__bar {
+  opacity: 1;
+}
+
+/* Touch has no hover, so on a phone the controls are simply always there. */
+@media (hover: none) {
+  .canvas-tile__bar {
+    opacity: 1;
+  }
+}
+
+/* The grip is the drag handle, the select target and the keyboard handle in
+   one. Wider than the icon so it is still a target on a trackpad. */
 .canvas-tile__grip {
-  display: inline-flex;
-  min-width: 0;
-  flex: 1;
-  align-items: center;
-  gap: 5px;
+  display: inline-grid;
+  width: 30px;
   height: 24px;
-  padding: 0 7px 0 4px;
-  border-radius: 8px;
+  place-items: center;
+  border-radius: 7px;
   color: inherit;
   cursor: grab;
-  text-align: left;
   transition: background 150ms ease, color 150ms ease;
 }
 
@@ -217,17 +239,6 @@ button.editor-link {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-}
-
-.canvas-tile__name {
-  overflow: hidden;
-  font-family: var(--mono);
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
 }
 
 .canvas-tile__actions {
@@ -305,6 +316,7 @@ button.editor-link {
 }
 
 .canvas-plane {
+  position: relative;
   min-height: 0;
   flex: 1;
   /* Out of app-main's gutter to the window edge: on a board you scroll, the
@@ -313,21 +325,49 @@ button.editor-link {
   margin-left: calc(var(--main-pad-left) * -1);
   overflow: auto;
   overscroll-behavior: contain;
+  /* Opaque, so the page's own fixed background texture does not show
+     through and fight the mesh, which is the grid that actually means
+     something here. */
+  background: var(--background);
+}
+
+
+
+.canvas-plane__sizer {
+  /* Laid out at the zoomed size so the scrollbars know how far the board
+     reaches; the plane inside it is scaled from this same corner. */
+  position: relative;
 }
 
 .canvas-plane__inner {
-  /* Width is set inline from the grid geometry; the tail of empty rows is
-     what lets the bottom tiles be scrolled into the middle of the screen. */
-  padding-bottom: 40vh;
+  position: relative;
+  /* Empty rows past the lowest tile: somewhere to drag one down to, and
+     enough room that the bottom of the board can still be scrolled into the
+     middle of the screen. Width grows the same way, in the component. */
+  padding-bottom: max(var(--canvas-spare-rows), 40vh);
 }
 
-/* The stacked fallback below desktop width. */
-.canvas-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
-  padding-bottom: 88px;
+/* The board itself: the grid, and the thing you grab to move around. */
+.canvas-plane__mesh {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  cursor: grab;
+  touch-action: none;
+  background-image:
+    linear-gradient(to right, var(--canvas-mesh) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--canvas-mesh) 1px, transparent 1px);
+  background-size: var(--canvas-col-pitch) 100%, 100% var(--canvas-row-pitch);
+  background-position: calc(var(--canvas-gap) * -1) 0, 0 calc(var(--canvas-gap) * -1);
+}
+
+.canvas-plane[data-panning] .canvas-plane__mesh {
+  cursor: grabbing;
+}
+
+.canvas-plane[data-panning] {
+  /* Without this a pan across the board selects every label it crosses. */
+  user-select: none;
 }
 
 /* --- react-grid-layout ----------------------------------------------------
@@ -338,6 +378,14 @@ button.editor-link {
 
 .react-grid-layout {
   position: relative;
+  /* The grid container is a block covering the whole plane, so without this
+     it is the hit target in every gap between tiles and the board can never
+     be grabbed. The items inside it opt back in. */
+  pointer-events: none;
+}
+
+.react-grid-item {
+  pointer-events: auto;
 }
 
 .react-grid-item {
@@ -442,6 +490,204 @@ button.editor-link {
   background: none;
 }
 
+/* --- Groups --------------------------------------------------------------
+
+   A border and a name around tiles that belong together, drawn behind them
+   in the same coordinate space. The frame is always the bounding box of the
+   current members, so it cannot disagree with the board.                 */
+
+.canvas-group {
+  --group-tone: var(--teal);
+  position: absolute;
+  z-index: 0;
+  border: 1px solid color-mix(in srgb, var(--group-tone) 42%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--group-tone) 6%, transparent);
+  pointer-events: none;
+}
+
+.canvas-group[data-tone="1"] { --group-tone: var(--sbxs-coral); }
+.canvas-group[data-tone="2"] { --group-tone: var(--amber); }
+.canvas-group[data-tone="3"] { --group-tone: var(--violet); }
+.canvas-group[data-tone="4"] { --group-tone: var(--blue); }
+.canvas-group[data-tone="5"] { --group-tone: var(--green); }
+
+.canvas-group[data-dragging] {
+  border-color: var(--group-tone);
+  background: color-mix(in srgb, var(--group-tone) 12%, transparent);
+}
+
+/* The label sits on the border rather than inside the box, so it never eats
+   into the room the tiles have. Only the bar takes pointer events; the rest
+   of the frame stays transparent to the board underneath it. */
+.canvas-group__bar {
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px 0 0;
+  border-radius: 8px;
+  pointer-events: auto;
+}
+
+.canvas-group__handle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: var(--group-tone);
+  cursor: grab;
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.canvas-group[data-dragging] .canvas-group__handle {
+  cursor: grabbing;
+}
+
+.canvas-group__handle:hover {
+  background: color-mix(in srgb, var(--group-tone) 12%, transparent);
+}
+
+.canvas-group__count {
+  display: grid;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--group-tone) 18%, transparent);
+  font-size: 0.5625rem;
+  letter-spacing: 0;
+}
+
+.canvas-group__input {
+  height: 22px;
+  width: 160px;
+  padding: 0 8px;
+  border: 1px solid var(--group-tone);
+  border-radius: 7px;
+  background: var(--background);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.canvas-group__btn {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--group-tone);
+  opacity: 0.7;
+}
+
+.canvas-group__btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.canvas-group__btn:hover {
+  background: color-mix(in srgb, var(--group-tone) 12%, transparent);
+  opacity: 1;
+}
+
+.canvas-group__handle:focus-visible,
+.canvas-group__btn:focus-visible {
+  outline: 2px solid var(--group-tone);
+  outline-offset: 2px;
+}
+
+.canvas-group__swatch[data-tone="0"] { color: var(--teal); }
+.canvas-group__swatch[data-tone="1"] { color: var(--sbxs-coral); }
+.canvas-group__swatch[data-tone="2"] { color: var(--amber); }
+.canvas-group__swatch[data-tone="3"] { color: var(--violet); }
+.canvas-group__swatch[data-tone="4"] { color: var(--blue); }
+.canvas-group__swatch[data-tone="5"] { color: var(--green); }
+
+/* --- Selection ------------------------------------------------------------ */
+
+.canvas-frame[data-selected] {
+  outline: 2px solid var(--domain-accent, var(--teal));
+  outline-offset: 2px;
+  border-radius: 0.875rem;
+}
+
+.canvas-frame[data-selected] .canvas-tile__grip {
+  color: var(--domain-accent, var(--teal));
+}
+
+.canvas-selection {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  border: 1px solid color-mix(in srgb, var(--domain-accent, var(--teal)) 45%, var(--line));
+  border-radius: 17px;
+  background: color-mix(in srgb, var(--card) 96%, transparent);
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+  box-shadow: var(--panel-shadow);
+}
+
+.canvas-selection__count {
+  white-space: nowrap;
+}
+
+.canvas-selection__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 8px;
+  background: var(--domain-accent, var(--teal));
+  color: var(--background);
+  font-weight: 700;
+}
+
+.canvas-selection__action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.canvas-selection__action svg,
+.canvas-selection__clear svg {
+  width: 13px;
+  height: 13px;
+}
+
+.canvas-selection__clear {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--ink-quiet);
+}
+
+.canvas-selection__clear:hover {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--ink);
+}
+
+.canvas-selection__action:focus-visible,
+.canvas-selection__clear:focus-visible {
+  outline: 2px solid var(--domain-accent, var(--teal));
+  outline-offset: 2px;
+}
+
 /* --- Dock: status and the + button ---------------------------------------- */
 
 .canvas-dock {
@@ -493,6 +739,34 @@ button.editor-link {
   font-family: var(--mono);
   font-size: 0.6875rem;
   font-weight: 800;
+}
+
+/* The zoom readout, which is also the way back to 100 percent. Only there
+   when the board is not at 100, because at 100 it would say nothing. */
+.canvas-zoom {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: color-mix(in srgb, var(--card) 96%, transparent);
+  color: var(--ink-muted);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  box-shadow: var(--panel-shadow);
+}
+
+.canvas-zoom:hover {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--domain-accent, var(--teal)) 45%, var(--line));
+}
+
+.canvas-zoom:focus-visible {
+  outline: 2px solid var(--domain-accent, var(--teal));
+  outline-offset: 2px;
 }
 
 .canvas-status {

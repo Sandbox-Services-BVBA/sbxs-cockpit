@@ -23,15 +23,21 @@ export function Section({
   className?: string;
 }) {
   return (
-    <section id={id} className={cn("cockpit-panel scroll-mt-28 overflow-hidden", className)}>
-      <header className="flex min-h-11 items-center justify-between gap-3 border-b border-border/65 px-4 py-2.5">
+    // The same contract WidgetTile has: fill the height the tile was
+    // dragged to, keep the header put, and scroll the body. Scrolling the
+    // whole card instead would drag its rounded corners under the clip.
+    <section
+      id={id}
+      className={cn("cockpit-panel @container flex h-full min-h-0 flex-col overflow-hidden scroll-mt-28", className)}
+    >
+      <header className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-border/65 px-4 py-2.5">
         <h2 className="flex items-center gap-2 text-tiny font-bold uppercase tracking-[0.16em] text-muted-foreground">
           {Icon && <Icon className="h-4 w-4" />}
           {title}
         </h2>
         {right && <div className="flex items-center gap-2 text-tiny text-muted-foreground">{right}</div>}
       </header>
-      <div className="px-4 py-3.5">{children}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-3.5">{children}</div>
     </section>
   );
 }

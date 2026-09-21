@@ -177,6 +177,16 @@ button.editor-link {
   position: relative;
 }
 
+/* Every card's full title row moves the tile. Controls inside the row are
+   excluded in CanvasGrid, so a selector or tab button remains a control. */
+.canvas-tile [data-canvas-drag-handle] {
+  cursor: grab;
+}
+
+.react-draggable-dragging [data-canvas-drag-handle] {
+  cursor: grabbing;
+}
+
 /* The floating control pill. Out of the way until the tile is pointed at,
    because on a board of thirty-odd tiles a permanent row of buttons on each
    one is most of what you see. */
@@ -213,8 +223,8 @@ button.editor-link {
   }
 }
 
-/* The grip is the drag handle, the select target and the keyboard handle in
-   one. Wider than the icon so it is still a target on a trackpad. */
+/* The grip remains a compact drag target, the select target and the keyboard
+   handle. The card's complete title row is the larger pointer target. */
 .canvas-tile__grip {
   display: inline-grid;
   width: 30px;

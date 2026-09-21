@@ -5,7 +5,7 @@
 // Every tile is a rectangle in grid cells and the whole board is wider and
 // taller than the window, so the cockpit is moved around rather than paged
 // through: drag the bare board to pan, pinch or ctrl-scroll to zoom, drag a
-// tile's grip to move it, drag an edge to resize it.
+// tile's title row (or its grip) to move it, drag an edge to resize it.
 //
 // react-grid-layout owns the gesture and the arithmetic for the tiles. This
 // file owns the three decisions that make the board a board:
@@ -55,7 +55,9 @@ import { useCanvasGestures } from "./use-canvas-gestures";
 /** No compaction, no overlap, a blocked move snaps back. */
 const COMPACTOR = getCompactor(null, false, true);
 
-const GRIP_SELECTOR = ".canvas-tile__grip";
+const DRAG_HANDLE_SELECTOR = "[data-canvas-drag-handle], .canvas-tile__grip";
+const DRAG_CANCEL_SELECTOR =
+  "button:not(.canvas-tile__grip), a, input, select, textarea, [contenteditable='true'], [data-canvas-no-drag]";
 
 export interface CanvasGridProps {
   tiles: ResolvedModule[];
@@ -210,7 +212,11 @@ export function CanvasGrid({ tiles, onRects, renderTile, overlay, resyncKey, onZ
               rowHeight: CANVAS_ROW_HEIGHT,
               margin: [CANVAS_GAP, CANVAS_GAP],
             }}
-            dragConfig={{ handle: GRIP_SELECTOR, bounded: false }}
+            dragConfig={{
+              handle: DRAG_HANDLE_SELECTOR,
+              cancel: DRAG_CANCEL_SELECTOR,
+              bounded: false,
+            }}
             resizeConfig={{ handles: ["se", "e", "s"] }}
             compactor={COMPACTOR}
             positionStrategy={strategy}

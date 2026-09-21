@@ -89,8 +89,9 @@ export function TileChrome({
     window.addEventListener("pointercancel", onUp);
   };
 
-  // The grip is the drag handle and the keyboard handle in one: an arrow
-  // moves the tile a cell, shift and an arrow resizes it by a cell. Focus
+  // The grip is the keyboard handle as well as a compact drag target: an
+  // arrow moves the tile a cell, shift and an arrow resizes it by a cell.
+  // The card's complete title row is the larger pointer drag target. Focus
   // stays on the grip, so a run of arrows keeps going.
   const onGripKey = (event: KeyboardEvent<HTMLButtonElement>) => {
     const delta = DELTAS[event.key];

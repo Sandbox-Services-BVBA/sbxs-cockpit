@@ -30,7 +30,10 @@ export function Section({
       id={id}
       className={cn("cockpit-panel @container flex h-full min-h-0 flex-col overflow-hidden scroll-mt-28", className)}
     >
-      <header className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-border/65 px-4 py-2.5">
+      <header
+        data-canvas-drag-handle
+        className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-border/65 px-4 py-2.5"
+      >
         <h2 className="flex items-center gap-2 text-tiny font-bold uppercase tracking-[0.16em] text-muted-foreground">
           {Icon && <Icon className="h-4 w-4" />}
           {title}

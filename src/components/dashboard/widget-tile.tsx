@@ -61,7 +61,10 @@ export function WidgetTile({
       onKeyDown={handleKeyDown}
     >
       {title && (
-        <div className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-border/65 px-4 py-2.5">
+        <div
+          data-canvas-drag-handle
+          className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-border/65 px-4 py-2.5"
+        >
           <h3 id={titleId} className="truncate text-tiny font-bold uppercase tracking-[0.16em] text-muted-foreground">{title}</h3>
           {headerRight}
         </div>

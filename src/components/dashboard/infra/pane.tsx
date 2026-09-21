@@ -32,7 +32,7 @@ export function Pane({
 }) {
   return (
     <section className="pane @container h-full min-h-0 overflow-hidden" data-tone={tone}>
-      <header className="pane__head shrink-0">
+      <header data-canvas-drag-handle className="pane__head shrink-0">
         <h2 className="serif pane__title">{title}</h2>
         {readout !== undefined && <span className="pane__readout">{readout}</span>}
       </header>

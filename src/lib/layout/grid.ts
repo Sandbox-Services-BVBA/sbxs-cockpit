@@ -51,7 +51,22 @@ export function planeWidth(cols: number): number {
   return cols * CANVAS_COL_WIDTH + CANVAS_GAP * (cols + 1);
 }
 
-
+/**
+ * Minimum column count needed for the scaled plane to cover a viewport.
+ *
+ * The board still grows from its tiles via `planeCols`; this prevents a wide
+ * display (or a zoomed-out board) from running past the fixed starting plane
+ * into an area that has no grid cells to arrange.
+ */
+export function viewportCols(viewportWidth: number, zoom: number = 1): number {
+  const safeWidth = Number.isFinite(viewportWidth) ? Math.max(0, viewportWidth) : 0;
+  const safeZoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  const unscaledWidth = safeWidth / safeZoom;
+  const required = Math.ceil(
+    (unscaledWidth - CANVAS_GAP) / (CANVAS_COL_WIDTH + CANVAS_GAP)
+  );
+  return Math.min(CANVAS_MAX_COLS, Math.max(CANVAS_COLS, required));
+}
 
 /** Pixel width of a tile that is `w` columns wide, gutters included. */
 export function tileWidthPx(w: number): number {

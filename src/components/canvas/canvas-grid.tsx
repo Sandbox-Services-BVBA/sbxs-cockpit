@@ -43,6 +43,7 @@ import {
   CANVAS_SPARE_ROWS,
   planeCols,
   planeWidth,
+  viewportCols,
   tileLeftPx,
   tileTopPx,
   tileWidthPx,
@@ -98,14 +99,30 @@ export function CanvasGrid({ tiles, onRects, renderTile, overlay, resyncKey, onZ
   const inner = useRef<HTMLDivElement | null>(null);
   const centred = useRef(false);
   const { zoom, panning, resetZoom } = useCanvasGestures(scroller);
+  const [viewportWidth, setViewportWidth] = useState(0);
   // The board is always wider than what is on it, and grows as Bob works
-  // outwards, so there is somewhere to drag a tile to.
-  const cols = planeCols(tiles.map((tile) => tile.rect));
+  // outwards, so there is somewhere to drag a tile to. A wide viewport is
+  // itself also a minimum: every visible part of the canvas must contain
+  // real cells that can accept a tile.
+  const cols = Math.max(
+    planeCols(tiles.map((tile) => tile.rect)),
+    viewportCols(viewportWidth, zoom)
+  );
   const width = planeWidth(cols);
   // The plane's own height, unscaled. The scaled wrapper needs it, because a
   // CSS transform does not change layout size and the scroll extent would
   // otherwise stay at 100 percent however far out you zoom.
   const [planeHeight, setPlaneHeight] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const measure = () => setViewportWidth(el.clientWidth);
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    measure();
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const el = inner.current;

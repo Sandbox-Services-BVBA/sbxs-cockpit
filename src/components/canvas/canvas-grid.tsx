@@ -32,9 +32,6 @@ import {
   type ReactNode,
 } from "react";
 import GridLayout, { getCompactor, type Layout, type LayoutItem } from "react-grid-layout";
-// Only the root entry point is re-exported by the package index; the
-// position strategies live on the core subpath.
-import { createScaledStrategy } from "react-grid-layout/core";
 import {
   CANVAS_COL_PITCH,
   CANVAS_GAP,
@@ -50,6 +47,7 @@ import {
   tileHeightPx,
 } from "@/lib/layout/grid";
 import type { ResolvedModule, TileRect } from "@/lib/layout/types";
+import { createCanvasPositionStrategy } from "./canvas-position-strategy";
 import { useCanvasGestures } from "./use-canvas-gestures";
 
 /** No compaction, no overlap, a blocked move snaps back. */
@@ -139,9 +137,7 @@ export function CanvasGrid({ tiles, onRects, renderTile, overlay, resyncKey, onZ
 
   const commit = useCallback((layout: Layout) => onRects(toRects(layout)), [onRects]);
 
-  // Drag and resize arithmetic has to be told the plane is scaled, or the
-  // pointer runs away from the tile by a factor of the zoom.
-  const strategy = useMemo(() => createScaledStrategy(zoom), [zoom]);
+  const strategy = useMemo(() => createCanvasPositionStrategy(zoom), [zoom]);
 
   // Open on the middle of the board rather than its top-left corner, so Bob
   // starts where he arranged things and works outwards. Once only:

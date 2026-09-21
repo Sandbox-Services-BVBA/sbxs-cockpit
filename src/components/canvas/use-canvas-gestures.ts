@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 
 // Every gesture that belongs to the plane rather than to a tile: drag the
-// bare board to move around it, pinch or ctrl-scroll to zoom the whole thing.
+// bare board to move around it, pinch or scroll to zoom the whole thing.
 //
 // All of it is wired with native listeners rather than React props for one
 // reason: a wheel handler has to be able to call preventDefault, and React
@@ -156,11 +156,17 @@ export function useCanvasGestures(scroller: RefObject<HTMLDivElement | null>): C
     };
 
     const onWheel = (event: WheelEvent) => {
-      // A trackpad pinch arrives as ctrl and a wheel. A plain wheel is left
-      // alone so two fingers still scroll the board the ordinary way.
-      if (!event.ctrlKey && !event.metaKey) return;
+      // The plane is navigated by grabbing it, so every wheel or two-finger
+      // trackpad gesture is free to be zoom. Horizontal-only trackpad input
+      // uses its horizontal delta rather than becoming a dead gesture.
       event.preventDefault();
-      zoomAtRef.current?.(zoomRef.current * Math.exp(-event.deltaY / 240), event.clientX, event.clientY);
+      const rawDelta = event.deltaY || event.deltaX;
+      const pixels = event.deltaMode === WheelEvent.DOM_DELTA_LINE
+        ? rawDelta * 16
+        : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+          ? rawDelta * el.clientHeight
+          : rawDelta;
+      zoomAtRef.current?.(zoomRef.current * Math.exp(-pixels / 600), event.clientX, event.clientY);
     };
 
     el.addEventListener("pointerdown", onPointerDown);

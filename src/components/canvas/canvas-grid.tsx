@@ -4,7 +4,7 @@
 //
 // Every tile is a rectangle in grid cells and the whole board is wider and
 // taller than the window, so the cockpit is moved around rather than paged
-// through: drag the bare board to pan, pinch or ctrl-scroll to zoom, drag a
+// through: drag the bare board to pan, pinch or scroll to zoom, drag a
 // tile's title row (or its grip) to move it, drag an edge to resize it.
 //
 // react-grid-layout owns the gesture and the arithmetic for the tiles. This
@@ -32,9 +32,14 @@ import {
   type ReactNode,
 } from "react";
 import GridLayout, { getCompactor, type Layout, type LayoutItem } from "react-grid-layout";
+import { Plus } from "lucide-react";
 import {
   CANVAS_COL_PITCH,
+  CANVAS_EXPAND_COLS,
+  CANVAS_EXPAND_ROWS,
   CANVAS_GAP,
+  CANVAS_MAX_COLS,
+  CANVAS_MAX_ROWS,
   CANVAS_ROW_HEIGHT,
   CANVAS_ROW_PITCH,
   CANVAS_SPARE_ROWS,
@@ -60,7 +65,7 @@ const DRAG_CANCEL_SELECTOR =
 export interface CanvasGridProps {
   tiles: ResolvedModule[];
   /** Called once per finished gesture with the whole board. */
-  onRects: (rects: Record<string, TileRect>) => void;
+  onRects: (rects: Record<string, TileRect>) => Promise<boolean>;
   renderTile: (tile: ResolvedModule) => ReactNode;
   /**
    * Drawn behind the tiles in the same coordinate space: the group frames.
@@ -100,14 +105,21 @@ export function CanvasGrid({ tiles, onRects, renderTile, overlay, resyncKey, onZ
   const centred = useRef(false);
   const { zoom, panning, resetZoom } = useCanvasGestures(scroller);
   const [viewportWidth, setViewportWidth] = useState(0);
+  // Empty space added on the right or bottom does not need to dirty the
+  // saved profile. If a tile is moved into it, its rectangle makes that
+  // growth permanent; until then it is simply working room for this visit.
+  const [extraCols, setExtraCols] = useState(0);
+  const [extraRows, setExtraRows] = useState(0);
+  const [shiftingOrigin, setShiftingOrigin] = useState(false);
   // The board is always wider than what is on it, and grows as Bob works
   // outwards, so there is somewhere to drag a tile to. A wide viewport is
   // itself also a minimum: every visible part of the canvas must contain
   // real cells that can accept a tile.
-  const cols = Math.max(
+  const baseCols = Math.max(
     planeCols(tiles.map((tile) => tile.rect)),
     viewportCols(viewportWidth, zoom)
   );
+  const cols = Math.min(CANVAS_MAX_COLS, baseCols + extraCols);
   const width = planeWidth(cols);
   // The plane's own height, unscaled. The scaled wrapper needs it, because a
   // CSS transform does not change layout size and the scroll extent would
@@ -135,7 +147,63 @@ export function CanvasGrid({ tiles, onRects, renderTile, overlay, resyncKey, onZ
 
   useEffect(() => onZoom?.(zoom, resetZoom), [zoom, resetZoom, onZoom]);
 
-  const commit = useCallback((layout: Layout) => onRects(toRects(layout)), [onRects]);
+  const commit = useCallback((layout: Layout) => void onRects(toRects(layout)), [onRects]);
+
+  const furthestCol = tiles.reduce((max, tile) => Math.max(max, tile.rect.x + tile.rect.w), 0);
+  const furthestRow = tiles.reduce((max, tile) => Math.max(max, tile.rect.y + tile.rect.h), 0);
+  const canAddHorizontal = cols + CANVAS_EXPAND_COLS <= CANVAS_MAX_COLS;
+  const canAddBottom = furthestRow + extraRows + CANVAS_EXPAND_ROWS <= CANVAS_MAX_ROWS;
+  const canShiftRight = furthestCol + CANVAS_EXPAND_COLS <= CANVAS_MAX_COLS;
+  const canShiftDown = furthestRow + CANVAS_EXPAND_ROWS <= CANVAS_MAX_ROWS;
+
+  /**
+   * The grid cannot store negative coordinates. Adding room above or left
+   * therefore moves the coordinate origin, then scrolls by the same scaled
+   * distance so every tile stays under the same point on screen.
+   */
+  const addSpace = useCallback(
+    async (side: "top" | "right" | "bottom" | "left") => {
+      if (side === "right") {
+        setExtraCols((value) => Math.min(CANVAS_MAX_COLS - baseCols, value + CANVAS_EXPAND_COLS));
+        return;
+      }
+      if (side === "bottom") {
+        setExtraRows((value) => Math.min(CANVAS_MAX_ROWS - furthestRow, value + CANVAS_EXPAND_ROWS));
+        return;
+      }
+      if (shiftingOrigin) return;
+
+      const dx = side === "left" ? CANVAS_EXPAND_COLS : 0;
+      const dy = side === "top" ? CANVAS_EXPAND_ROWS : 0;
+      if ((dx && !canShiftRight) || (dy && !canShiftDown)) return;
+
+      const shifted = Object.fromEntries(
+        tiles.map((tile) => [
+          tile.moduleId,
+          { ...tile.rect, x: tile.rect.x + dx, y: tile.rect.y + dy },
+        ])
+      );
+      setShiftingOrigin(true);
+      const ok = await onRects(shifted);
+      if (ok) {
+        // Wait for the profile render and the enlarged sizer before moving
+        // the scroll position, otherwise the browser clamps against the old
+        // extent and the board appears to jump.
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const el = scroller.current;
+            if (el) {
+              el.scrollLeft += dx * CANVAS_COL_PITCH * zoom;
+              el.scrollTop += dy * CANVAS_ROW_PITCH * zoom;
+            }
+            setShiftingOrigin(false);
+          });
+        });
+      } else {
+        setShiftingOrigin(false);
+      }
+    }, [baseCols, canShiftDown, canShiftRight, furthestRow, onRects, shiftingOrigin, tiles, zoom]
+  );
 
   const strategy = useMemo(() => createCanvasPositionStrategy(zoom), [zoom]);
 
@@ -165,68 +233,103 @@ export function CanvasGrid({ tiles, onRects, renderTile, overlay, resyncKey, onZ
   }, [tiles]);
 
   return (
-    <div ref={scroller} className="canvas-plane" data-canvas-plane data-panning={panning || undefined}>
-      {/* Laid out at the scaled size so the scrollbars know how far the
-          board actually reaches; the plane inside is scaled from its own
-          top-left corner, which is the origin all the cell maths uses. */}
+    <div className="canvas-plane-shell">
       <div
-        className="canvas-plane__sizer"
-        style={{ width: width * zoom, height: planeHeight * zoom }}
+        ref={scroller}
+        className="canvas-plane"
+        data-canvas-plane
+        data-panning={panning || undefined}
       >
+        {/* Laid out at the scaled size so the scrollbars know how far the
+            board actually reaches; the plane inside is scaled from its own
+            top-left corner, which is the origin all the cell maths uses. */}
         <div
-          ref={inner}
-          className="canvas-plane__inner"
-          style={
-            {
-              width,
-              transform: zoom === 1 ? undefined : `scale(${zoom})`,
-              transformOrigin: "0 0",
-              "--canvas-col-pitch": `${CANVAS_COL_PITCH}px`,
-              "--canvas-row-pitch": `${CANVAS_ROW_PITCH}px`,
-              "--canvas-gap": `${CANVAS_GAP}px`,
-              "--canvas-spare-rows": `${CANVAS_SPARE_ROWS * CANVAS_ROW_PITCH}px`,
-            } as CSSProperties
-          }
+          className="canvas-plane__sizer"
+          style={{ width: width * zoom, height: planeHeight * zoom }}
         >
-          {/* The mesh is a real element, not a background on the plane, and
-              that is deliberate. It is what a pan or a pinch is aimed at, so
-              it can carry touch-action: none while the tiles above it keep
-              theirs: touch-action cannot be re-enabled by a descendant, so
-              putting it on a shared ancestor would cost every widget the
-              ability to scroll its own list with a finger.
-
-              Drawn at the pitch the grid snaps to, offset by the same
-              gutter, so a tile lands on a line rather than near one. */}
-          <div className="canvas-plane__mesh" aria-hidden="true" />
-          {overlay?.(zoom)}
-          <GridLayout
-            key={resyncKey}
-            width={width}
-            layout={toLayout(tiles)}
-            gridConfig={{
-              cols,
-              rowHeight: CANVAS_ROW_HEIGHT,
-              margin: [CANVAS_GAP, CANVAS_GAP],
-            }}
-            dragConfig={{
-              handle: DRAG_HANDLE_SELECTOR,
-              cancel: DRAG_CANCEL_SELECTOR,
-              bounded: false,
-            }}
-            resizeConfig={{ handles: ["se", "e", "s"] }}
-            compactor={COMPACTOR}
-            positionStrategy={strategy}
-            onDragStop={(layout) => commit(layout)}
-            onResizeStop={(layout) => commit(layout)}
+          <div
+            ref={inner}
+            className="canvas-plane__inner"
+            style={
+              {
+                width,
+                transform: zoom === 1 ? undefined : `scale(${zoom})`,
+                transformOrigin: "0 0",
+                "--canvas-col-pitch": `${CANVAS_COL_PITCH}px`,
+                "--canvas-row-pitch": `${CANVAS_ROW_PITCH}px`,
+                "--canvas-gap": `${CANVAS_GAP}px`,
+                "--canvas-spare-rows": `${CANVAS_SPARE_ROWS * CANVAS_ROW_PITCH}px`,
+                "--canvas-extra-rows": `${extraRows * CANVAS_ROW_PITCH}px`,
+              } as CSSProperties
+            }
           >
-            {tiles.map((tile) => (
-              <div key={tile.moduleId} data-module-id={tile.moduleId} className="canvas-tile">
-                {renderTile(tile)}
-              </div>
-            ))}
-          </GridLayout>
+            {/* The mesh is a real element, not a background on the plane, and
+                that is deliberate. It is what a pan or a pinch is aimed at, so
+                it can carry touch-action: none while the tiles above it keep
+                theirs: touch-action cannot be re-enabled by a descendant, so
+                putting it on a shared ancestor would cost every widget the
+                ability to scroll its own list with a finger.
+
+                Drawn at the pitch the grid snaps to, offset by the same
+                gutter, so a tile lands on a line rather than near one. */}
+            <div className="canvas-plane__mesh" aria-hidden="true" />
+            {overlay?.(zoom)}
+            <GridLayout
+              key={resyncKey}
+              width={width}
+              layout={toLayout(tiles)}
+              gridConfig={{
+                cols,
+                rowHeight: CANVAS_ROW_HEIGHT,
+                margin: [CANVAS_GAP, CANVAS_GAP],
+              }}
+              dragConfig={{
+                handle: DRAG_HANDLE_SELECTOR,
+                cancel: DRAG_CANCEL_SELECTOR,
+                bounded: false,
+              }}
+              resizeConfig={{ handles: ["se", "e", "s"] }}
+              compactor={COMPACTOR}
+              positionStrategy={strategy}
+              onDragStop={(layout) => commit(layout)}
+              onResizeStop={(layout) => commit(layout)}
+            >
+              {tiles.map((tile) => (
+                <div key={tile.moduleId} data-module-id={tile.moduleId} className="canvas-tile">
+                  {renderTile(tile)}
+                </div>
+              ))}
+            </GridLayout>
+          </div>
         </div>
       </div>
+
+      {(["top", "right", "bottom", "left"] as const).map((side) => {
+        const disabled =
+          shiftingOrigin ||
+          ((side === "left" || side === "right") && !canAddHorizontal) ||
+          (side === "top" && !canShiftDown) ||
+          (side === "bottom" && !canAddBottom);
+        const direction = {
+          top: "above",
+          right: "to the right",
+          bottom: "below",
+          left: "to the left",
+        }[side];
+        return (
+          <button
+            key={side}
+            type="button"
+            className={`canvas-edge-add canvas-edge-add--${side}`}
+            aria-label={`Add canvas space ${direction}`}
+            title={`Add about 400 pixels ${direction}`}
+            disabled={disabled}
+            onClick={() => void addSpace(side)}
+          >
+            <Plus aria-hidden="true" />
+          </button>
+        );
+      })}
     </div>
   );
 }

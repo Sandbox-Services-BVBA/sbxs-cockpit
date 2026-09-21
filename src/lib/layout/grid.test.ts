@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  CANVAS_COL_PITCH,
   CANVAS_COLS,
+  CANVAS_EXPAND_COLS,
+  CANVAS_EXPAND_ROWS,
+  CANVAS_ROW_PITCH,
   findFreeRect,
   packRects,
   planeWidth,
@@ -98,6 +102,11 @@ describe("findFreeRect", () => {
 });
 
 describe("pixel geometry", () => {
+  it("adds about 400 pixels from every edge control", () => {
+    expect(CANVAS_EXPAND_COLS * CANVAS_COL_PITCH).toBe(416);
+    expect(CANVAS_EXPAND_ROWS * CANVAS_ROW_PITCH).toBe(384);
+  });
+
   it("puts column zero one gutter in and grows by a whole cell", () => {
     expect(tileLeftPx(0)).toBeLessThan(tileLeftPx(1));
     expect(tileLeftPx(2) - tileLeftPx(1)).toBe(tileLeftPx(1) - tileLeftPx(0));

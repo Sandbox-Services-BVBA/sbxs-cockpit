@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { CANVAS_MAX_COLS, CANVAS_MAX_ROWS } from "@/lib/layout/grid";
 import { LAYOUT_SCHEMA_VERSION, MAX_GROUPS, MAX_GROUP_NAME, type ModuleDefinition } from "@/lib/layout/types";
 
 // The catalog is owned by the resolver work; validation only needs a handful
@@ -241,8 +242,8 @@ describe("validateProfile rectangles", () => {
   it("rejects a rectangle that runs off the plane", () => {
     // The board grows as tiles are dragged outwards, so the ceiling is the
     // maximum it may ever reach, not the width it starts at.
-    expectError(rect({ x: 94, y: 0, w: 6, h: 6 }), /past the right edge/);
-    expectError(rect({ x: 0, y: 399, w: 6, h: 6 }), /past the bottom/);
+    expectError(rect({ x: CANVAS_MAX_COLS - 2, y: 0, w: 6, h: 6 }), /past the right edge/);
+    expectError(rect({ x: 0, y: CANVAS_MAX_ROWS - 1, w: 6, h: 6 }), /past the bottom/);
   });
 
   it("rejects a rectangle smaller than the module's own minimum", () => {

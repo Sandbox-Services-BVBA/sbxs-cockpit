@@ -289,6 +289,7 @@ button.editor-link {
 .canvas-tile__grip:focus-visible,
 .canvas-tile__btn:focus-visible,
 .canvas-add:focus-visible,
+.canvas-edge-add:focus-visible,
 .canvas-toast__undo:focus-visible,
 .canvas-status__action:focus-visible,
 .canvas-tray__reset:focus-visible {
@@ -325,7 +326,7 @@ button.editor-link {
   flex-direction: column;
 }
 
-.canvas-plane {
+.canvas-plane-shell {
   position: relative;
   min-height: 0;
   flex: 1;
@@ -333,12 +334,85 @@ button.editor-link {
      margin is wasted board. The plane brings its own inner padding. */
   margin-right: calc(var(--main-pad-right) * -1);
   margin-left: calc(var(--main-pad-left) * -1);
+}
+
+.canvas-plane {
+  position: absolute;
+  inset: 0;
   overflow: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   overscroll-behavior: contain;
   /* Opaque, so the page's own fixed background texture does not show
      through and fight the mesh, which is the grid that actually means
      something here. */
   background: var(--background);
+}
+
+.canvas-plane::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.canvas-edge-add {
+  position: absolute;
+  z-index: 8;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  color: var(--muted-foreground);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.18);
+  opacity: 0.72;
+  backdrop-filter: blur(12px);
+  transition: color 120ms ease, opacity 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.canvas-edge-add:hover {
+  border-color: color-mix(in srgb, var(--domain-accent, var(--teal)) 48%, transparent);
+  color: var(--domain-accent, var(--teal));
+  opacity: 1;
+  transform: scale(1.06);
+}
+
+.canvas-edge-add:disabled {
+  pointer-events: none;
+  opacity: 0.24;
+}
+
+.canvas-edge-add svg {
+  width: 15px;
+  height: 15px;
+}
+
+.canvas-edge-add--top,
+.canvas-edge-add--bottom {
+  left: 50%;
+  translate: -50% 0;
+}
+
+.canvas-edge-add--top {
+  top: 10px;
+}
+
+.canvas-edge-add--right {
+  top: 50%;
+  right: 10px;
+  translate: 0 -50%;
+}
+
+.canvas-edge-add--bottom {
+  bottom: 10px;
+}
+
+.canvas-edge-add--left {
+  top: 50%;
+  left: 10px;
+  translate: 0 -50%;
 }
 
 
@@ -354,7 +428,7 @@ button.editor-link {
   /* Empty rows past the lowest tile: somewhere to drag one down to, and
      enough room that the bottom of the board can still be scrolled into the
      middle of the screen. Width grows the same way, in the component. */
-  padding-bottom: max(var(--canvas-spare-rows), 40vh);
+  padding-bottom: calc(max(var(--canvas-spare-rows), 40vh) + var(--canvas-extra-rows));
 }
 
 /* The board itself: the grid, and the thing you grab to move around. */

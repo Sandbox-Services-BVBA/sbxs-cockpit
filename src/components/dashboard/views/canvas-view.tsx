@@ -100,10 +100,10 @@ export function CanvasView() {
   );
 
   const onRects = useCallback(
-    (rects: Record<string, TileRect>) => {
-      void setRects(VIEW, rects).then((ok) => {
-        if (!ok) setResyncKey((key) => key + 1);
-      });
+    async (rects: Record<string, TileRect>) => {
+      const ok = await setRects(VIEW, rects);
+      if (!ok) setResyncKey((key) => key + 1);
+      return ok;
     },
     [setRects]
   );

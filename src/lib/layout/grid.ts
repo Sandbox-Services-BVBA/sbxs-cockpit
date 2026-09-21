@@ -21,8 +21,15 @@ export const CANVAS_COLS = 32;
  */
 export const CANVAS_SPARE_COLS = 8;
 export const CANVAS_SPARE_ROWS = 12;
-/** Where growing stops, so a runaway profile cannot ask for a mile of board. */
-export const CANVAS_MAX_COLS = 96;
+/** One click on an edge control adds roughly 400 pixels in that direction. */
+export const CANVAS_EXPAND_COLS = 4;
+export const CANVAS_EXPAND_ROWS = 12;
+/**
+ * A corruption guard, not a working limit. At more than 400,000 pixels wide
+ * and 130,000 pixels tall, these bounds are effectively unreachable by hand
+ * while still keeping a malformed profile finite.
+ */
+export const CANVAS_MAX_COLS = 4096;
 /** One column, in pixels, before the gap. */
 export const CANVAS_COL_WIDTH = 92;
 /** One row, in pixels, before the gap. */
@@ -30,11 +37,10 @@ export const CANVAS_ROW_HEIGHT = 20;
 /** The gutter between tiles, and the padding around the plane. */
 export const CANVAS_GAP = 12;
 /**
- * How far down the plane a tile may be placed. Deep enough that Bob will
- * never hit it, shallow enough that a corrupt profile cannot ask the
- * browser for a kilometre of empty div.
+ * How far down the plane a tile may be placed. This is deliberately the same
+ * practically-unreachable guard as the horizontal bound.
  */
-export const CANVAS_MAX_ROWS = 400;
+export const CANVAS_MAX_ROWS = 4096;
 
 /**
  * How wide the board has to be to hold these tiles and still offer room to

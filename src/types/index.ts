@@ -187,9 +187,15 @@ export interface Service {
 export interface AiProviderUsage {
   ok: boolean;
   error?: string | null;
+  account?: string;
+  email?: string;
+  active?: boolean;
+  rate_limit_reached?: boolean;
   plan?: string | null;
+  session_label?: string;
   session_pct: number | null;
   session_resets_at: string | null;
+  weekly_label?: string;
   weekly_pct: number | null;
   weekly_resets_at: string | null;
   weekly_model_pct?: number | null;
@@ -199,7 +205,9 @@ export interface AiProviderUsage {
 
 export interface AiUsage {
   claude: AiProviderUsage | null;
+  /** Active Codex account, retained for older agent payloads. */
   codex: AiProviderUsage | null;
+  codex_accounts?: AiProviderUsage[];
 }
 
 export interface FileChange {

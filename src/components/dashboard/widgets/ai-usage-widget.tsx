@@ -64,7 +64,15 @@ function ProviderBlock({ name, usage, nowMs }: {
   if (!usage.ok) {
     return (
       <div>
-        <p className="text-petite font-bold">{name}</p>
+        <p className="truncate text-petite font-bold">
+          {name}
+          {usage.active && (
+            <span className="ml-1.5 rounded bg-primary/15 px-1 py-0.5 font-mono text-[9px] font-normal uppercase text-primary">
+              active
+            </span>
+          )}
+        </p>
+        {usage.email && <p className="truncate font-mono text-mini text-muted-foreground">{usage.email}</p>}
         <p className="mt-1 truncate text-mini text-red-400" title={usage.error ?? ""}>
           {usage.error || "collector failed"}
         </p>
@@ -79,12 +87,20 @@ function ProviderBlock({ name, usage, nowMs }: {
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-petite font-bold">
-          {name}
-          {usage.plan && (
-            <span className="ml-1.5 font-mono text-mini font-normal uppercase text-muted-foreground">{usage.plan}</span>
-          )}
-        </p>
+        <div className="min-w-0">
+          <p className="truncate text-petite font-bold">
+            {name}
+            {usage.plan && (
+              <span className="ml-1.5 font-mono text-mini font-normal uppercase text-muted-foreground">{usage.plan}</span>
+            )}
+            {usage.active && (
+              <span className="ml-1.5 rounded bg-primary/15 px-1 py-0.5 font-mono text-[9px] font-normal uppercase text-primary">
+                active
+              </span>
+            )}
+          </p>
+          {usage.email && <p className="truncate font-mono text-mini text-muted-foreground">{usage.email}</p>}
+        </div>
         {snapshotAgeMin != null && snapshotAgeMin > 30 && (
           <span className="font-mono text-mini text-muted-foreground" title="Age of the last usage snapshot">
             {relTime(usage.captured_at, nowMs)}
@@ -92,8 +108,10 @@ function ProviderBlock({ name, usage, nowMs }: {
         )}
       </div>
       <div className="mt-1.5 space-y-1.5">
-        <Meter label="5h" pct={usage.session_pct} resetsAt={usage.session_resets_at} nowMs={nowMs} />
-        <Meter label="7d" pct={usage.weekly_pct} resetsAt={usage.weekly_resets_at} nowMs={nowMs} />
+        <Meter label={usage.session_label || "5h"} pct={usage.session_pct} resetsAt={usage.session_resets_at} nowMs={nowMs} />
+        {usage.weekly_pct != null && (
+          <Meter label={usage.weekly_label || "7d"} pct={usage.weekly_pct} resetsAt={usage.weekly_resets_at} nowMs={nowMs} />
+        )}
         {usage.weekly_model_pct != null && (
           <Meter
             label={`7d ${usage.weekly_model_name || "model"}`}
@@ -122,11 +140,24 @@ export function AiUsageWidget({ aiUsage }: { aiUsage?: AiUsage | null }) {
     );
   }
 
+  const codexAccounts = aiUsage.codex_accounts?.length
+    ? aiUsage.codex_accounts
+    : aiUsage.codex
+      ? [aiUsage.codex]
+      : [];
+
   return (
     <WidgetTile title="AI Usage" size="sm">
       <div className="space-y-4">
         <ProviderBlock name="Claude" usage={aiUsage.claude} nowMs={now} />
-        <ProviderBlock name="Codex" usage={aiUsage.codex} nowMs={now} />
+        {codexAccounts.length ? codexAccounts.map((usage) => (
+          <ProviderBlock
+            key={usage.account || usage.email || "codex"}
+            name="ChatGPT / Codex"
+            usage={usage}
+            nowMs={now}
+          />
+        )) : <ProviderBlock name="ChatGPT / Codex" usage={null} nowMs={now} />}
       </div>
     </WidgetTile>
   );

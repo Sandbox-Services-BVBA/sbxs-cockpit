@@ -8,30 +8,31 @@ import type { ServerHealth } from "@/types";
 import { cutByDensity, foldLabel } from "../infra/density";
 import { DensityFold } from "../infra/density-fold";
 
-function Bar({ value, color }: { value: number; color: string }) {
+function Bar({ value, color }: { value: number | null; color: string }) {
   return (
     <div className="h-2 bg-muted border border-border flex-1">
-      <div className={cn("h-full", color)} style={{ width: `${Math.min(100, value)}%` }} />
+      <div className={cn("h-full", color)} style={{ width: `${value == null ? 0 : Math.min(100, value)}%` }} />
     </div>
   );
 }
 
 function MiniServer({ s }: { s: ServerHealth }) {
-  const diskColor = s.disk_usage_percent >= 90 ? "bg-[#ff4444]" : s.disk_usage_percent >= 80 ? "bg-[#ccaa33]" : "bg-[#33aa55]";
+  const diskColor = s.disk_usage_percent == null ? "bg-muted-foreground" : s.disk_usage_percent >= 90 ? "bg-[#ff4444]" : s.disk_usage_percent >= 80 ? "bg-[#ccaa33]" : "bg-[#33aa55]";
   const ramColor = s.ram_usage_percent >= 90 ? "bg-[#ff4444]" : s.ram_usage_percent >= 80 ? "bg-[#ccaa33]" : "bg-chart-2";
   const upDays = Math.floor(s.uptime_seconds / 86400);
+  const state = s.node_status === "running" ? `${upDays}d` : s.node_status.replace("-", " ");
 
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
         <span className="text-petite font-bold truncate">{s.server_name}</span>
-        <span className="text-mini text-muted-foreground font-mono">{upDays}d</span>
+        <span className="text-mini text-muted-foreground font-mono">{state}</span>
       </div>
       <div className="space-y-0.5">
         <div className="flex items-center gap-1.5">
           <span className="text-mini text-muted-foreground w-6 font-mono">DSK</span>
           <Bar value={s.disk_usage_percent} color={diskColor} />
-          <span className="text-mini font-mono w-7 text-right">{s.disk_usage_percent}%</span>
+          <span className="text-mini font-mono w-7 text-right">{s.disk_usage_percent == null ? "--" : `${s.disk_usage_percent}%`}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-mini text-muted-foreground w-6 font-mono">RAM</span>
@@ -51,7 +52,9 @@ function MiniServer({ s }: { s: ServerHealth }) {
 // The same 80% line the amber bars use, so a node folded away at summary is
 // one that would have drawn every bar green.
 function headroom(s: ServerHealth): boolean {
-  return s.disk_usage_percent < 80 && s.ram_usage_percent < 80 && s.cpu_usage_percent < 80;
+  if (s.node_status === "stopped") return true;
+  if (s.node_status !== "running") return false;
+  return (s.disk_usage_percent == null || s.disk_usage_percent < 80) && s.ram_usage_percent < 80 && s.cpu_usage_percent < 80;
 }
 
 export function ServersWidget({
@@ -73,9 +76,10 @@ export function ServersWidget({
   }
 
   const cut = cutByDensity(servers, density, headroom, expanded);
+  const vmCount = servers.filter((server) => server.node_kind === "vm").length;
 
   return (
-    <WidgetTile title="Servers" size="lg" headerRight={<span className="text-mini text-muted-foreground font-mono">{servers.length} nodes</span>}>
+    <WidgetTile title="Servers" size="lg" headerRight={<span className="text-mini text-muted-foreground font-mono">{servers.length} nodes · {vmCount} VMs</span>}>
       {cut.rows.length > 0 && (
         <div className="grid grid-cols-2 gap-2 @lg:grid-cols-3 @3xl:grid-cols-4 @5xl:grid-cols-5">
           {cut.rows.map((s) => (

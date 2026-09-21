@@ -804,6 +804,11 @@
   border-color: color-mix(in srgb, var(--rose) 40%, transparent);
 }
 
+.node[data-tone="idle"] {
+  --node-tone: var(--ink-quiet);
+  opacity: 0.72;
+}
+
 .node__head {
   display: flex;
   align-items: baseline;
@@ -851,6 +856,7 @@
 
 .meter[data-tone="warn"] { --meter-tone: var(--amber); }
 .meter[data-tone="bad"] { --meter-tone: var(--rose); }
+.meter[data-tone="idle"] { --meter-tone: var(--ink-quiet); }
 
 .meter__label {
   width: 24px;

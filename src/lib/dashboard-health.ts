@@ -108,7 +108,12 @@ export function getDashboardHealth(data: DashboardData | null): DashboardHealth 
   const warningAlerts = data.alerts.filter((alert) => alert.severity === "warning").length;
   const downSites = data.uptime.filter((site) => !site.is_up).length;
   const serverIssues = data.servers.filter(
-    (server) => server.disk_usage_percent >= 80 || server.ram_usage_percent >= 90 || server.cpu_usage_percent >= 90
+    (server) =>
+      server.node_status !== "stopped" &&
+      (server.node_status !== "running" ||
+        (server.disk_usage_percent != null && server.disk_usage_percent >= 80) ||
+        server.ram_usage_percent >= 90 ||
+        server.cpu_usage_percent >= 90)
   ).length;
   const backupIssues = data.backups.filter((backup) => backup.status !== "ok").length;
   const integrationIssues = data.integrations.filter((integration) => integration.status !== "ok").length;

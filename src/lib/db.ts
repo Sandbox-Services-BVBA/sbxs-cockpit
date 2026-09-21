@@ -38,6 +38,22 @@ export function getDb(): Database.Database {
 }
 
 function runMigrations(db: Database.Database) {
+  const serverCols = db.prepare("PRAGMA table_info(server_health)").all() as { name: string }[];
+  const serverColNames = new Set(serverCols.map((c) => c.name));
+
+  if (!serverColNames.has("node_kind")) {
+    db.exec("ALTER TABLE server_health ADD COLUMN node_kind TEXT NOT NULL DEFAULT 'server'");
+  }
+  if (!serverColNames.has("node_status")) {
+    db.exec("ALTER TABLE server_health ADD COLUMN node_status TEXT NOT NULL DEFAULT 'running'");
+  }
+  if (!serverColNames.has("hypervisor")) {
+    db.exec("ALTER TABLE server_health ADD COLUMN hypervisor TEXT");
+  }
+  if (!serverColNames.has("vm_id")) {
+    db.exec("ALTER TABLE server_health ADD COLUMN vm_id INTEGER");
+  }
+
   // Add columns if they don't exist (safe to re-run)
   const cols = db.prepare("PRAGMA table_info(projects)").all() as { name: string }[];
   const colNames = new Set(cols.map((c) => c.name));
@@ -98,6 +114,10 @@ function initSchema(db: Database.Database) {
     CREATE TABLE IF NOT EXISTS server_health (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       server_name TEXT NOT NULL,
+      node_kind TEXT NOT NULL DEFAULT 'server',
+      node_status TEXT NOT NULL DEFAULT 'running',
+      hypervisor TEXT,
+      vm_id INTEGER,
       disk_total_gb REAL DEFAULT 0,
       disk_used_gb REAL DEFAULT 0,
       disk_usage_percent REAL DEFAULT 0,

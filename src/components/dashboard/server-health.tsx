@@ -15,13 +15,15 @@ function formatUptime(seconds: number): string {
   return `${hours}h ${mins}m`;
 }
 
-function getProgressColor(percent: number): string {
+function getProgressColor(percent: number | null): string {
+  if (percent == null) return "[&>div]:bg-muted-foreground";
   if (percent >= 90) return "[&>div]:bg-red-500";
   if (percent >= 80) return "[&>div]:bg-amber-500";
   return "[&>div]:bg-emerald-500";
 }
 
-function getDiskStatus(percent: number): "ok" | "warning" | "critical" {
+function getDiskStatus(percent: number | null): "ok" | "warning" | "critical" {
+  if (percent == null) return "ok";
   if (percent >= 90) return "critical";
   if (percent >= 80) return "warning";
   return "ok";
@@ -41,7 +43,7 @@ function ServerCard({ server }: { server: ServerHealthType }) {
           <StatusDot status={diskStatus} size="md" />
         </div>
         <p className="text-xs text-muted-foreground">
-          Up {formatUptime(server.uptime_seconds)}
+          {server.node_status === "running" ? `Up ${formatUptime(server.uptime_seconds)}` : server.node_status}
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -52,10 +54,10 @@ function ServerCard({ server }: { server: ServerHealthType }) {
               Disk
             </div>
             <span className={cn("font-medium", diskStatus === "critical" && "text-red-400", diskStatus === "warning" && "text-amber-400")}>
-              {server.disk_used_gb.toFixed(1)} / {server.disk_total_gb.toFixed(0)} GB
+              {server.disk_used_gb == null ? "Usage unavailable" : `${server.disk_used_gb.toFixed(1)} / ${server.disk_total_gb.toFixed(0)} GB`}
             </span>
           </div>
-          <Progress value={server.disk_usage_percent} className={cn("h-2", getProgressColor(server.disk_usage_percent))} />
+          <Progress value={server.disk_usage_percent ?? 0} className={cn("h-2", getProgressColor(server.disk_usage_percent))} />
         </div>
 
         <div className="space-y-2">

@@ -14,20 +14,26 @@ export async function POST(request: NextRequest) {
 
   // Ingest server health
   if (payload.servers) {
+    const checkedAt = new Date().toISOString().slice(0, 19).replace("T", " ");
     const stmt = db.prepare(`
-      INSERT INTO server_health (server_name, disk_total_gb, disk_used_gb, disk_usage_percent,
-        ram_total_mb, ram_used_mb, ram_usage_percent, cpu_usage_percent, uptime_seconds)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO server_health (server_name, node_kind, node_status, hypervisor, vm_id,
+        disk_total_gb, disk_used_gb, disk_usage_percent, ram_total_mb, ram_used_mb,
+        ram_usage_percent, cpu_usage_percent, uptime_seconds, checked_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     for (const s of payload.servers) {
       stmt.run(
-        s.server_name, s.disk_total_gb, s.disk_used_gb, s.disk_usage_percent,
-        s.ram_total_mb, s.ram_used_mb, s.ram_usage_percent, s.cpu_usage_percent, s.uptime_seconds
+        s.server_name, s.node_kind || "server", s.node_status || "running",
+        s.hypervisor || null, s.vm_id ?? null, s.disk_total_gb, s.disk_used_gb,
+        s.disk_usage_percent, s.ram_total_mb, s.ram_used_mb, s.ram_usage_percent,
+        s.cpu_usage_percent, s.uptime_seconds, checkedAt
       );
 
       // Check disk alerts
-      if (s.disk_usage_percent >= config.alerts.diskCriticalPercent) {
+      if (s.disk_usage_percent == null) {
+        continue;
+      } else if (s.disk_usage_percent >= config.alerts.diskCriticalPercent) {
         createAlert("critical", "disk", s.server_name, `Disk at ${s.disk_usage_percent.toFixed(1)}%`);
       } else if (s.disk_usage_percent >= config.alerts.diskWarningPercent) {
         createAlert("warning", "disk", s.server_name, `Disk at ${s.disk_usage_percent.toFixed(1)}%`);

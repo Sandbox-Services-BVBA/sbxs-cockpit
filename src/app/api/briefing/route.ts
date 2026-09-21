@@ -32,14 +32,17 @@ async function buildBriefing(): Promise<string> {
   const db = getDb();
   const servers = db.prepare(`
     SELECT * FROM server_health
-    WHERE id IN (SELECT MAX(id) FROM server_health GROUP BY server_name)
+    WHERE checked_at = (SELECT MAX(checked_at) FROM server_health)
+    ORDER BY node_kind, server_name
   `).all() as ServerHealth[];
 
   if (servers.length > 0) {
     parts.push("<b>Servers</b>");
     for (const s of servers) {
-      const diskIcon = s.disk_usage_percent >= 80 ? "!" : "";
-      parts.push(`${diskIcon} ${s.server_name}: disk ${s.disk_usage_percent.toFixed(0)}%, RAM ${s.ram_usage_percent.toFixed(0)}%`);
+      const diskIcon = s.disk_usage_percent != null && s.disk_usage_percent >= 80 ? "!" : "";
+      const disk = s.disk_usage_percent == null ? "disk unmeasured" : `disk ${s.disk_usage_percent.toFixed(0)}%`;
+      const state = s.node_status !== "running" ? `, ${s.node_status}` : "";
+      parts.push(`${diskIcon} ${s.server_name}: ${disk}, RAM ${s.ram_usage_percent.toFixed(0)}%${state}`);
     }
     parts.push("");
   }

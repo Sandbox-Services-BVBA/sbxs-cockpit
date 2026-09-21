@@ -18,13 +18,13 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const db = getDb();
 
-  // Latest health per server (most recent entry per server_name)
+  // One coherent agent snapshot. Selecting the latest row per name leaves
+  // deleted VMs behind forever; every ingestion batch shares checked_at so the
+  // dashboard reflects the current Proxmox inventory exactly.
   const servers = db.prepare(`
     SELECT * FROM server_health
-    WHERE id IN (
-      SELECT MAX(id) FROM server_health GROUP BY server_name
-    )
-    ORDER BY server_name
+    WHERE checked_at = (SELECT MAX(checked_at) FROM server_health)
+    ORDER BY node_kind, server_name
   `).all() as ServerHealth[];
 
   // Latest backup status per backup_name

@@ -1,9 +1,13 @@
 export interface ServerHealth {
   id: number;
   server_name: string;
+  node_kind: "server" | "vm";
+  node_status: string;
+  hypervisor: string | null;
+  vm_id: number | null;
   disk_total_gb: number;
-  disk_used_gb: number;
-  disk_usage_percent: number;
+  disk_used_gb: number | null;
+  disk_usage_percent: number | null;
   ram_total_mb: number;
   ram_used_mb: number;
   ram_usage_percent: number;

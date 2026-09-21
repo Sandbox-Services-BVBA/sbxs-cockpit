@@ -24,9 +24,10 @@ export function InfraSummary({ data }: { data: DashboardData }) {
   const services = data.services;
   const backups = data.backups ?? [];
 
-  const nodesTight = servers.filter(
+  const runningNodes = servers.filter((server) => server.node_status === "running");
+  const nodesTight = runningNodes.filter(
     (server) =>
-      server.disk_usage_percent >= 80 ||
+      (server.disk_usage_percent != null && server.disk_usage_percent >= 80) ||
       server.ram_usage_percent >= 80 ||
       server.cpu_usage_percent >= 80
   ).length;
@@ -40,8 +41,8 @@ export function InfraSummary({ data }: { data: DashboardData }) {
     <section className="tally-strip" aria-label="Infrastructure rollup">
       <Tally
         label="Nodes"
-        value={servers.length ? `${servers.length - nodesTight}/${servers.length}` : "--"}
-        note={servers.length ? "with headroom" : "none reporting"}
+        value={runningNodes.length ? `${runningNodes.length - nodesTight}/${runningNodes.length}` : "--"}
+        note={servers.length ? `${servers.length} inventoried` : "none reporting"}
       />
       <Tally
         label="Connections"

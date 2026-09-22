@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type RefObject } from "react";
+import { anchoredZoomScroll, type ScrollPoint } from "./canvas-zoom";
 
 // Every gesture that belongs to the plane rather than to a tile: drag the
 // bare board to move around it, pinch or scroll to zoom the whole thing.
@@ -39,6 +40,8 @@ export function useCanvasGestures(scroller: RefObject<HTMLDivElement | null>): C
   // captured in a closure. Re-attaching them per render would tear down a
   // pan halfway through it.
   const zoomRef = useRef(1);
+  const pendingScroll = useRef<ScrollPoint | null>(null);
+  const scrollFrame = useRef<number | null>(null);
   const zoomAtRef = useRef<((next: number, clientX?: number, clientY?: number) => void) | null>(null);
 
   /**
@@ -57,19 +60,30 @@ export function useCanvasGestures(scroller: RefObject<HTMLDivElement | null>): C
     const box = el.getBoundingClientRect();
     const pointerX = (clientX ?? box.left + box.width / 2) - box.left;
     const pointerY = (clientY ?? box.top + box.height / 2) - box.top;
-    // Where that point sits on the board, in unscaled plane pixels.
-    const planeX = (el.scrollLeft + pointerX) / from;
-    const planeY = (el.scrollTop + pointerY) / from;
+    // Several wheel events commonly arrive before React paints. Continue
+    // from the scroll position the previous event requested, rather than
+    // from the stale DOM position, or the anchor drifts during a fast zoom.
+    pendingScroll.current = anchoredZoomScroll(
+      pendingScroll.current ?? { left: el.scrollLeft, top: el.scrollTop },
+      { x: pointerX, y: pointerY },
+      from,
+      to
+    );
 
     zoomRef.current = to;
     setZoom(to);
 
-    // The sizer has not been re-laid-out yet, so the scroll has to wait a
-    // frame or the browser clamps it against the old, smaller extent.
-    requestAnimationFrame(() => {
-      el.scrollLeft = planeX * to - pointerX;
-      el.scrollTop = planeY * to - pointerY;
-    });
+    // Coalesce a burst of wheel events. React commits the final scale before
+    // this frame, and the single scroll uses the final chained anchor.
+    if (scrollFrame.current === null) {
+      scrollFrame.current = requestAnimationFrame(() => {
+        const current = scroller.current;
+        const target = pendingScroll.current;
+        if (current && target) current.scrollTo(target);
+        pendingScroll.current = null;
+        scrollFrame.current = null;
+      });
+    }
   }
 
   // Declared before the listener effect, so it has run by the time the
@@ -184,6 +198,13 @@ export function useCanvasGestures(scroller: RefObject<HTMLDivElement | null>): C
       el.removeEventListener("wheel", onWheel);
     };
   }, [scroller]);
+
+  useEffect(
+    () => () => {
+      if (scrollFrame.current !== null) cancelAnimationFrame(scrollFrame.current);
+    },
+    []
+  );
 
   return { zoom, panning, resetZoom };
 }

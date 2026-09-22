@@ -1,17 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  CANVAS_COL_PITCH,
   CANVAS_COLS,
-  CANVAS_EXPAND_COLS,
-  CANVAS_EXPAND_ROWS,
-  CANVAS_ROW_PITCH,
   findFreeRect,
   packRects,
+  planeHeight,
   planeWidth,
   rectsOverlap,
   tileLeftPx,
   tileTopPx,
-  viewportCols,
 } from "./grid";
 import type { TileRect } from "./types";
 
@@ -102,32 +98,14 @@ describe("findFreeRect", () => {
 });
 
 describe("pixel geometry", () => {
-  it("adds about 400 pixels from every edge control", () => {
-    expect(CANVAS_EXPAND_COLS * CANVAS_COL_PITCH).toBe(416);
-    expect(CANVAS_EXPAND_ROWS * CANVAS_ROW_PITCH).toBe(384);
+  it("uses matching formulas for the fixed world's width and height", () => {
+    expect(planeWidth(2)).toBe(2 * 92 + 3 * 12);
+    expect(planeHeight(2)).toBe(2 * 20 + 3 * 12);
   });
 
   it("puts column zero one gutter in and grows by a whole cell", () => {
     expect(tileLeftPx(0)).toBeLessThan(tileLeftPx(1));
     expect(tileLeftPx(2) - tileLeftPx(1)).toBe(tileLeftPx(1) - tileLeftPx(0));
     expect(tileTopPx(2) - tileTopPx(1)).toBe(tileTopPx(1) - tileTopPx(0));
-  });
-
-  it("expands the plane to cover an ultrawide viewport", () => {
-    const cols = viewportCols(5120);
-    expect(cols).toBeGreaterThan(CANVAS_COLS);
-    expect(planeWidth(cols)).toBeGreaterThanOrEqual(5120);
-    expect(planeWidth(cols - 1)).toBeLessThan(5120);
-  });
-
-  it("accounts for zoom when covering the viewport", () => {
-    const cols = viewportCols(2560, 0.75);
-    expect(planeWidth(cols) * 0.75).toBeGreaterThanOrEqual(2560);
-    expect(planeWidth(cols - 1) * 0.75).toBeLessThan(2560);
-  });
-
-  it("keeps ordinary viewports at the familiar starting width", () => {
-    expect(viewportCols(1512)).toBe(CANVAS_COLS);
-    expect(viewportCols(Number.NaN, 0)).toBe(CANVAS_COLS);
   });
 });

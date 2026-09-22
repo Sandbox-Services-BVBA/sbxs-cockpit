@@ -14,16 +14,10 @@ import type { TileRect, TileSize } from "./types";
  */
 export const CANVAS_COLS = 32;
 /**
- * The plane always keeps this much empty board past the outermost tile, and
- * grows to provide it. Without spare room there is nowhere to drag a tile
- * *to*: the board would be exactly as big as what is already on it, and
- * rearranging would mean swapping rather than moving.
+ * Compact width calculations keep this many free columns past the furthest
+ * tile. The rendered world itself is always the full safety envelope.
  */
 export const CANVAS_SPARE_COLS = 8;
-export const CANVAS_SPARE_ROWS = 12;
-/** One click on an edge control adds roughly 400 pixels in that direction. */
-export const CANVAS_EXPAND_COLS = 4;
-export const CANVAS_EXPAND_ROWS = 12;
 /**
  * A corruption guard, not a working limit. At more than 400,000 pixels wide
  * and 130,000 pixels tall, these bounds are effectively unreachable by hand
@@ -43,9 +37,9 @@ export const CANVAS_GAP = 12;
 export const CANVAS_MAX_ROWS = 4096;
 
 /**
- * How wide the board has to be to hold these tiles and still offer room to
- * drag one further out. It grows as Bob works outwards and never shrinks
- * below the starting width, so the board he learned the shape of keeps it.
+ * Compact width used when scanning for the first free rectangle. Rendering
+ * uses `CANVAS_MAX_COLS`; this keeps Add close to the existing layout rather
+ * than sending a reopened tile into the far side of the virtual world.
  */
 export function planeCols(rects: readonly TileRect[]): number {
   const furthest = rects.reduce((max, rect) => Math.max(max, rect.x + rect.w), 0);
@@ -57,21 +51,9 @@ export function planeWidth(cols: number): number {
   return cols * CANVAS_COL_WIDTH + CANVAS_GAP * (cols + 1);
 }
 
-/**
- * Minimum column count needed for the scaled plane to cover a viewport.
- *
- * The board still grows from its tiles via `planeCols`; this prevents a wide
- * display (or a zoomed-out board) from running past the fixed starting plane
- * into an area that has no grid cells to arrange.
- */
-export function viewportCols(viewportWidth: number, zoom: number = 1): number {
-  const safeWidth = Number.isFinite(viewportWidth) ? Math.max(0, viewportWidth) : 0;
-  const safeZoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
-  const unscaledWidth = safeWidth / safeZoom;
-  const required = Math.ceil(
-    (unscaledWidth - CANVAS_GAP) / (CANVAS_COL_WIDTH + CANVAS_GAP)
-  );
-  return Math.min(CANVAS_MAX_COLS, Math.max(CANVAS_COLS, required));
+/** The height of a fixed world of `rows`, mirroring `planeWidth`. */
+export function planeHeight(rows: number): number {
+  return rows * CANVAS_ROW_HEIGHT + CANVAS_GAP * (rows + 1);
 }
 
 /** Pixel width of a tile that is `w` columns wide, gutters included. */

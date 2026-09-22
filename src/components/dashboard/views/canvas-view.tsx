@@ -14,6 +14,7 @@
 // been a different product wearing the same data.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LocateFixed } from "lucide-react";
 import { useDashboardData } from "@/hooks/use-dashboard-data";
 import { useHomeMode } from "@/components/dashboard/home/home-console-provider";
 import { getDashboardHealth } from "@/lib/dashboard-health";
@@ -72,10 +73,18 @@ export function CanvasView() {
   // Bumped when a write was refused, so the grid stops drawing a tile where
   // it was dropped and goes back to what is actually saved.
   const [resyncKey, setResyncKey] = useState(0);
-  // Zoom lives in the plane, which owns the gesture; the dock only needs a
-  // readout and a way back to 100 percent, so it is reported outwards.
-  const [zoom, setZoom] = useState<{ value: number; reset: () => void } | null>(null);
-  const onZoom = useCallback((value: number, reset: () => void) => setZoom({ value, reset }), []);
+  // The plane owns the camera; the fixed dock exposes the two useful ways
+  // home: reset the scale and return to the marked centre.
+  const [camera, setCamera] = useState<{
+    zoom: number;
+    resetZoom: () => void;
+    recenter: () => void;
+  } | null>(null);
+  const onNavigate = useCallback(
+    (zoom: number, resetZoom: () => void, recenter: () => void) =>
+      setCamera({ zoom, resetZoom, recenter }),
+    []
+  );
   // Which tiles are picked out, purely so they can be named as a group.
   // Never saved: a selection is a thing you are doing, not a thing you have.
   const [selected, setSelected] = useState<string[]>([]);
@@ -344,7 +353,7 @@ export function CanvasView() {
           onRects={onRects}
           resyncKey={resyncKey}
           renderTile={frame}
-          onZoom={onZoom}
+          onNavigate={onNavigate}
           overlay={(scale) =>
             resolved.groups.map((group) => (
               <GroupFrame
@@ -368,9 +377,20 @@ export function CanvasView() {
 
       <div className="canvas-dock">
         <SelectionBar count={selected.length} onGroup={makeGroup} onClear={() => setSelected([])} />
-        {zoom && zoom.value !== 1 && (
-          <button type="button" className="canvas-zoom" onClick={zoom.reset} title="Back to 100 percent">
-            {Math.round(zoom.value * 100)}%
+        {camera && camera.zoom !== 1 && (
+          <button type="button" className="canvas-zoom" onClick={camera.resetZoom} title="Back to 100 percent">
+            {Math.round(camera.zoom * 100)}%
+          </button>
+        )}
+        {camera && (
+          <button
+            type="button"
+            className="canvas-centre"
+            onClick={camera.recenter}
+            title="Return to the centre of the canvas"
+          >
+            <LocateFixed aria-hidden="true" />
+            Centre
           </button>
         )}
         <SaveStatus />

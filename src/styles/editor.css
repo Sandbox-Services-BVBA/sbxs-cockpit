@@ -355,68 +355,6 @@ button.editor-link {
   height: 0;
 }
 
-.canvas-edge-add {
-  position: absolute;
-  z-index: 8;
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--card) 88%, transparent);
-  color: var(--muted-foreground);
-  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.18);
-  opacity: 0.72;
-  backdrop-filter: blur(12px);
-  transition: color 120ms ease, opacity 120ms ease, border-color 120ms ease, transform 120ms ease;
-}
-
-.canvas-edge-add:hover {
-  border-color: color-mix(in srgb, var(--domain-accent, var(--teal)) 48%, transparent);
-  color: var(--domain-accent, var(--teal));
-  opacity: 1;
-  transform: scale(1.06);
-}
-
-.canvas-edge-add:disabled {
-  pointer-events: none;
-  opacity: 0.24;
-}
-
-.canvas-edge-add svg {
-  width: 15px;
-  height: 15px;
-}
-
-.canvas-edge-add--top,
-.canvas-edge-add--bottom {
-  left: 50%;
-  translate: -50% 0;
-}
-
-.canvas-edge-add--top {
-  top: 10px;
-}
-
-.canvas-edge-add--right {
-  top: 50%;
-  right: 10px;
-  translate: 0 -50%;
-}
-
-.canvas-edge-add--bottom {
-  bottom: 10px;
-}
-
-.canvas-edge-add--left {
-  top: 50%;
-  left: 10px;
-  translate: 0 -50%;
-}
-
-
-
 .canvas-plane__sizer {
   /* Laid out at the zoomed size so the scrollbars know how far the board
      reaches; the plane inside it is scaled from this same corner. */
@@ -425,10 +363,6 @@ button.editor-link {
 
 .canvas-plane__inner {
   position: relative;
-  /* Empty rows past the lowest tile: somewhere to drag one down to, and
-     enough room that the bottom of the board can still be scrolled into the
-     middle of the screen. Width grows the same way, in the component. */
-  padding-bottom: calc(max(var(--canvas-spare-rows), 40vh) + var(--canvas-extra-rows));
 }
 
 /* The board itself: the grid, and the thing you grab to move around. */
@@ -443,6 +377,67 @@ button.editor-link {
     linear-gradient(to bottom, var(--canvas-mesh) 1px, transparent 1px);
   background-size: var(--canvas-col-pitch) 100%, 100% var(--canvas-row-pitch);
   background-position: calc(var(--canvas-gap) * -1) 0, 0 calc(var(--canvas-gap) * -1);
+}
+
+/* A stable home point in the otherwise open-ended workspace. It remains the
+   same apparent size while the world scales, so it is still legible at the
+   30 percent overview. */
+.canvas-plane__centre {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 50%;
+  width: calc(46px / var(--canvas-zoom));
+  height: calc(46px / var(--canvas-zoom));
+  border: calc(1px / var(--canvas-zoom)) solid color-mix(in srgb, var(--domain-accent, var(--teal)) 46%, transparent);
+  border-radius: 999px;
+  translate: -50% -50%;
+  pointer-events: none;
+  color: color-mix(in srgb, var(--domain-accent, var(--teal)) 72%, var(--muted-foreground));
+  box-shadow: 0 0 calc(28px / var(--canvas-zoom)) color-mix(in srgb, var(--domain-accent, var(--teal)) 10%, transparent);
+}
+
+.canvas-plane__centre::before,
+.canvas-plane__centre::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  background: currentColor;
+  content: "";
+  translate: -50% -50%;
+}
+
+.canvas-plane__centre::before {
+  width: calc(64px / var(--canvas-zoom));
+  height: calc(1px / var(--canvas-zoom));
+}
+
+.canvas-plane__centre::after {
+  width: calc(1px / var(--canvas-zoom));
+  height: calc(64px / var(--canvas-zoom));
+}
+
+.canvas-plane__centre span {
+  position: absolute;
+  top: calc(52px / var(--canvas-zoom));
+  left: 50%;
+  font-family: var(--mono);
+  font-size: calc(8px / var(--canvas-zoom));
+  font-weight: 800;
+  letter-spacing: calc(0.12em / var(--canvas-zoom));
+  text-transform: uppercase;
+  translate: -50% 0;
+}
+
+.canvas-plane__overlay {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  transform: translate(var(--canvas-origin-x), var(--canvas-origin-y));
 }
 
 .canvas-plane[data-panning] .canvas-plane__mesh {
@@ -825,12 +820,14 @@ button.editor-link {
   font-weight: 800;
 }
 
-/* The zoom readout, which is also the way back to 100 percent. Only there
-   when the board is not at 100, because at 100 it would say nothing. */
-.canvas-zoom {
+/* Camera controls. The percentage returns to 100 percent; Centre returns to
+   the fixed home marker without changing the scale. */
+.canvas-zoom,
+.canvas-centre {
   display: inline-flex;
   min-height: 34px;
   align-items: center;
+  gap: 6px;
   padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: 17px;
@@ -843,12 +840,19 @@ button.editor-link {
   box-shadow: var(--panel-shadow);
 }
 
-.canvas-zoom:hover {
+.canvas-centre svg {
+  width: 14px;
+  height: 14px;
+}
+
+.canvas-zoom:hover,
+.canvas-centre:hover {
   color: var(--ink);
   border-color: color-mix(in srgb, var(--domain-accent, var(--teal)) 45%, var(--line));
 }
 
-.canvas-zoom:focus-visible {
+.canvas-zoom:focus-visible,
+.canvas-centre:focus-visible {
   outline: 2px solid var(--domain-accent, var(--teal));
   outline-offset: 2px;
 }

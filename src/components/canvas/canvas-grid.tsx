@@ -32,27 +32,19 @@ import {
   type ReactNode,
 } from "react";
 import GridLayout, { getCompactor, type Layout, type LayoutItem } from "react-grid-layout";
-import { Plus } from "lucide-react";
 import {
   CANVAS_COL_PITCH,
-  CANVAS_EXPAND_COLS,
-  CANVAS_EXPAND_ROWS,
   CANVAS_GAP,
   CANVAS_MAX_COLS,
   CANVAS_MAX_ROWS,
   CANVAS_ROW_HEIGHT,
   CANVAS_ROW_PITCH,
-  CANVAS_SPARE_ROWS,
-  planeCols,
+  planeHeight,
   planeWidth,
-  viewportCols,
-  tileLeftPx,
-  tileTopPx,
-  tileWidthPx,
-  tileHeightPx,
 } from "@/lib/layout/grid";
 import type { ResolvedModule, TileRect } from "@/lib/layout/types";
 import { createCanvasPositionStrategy } from "./canvas-position-strategy";
+import { CANVAS_WORLD_CENTER, canvasWorldOrigin, fromWorldRect, toWorldRect } from "./canvas-world";
 import { useCanvasGestures } from "./use-canvas-gestures";
 
 /** No compaction, no overlap, a blocked move snaps back. */
@@ -80,157 +72,74 @@ export interface CanvasGridProps {
    * but saved where it started.
    */
   resyncKey: number;
-  /** Told the current zoom, so a dock can offer a way back to 100 percent. */
-  onZoom?: (zoom: number, reset: () => void) => void;
+  /** Navigation controls rendered by the fixed dock outside this component. */
+  onNavigate?: (zoom: number, resetZoom: () => void, recenter: () => void) => void;
 }
 
-function toLayout(tiles: ResolvedModule[]): LayoutItem[] {
+function toLayout(tiles: ResolvedModule[], origin: { x: number; y: number }): LayoutItem[] {
   return tiles.map((tile) => ({
     i: tile.moduleId,
-    ...tile.rect,
+    ...toWorldRect(tile.rect, origin),
     minW: tile.definition.minSize.w,
     minH: tile.definition.minSize.h,
   }));
 }
 
-function toRects(layout: Layout): Record<string, TileRect> {
+function toRects(layout: Layout, origin: { x: number; y: number }): Record<string, TileRect> {
   const rects: Record<string, TileRect> = {};
-  for (const item of layout) rects[item.i] = { x: item.x, y: item.y, w: item.w, h: item.h };
+  for (const item of layout) {
+    rects[item.i] = fromWorldRect(
+      { x: item.x, y: item.y, w: item.w, h: item.h },
+      origin
+    );
+  }
   return rects;
 }
 
-export function CanvasGrid({ tiles, onRects, renderTile, overlay, resyncKey, onZoom }: CanvasGridProps) {
+export function CanvasGrid({ tiles, onRects, renderTile, overlay, resyncKey, onNavigate }: CanvasGridProps) {
   const scroller = useRef<HTMLDivElement | null>(null);
-  const inner = useRef<HTMLDivElement | null>(null);
   const centred = useRef(false);
   const { zoom, panning, resetZoom } = useCanvasGestures(scroller);
-  const [viewportWidth, setViewportWidth] = useState(0);
-  // Empty space added on the right or bottom does not need to dirty the
-  // saved profile. If a tile is moved into it, its rectangle makes that
-  // growth permanent; until then it is simply working room for this visit.
-  const [extraCols, setExtraCols] = useState(0);
-  const [extraRows, setExtraRows] = useState(0);
-  const [shiftingOrigin, setShiftingOrigin] = useState(false);
-  // The board is always wider than what is on it, and grows as Bob works
-  // outwards, so there is somewhere to drag a tile to. A wide viewport is
-  // itself also a minimum: every visible part of the canvas must contain
-  // real cells that can accept a tile.
-  const baseCols = Math.max(
-    planeCols(tiles.map((tile) => tile.rect)),
-    viewportCols(viewportWidth, zoom)
+  // Fixed for the life of this mount. The saved board is translated into a
+  // huge rendered world, centred once, while its persisted coordinates stay
+  // compact and backwards compatible.
+  const [origin] = useState(() =>
+    tiles.length > 0
+      ? canvasWorldOrigin(tiles.map((tile) => tile.rect))
+      : CANVAS_WORLD_CENTER
   );
-  const cols = Math.min(CANVAS_MAX_COLS, baseCols + extraCols);
-  const width = planeWidth(cols);
-  // The plane's own height, unscaled. The scaled wrapper needs it, because a
-  // CSS transform does not change layout size and the scroll extent would
-  // otherwise stay at 100 percent however far out you zoom.
-  const [planeHeight, setPlaneHeight] = useState(0);
+  const width = planeWidth(CANVAS_MAX_COLS);
+  const height = planeHeight(CANVAS_MAX_ROWS);
 
-  useLayoutEffect(() => {
-    const el = scroller.current;
-    if (!el) return;
-    const measure = () => setViewportWidth(el.clientWidth);
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    measure();
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const el = inner.current;
-    if (!el) return;
-    const observer = new ResizeObserver(() => setPlaneHeight(el.offsetHeight));
-    observer.observe(el);
-    setPlaneHeight(el.offsetHeight);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => onZoom?.(zoom, resetZoom), [zoom, resetZoom, onZoom]);
-
-  const commit = useCallback((layout: Layout) => void onRects(toRects(layout)), [onRects]);
-
-  const furthestCol = tiles.reduce((max, tile) => Math.max(max, tile.rect.x + tile.rect.w), 0);
-  const furthestRow = tiles.reduce((max, tile) => Math.max(max, tile.rect.y + tile.rect.h), 0);
-  const canAddHorizontal = cols + CANVAS_EXPAND_COLS <= CANVAS_MAX_COLS;
-  const canAddBottom = furthestRow + extraRows + CANVAS_EXPAND_ROWS <= CANVAS_MAX_ROWS;
-  const canShiftRight = furthestCol + CANVAS_EXPAND_COLS <= CANVAS_MAX_COLS;
-  const canShiftDown = furthestRow + CANVAS_EXPAND_ROWS <= CANVAS_MAX_ROWS;
-
-  /**
-   * The grid cannot store negative coordinates. Adding room above or left
-   * therefore moves the coordinate origin, then scrolls by the same scaled
-   * distance so every tile stays under the same point on screen.
-   */
-  const addSpace = useCallback(
-    async (side: "top" | "right" | "bottom" | "left") => {
-      if (side === "right") {
-        setExtraCols((value) => Math.min(CANVAS_MAX_COLS - baseCols, value + CANVAS_EXPAND_COLS));
-        return;
-      }
-      if (side === "bottom") {
-        setExtraRows((value) => Math.min(CANVAS_MAX_ROWS - furthestRow, value + CANVAS_EXPAND_ROWS));
-        return;
-      }
-      if (shiftingOrigin) return;
-
-      const dx = side === "left" ? CANVAS_EXPAND_COLS : 0;
-      const dy = side === "top" ? CANVAS_EXPAND_ROWS : 0;
-      if ((dx && !canShiftRight) || (dy && !canShiftDown)) return;
-
-      const shifted = Object.fromEntries(
-        tiles.map((tile) => [
-          tile.moduleId,
-          { ...tile.rect, x: tile.rect.x + dx, y: tile.rect.y + dy },
-        ])
-      );
-      setShiftingOrigin(true);
-      const ok = await onRects(shifted);
-      if (ok) {
-        // Wait for the profile render and the enlarged sizer before moving
-        // the scroll position, otherwise the browser clamps against the old
-        // extent and the board appears to jump.
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            const el = scroller.current;
-            if (el) {
-              el.scrollLeft += dx * CANVAS_COL_PITCH * zoom;
-              el.scrollTop += dy * CANVAS_ROW_PITCH * zoom;
-            }
-            setShiftingOrigin(false);
-          });
-        });
-      } else {
-        setShiftingOrigin(false);
-      }
-    }, [baseCols, canShiftDown, canShiftRight, furthestRow, onRects, shiftingOrigin, tiles, zoom]
+  const commit = useCallback(
+    (layout: Layout) => void onRects(toRects(layout, origin)),
+    [onRects, origin]
   );
 
   const strategy = useMemo(() => createCanvasPositionStrategy(zoom), [zoom]);
 
-  // Open on the middle of the board rather than its top-left corner, so Bob
-  // starts where he arranged things and works outwards. Once only:
-  // re-centring after a drag would fight him.
-  useLayoutEffect(() => {
+  const recenter = useCallback((smooth = true) => {
     const el = scroller.current;
-    if (!el || centred.current || tiles.length === 0) return;
-    centred.current = true;
+    if (!el) return;
+    el.scrollTo({
+      left: (width * zoom - el.clientWidth) / 2,
+      top: (height * zoom - el.clientHeight) / 2,
+      behavior: smooth ? "smooth" : "auto",
+    });
+  }, [height, width, zoom]);
 
-    const centres = tiles.map((tile) => ({
-      x: tileLeftPx(tile.rect.x) + tileWidthPx(tile.rect.w) / 2,
-      y: tileTopPx(tile.rect.y) + tileHeightPx(tile.rect.h) / 2,
-    }));
-    const mid = {
-      x: (Math.min(...centres.map((c) => c.x)) + Math.max(...centres.map((c) => c.x))) / 2,
-      y: (Math.min(...centres.map((c) => c.y)) + Math.max(...centres.map((c) => c.y))) / 2,
-    };
-    // The tile nearest that point, so the view lands on something real
-    // rather than on the gap the average happens to fall in.
-    const nearest = centres.reduce((best, c) =>
-      Math.hypot(c.x - mid.x, c.y - mid.y) < Math.hypot(best.x - mid.x, best.y - mid.y) ? c : best
-    );
-    el.scrollLeft = nearest.x - el.clientWidth / 2;
-    el.scrollTop = nearest.y - el.clientHeight / 2;
-  }, [tiles]);
+  useEffect(
+    () => onNavigate?.(zoom, resetZoom, () => recenter(true)),
+    [zoom, resetZoom, recenter, onNavigate]
+  );
+
+  // Every session starts from the marked home point. Afterwards the camera
+  // only moves because Bob moves it or explicitly presses Centre.
+  useLayoutEffect(() => {
+    if (centred.current || tiles.length === 0) return;
+    centred.current = true;
+    recenter(false);
+  }, [tiles, recenter]);
 
   return (
     <div className="canvas-plane-shell">
@@ -240,26 +149,27 @@ export function CanvasGrid({ tiles, onRects, renderTile, overlay, resyncKey, onZ
         data-canvas-plane
         data-panning={panning || undefined}
       >
-        {/* Laid out at the scaled size so the scrollbars know how far the
-            board actually reaches; the plane inside is scaled from its own
-            top-left corner, which is the origin all the cell maths uses. */}
+        {/* The world keeps the same dimensions at every zoom. Only this
+            scaled sizer changes, so zooming never grows or shrinks the grid
+            around the viewport and never forces the camera sideways. */}
         <div
           className="canvas-plane__sizer"
-          style={{ width: width * zoom, height: planeHeight * zoom }}
+          style={{ width: width * zoom, height: height * zoom }}
         >
           <div
-            ref={inner}
             className="canvas-plane__inner"
             style={
               {
                 width,
+                height,
                 transform: zoom === 1 ? undefined : `scale(${zoom})`,
                 transformOrigin: "0 0",
                 "--canvas-col-pitch": `${CANVAS_COL_PITCH}px`,
                 "--canvas-row-pitch": `${CANVAS_ROW_PITCH}px`,
                 "--canvas-gap": `${CANVAS_GAP}px`,
-                "--canvas-spare-rows": `${CANVAS_SPARE_ROWS * CANVAS_ROW_PITCH}px`,
-                "--canvas-extra-rows": `${extraRows * CANVAS_ROW_PITCH}px`,
+                "--canvas-zoom": zoom,
+                "--canvas-origin-x": `${origin.x * CANVAS_COL_PITCH}px`,
+                "--canvas-origin-y": `${origin.y * CANVAS_ROW_PITCH}px`,
               } as CSSProperties
             }
           >
@@ -273,13 +183,16 @@ export function CanvasGrid({ tiles, onRects, renderTile, overlay, resyncKey, onZ
                 Drawn at the pitch the grid snaps to, offset by the same
                 gutter, so a tile lands on a line rather than near one. */}
             <div className="canvas-plane__mesh" aria-hidden="true" />
-            {overlay?.(zoom)}
+            <div className="canvas-plane__centre" aria-hidden="true">
+              <span>Centre</span>
+            </div>
+            <div className="canvas-plane__overlay">{overlay?.(zoom)}</div>
             <GridLayout
               key={resyncKey}
               width={width}
-              layout={toLayout(tiles)}
+              layout={toLayout(tiles, origin)}
               gridConfig={{
-                cols,
+                cols: CANVAS_MAX_COLS,
                 rowHeight: CANVAS_ROW_HEIGHT,
                 margin: [CANVAS_GAP, CANVAS_GAP],
               }}
@@ -304,32 +217,6 @@ export function CanvasGrid({ tiles, onRects, renderTile, overlay, resyncKey, onZ
         </div>
       </div>
 
-      {(["top", "right", "bottom", "left"] as const).map((side) => {
-        const disabled =
-          shiftingOrigin ||
-          ((side === "left" || side === "right") && !canAddHorizontal) ||
-          (side === "top" && !canShiftDown) ||
-          (side === "bottom" && !canAddBottom);
-        const direction = {
-          top: "above",
-          right: "to the right",
-          bottom: "below",
-          left: "to the left",
-        }[side];
-        return (
-          <button
-            key={side}
-            type="button"
-            className={`canvas-edge-add canvas-edge-add--${side}`}
-            aria-label={`Add canvas space ${direction}`}
-            title={`Add about 400 pixels ${direction}`}
-            disabled={disabled}
-            onClick={() => void addSpace(side)}
-          >
-            <Plus aria-hidden="true" />
-          </button>
-        );
-      })}
     </div>
   );
 }

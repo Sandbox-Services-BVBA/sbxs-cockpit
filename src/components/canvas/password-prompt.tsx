@@ -77,10 +77,10 @@ function PasswordForm() {
         onKeyDown={trapTab}
       >
         <h2 id="password-heading" className="serif editor-dialog__title">
-          Log in to keep changes
+          Log in to the cockpit
         </h2>
         <p id="password-help" className="editor-dialog__help">
-          Arranging the cockpit needs its password once per device. The session lasts 30 days.
+          Enter your password to view the dashboard and keep changes. The session lasts 30 days.
         </p>
         <label className="editor-field editor-field--stack" htmlFor="cockpit-password">
           <span>Cockpit password</span>

@@ -1,3 +1,5 @@
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { canAccess } from "@/lib/session";
 import { NextRequest } from "next/server";
 import { fsGate } from "@/lib/devserver-fs";
 import { proxyLogs } from "@/lib/devserver-logs";
@@ -8,6 +10,8 @@ export const dynamic = "force-dynamic";
 // user units, named project files, service-local log dirs) with size, mtime,
 // live flag and a bounded 24h error count.
 export async function GET(req: NextRequest) {
+  if (!canAccess(req)) return unauthorizedResponse();
+
   const denied = fsGate(req);
   if (denied) return denied;
   return proxyLogs("sources");

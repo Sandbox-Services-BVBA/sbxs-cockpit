@@ -6,5 +6,5 @@ export function isMachineAuthorized(request: Request) {
 }
 
 export function unauthorizedResponse() {
-  return Response.json({ error: "Unauthorized" }, { status: 401 });
+  return Response.json({ error: "Unauthorized" }, { status: 401, headers: { "Cache-Control": "private, no-store" } });
 }

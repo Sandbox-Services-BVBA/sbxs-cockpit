@@ -1,3 +1,5 @@
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { canAccess } from "@/lib/session";
 import { config } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +26,9 @@ export interface BridgeHealth {
   errors?: number;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   try {
     const res = await fetch(`${BASE}/health`, {
       cache: "no-store",

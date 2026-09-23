@@ -198,6 +198,8 @@ export interface AiProviderUsage {
   weekly_label?: string;
   weekly_pct: number | null;
   weekly_resets_at: string | null;
+  /** Earned Codex resets; null or absent means the provider did not report a count. */
+  banked_resets?: number | null;
   weekly_model_pct?: number | null;
   weekly_model_name?: string | null;
   captured_at: string | null;

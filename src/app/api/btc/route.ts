@@ -1,3 +1,5 @@
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { canAccess } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 const BTC_HOLDINGS = 0.75;
@@ -20,6 +22,8 @@ async function fetchPrices(days: number) {
 }
 
 export async function GET(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   const url = new URL(request.url);
   const days = parseInt(url.searchParams.get("days") || "30");
 

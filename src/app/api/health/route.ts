@@ -1,3 +1,4 @@
+import { canAccess } from "@/lib/session";
 import { NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
 import { isMachineAuthorized, unauthorizedResponse } from "@/lib/api-auth";
@@ -5,6 +6,8 @@ import { isMachineAuthorized, unauthorizedResponse } from "@/lib/api-auth";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   const db = getDb();
 
   db.exec(`

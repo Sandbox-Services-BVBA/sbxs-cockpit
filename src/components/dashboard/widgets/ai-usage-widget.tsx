@@ -21,36 +21,59 @@ function relTime(iso: string | null, nowMs: number): string {
   return diffMin >= 0 ? `in ${span}` : `${span} ago`;
 }
 
+function resetCountdown(iso: string | null, nowMs: number): string | null {
+  if (!iso) return null;
+  const remaining = new Date(iso).getTime() - nowMs;
+  if (!Number.isFinite(remaining)) return null;
+  if (remaining <= 0) return "Reset due";
+  if (remaining < 60000) return "Resets in <1m";
+  const minutes = Math.ceil(remaining / 60000);
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const span = days > 0
+    ? `${days}d ${hours}h`
+    : hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
+  return `Resets in ${span}`;
+}
+
 function Meter({ label, pct, resetsAt, nowMs }: {
   label: string;
   pct: number | null;
   resetsAt: string | null;
   nowMs: number;
 }) {
-  // A window whose reset moment has passed since the snapshot is back at zero.
-  const expired = resetsAt != null && new Date(resetsAt).getTime() < nowMs;
-  const value = expired ? 0 : pct == null ? null : Math.max(0, Math.min(100, pct));
+  // Keep the last measured usage until a fresh snapshot confirms the reset.
+  const value = pct == null ? null : Math.max(0, Math.min(100, pct));
   const tone = toneFor(value ?? 0);
+  const countdown = resetCountdown(resetsAt, nowMs);
 
   return (
-    <div className="flex items-center gap-2" title={resetsAt ? `resets ${relTime(resetsAt, nowMs)}` : undefined}>
-      <span className="w-14 shrink-0 truncate font-mono text-mini text-muted-foreground">{label}</span>
-      <div className={cn("h-1.5 min-w-0 flex-1 overflow-hidden rounded-full", tone.track)}>
-        {value != null && value > 0 && (
-          <div className={cn("h-full rounded-full", tone.fill)} style={{ width: `${Math.max(value, 3)}%` }} />
-        )}
+    <div className="space-y-1">
+      <div className="flex items-center gap-2">
+        <span className="w-14 shrink-0 truncate font-mono text-mini text-muted-foreground">{label}</span>
+        <div className={cn("h-1.5 min-w-0 flex-1 overflow-hidden rounded-full", tone.track)}>
+          {value != null && value > 0 && (
+            <div className={cn("h-full rounded-full", tone.fill)} style={{ width: `${Math.max(value, 3)}%` }} />
+          )}
+        </div>
+        <span className="w-9 shrink-0 text-right font-mono text-mini tabular-nums text-foreground">
+          {value == null ? "—" : `${Math.round(value)}%`}
+        </span>
       </div>
-      <span className="w-9 shrink-0 text-right font-mono text-mini tabular-nums text-foreground">
-        {value == null ? "—" : `${Math.round(value)}%`}
-      </span>
+      {countdown && resetsAt && (
+        <p className="text-right font-mono text-mini tabular-nums text-muted-foreground">
+          <time dateTime={resetsAt} title={new Date(resetsAt).toLocaleString()}>{countdown}</time>
+        </p>
+      )}
     </div>
   );
 }
 
-function ProviderBlock({ name, usage, nowMs }: {
+function ProviderBlock({ name, usage, nowMs, showBankedResets = false }: {
   name: string;
   usage: AiProviderUsage | null | undefined;
   nowMs: number;
+  showBankedResets?: boolean;
 }) {
   if (!usage) {
     return (
@@ -120,6 +143,12 @@ function ProviderBlock({ name, usage, nowMs }: {
             nowMs={nowMs}
           />
         )}
+        {showBankedResets && (
+          <div className="flex items-center justify-between gap-2 font-mono text-mini">
+            <span className="text-muted-foreground">Banked resets</span>
+            <span className="tabular-nums">{usage.banked_resets ?? "Unavailable"}</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -156,6 +185,7 @@ export function AiUsageWidget({ aiUsage }: { aiUsage?: AiUsage | null }) {
             name="ChatGPT / Codex"
             usage={usage}
             nowMs={now}
+            showBankedResets
           />
         )) : <ProviderBlock name="ChatGPT / Codex" usage={null} nowMs={now} />}
       </div>

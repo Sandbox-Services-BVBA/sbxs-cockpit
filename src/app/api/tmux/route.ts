@@ -1,3 +1,5 @@
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { canAccess } from "@/lib/session";
 import { config } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -5,7 +7,9 @@ export const dynamic = "force-dynamic";
 // Proxy to the dev-server watcher's /tmux endpoint over Tailscale. Returns the
 // list of tmux windows (Claude agents) with last-activity timestamps. Open like
 // the rest of the dashboard (session metadata, not file contents).
-export async function GET() {
+export async function GET(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   try {
     const r = await fetch(`${config.devserverFsUrl}/tmux`, {
       headers: { Authorization: `Bearer ${config.apiKey}`, "User-Agent": "cockpit/1.0" },

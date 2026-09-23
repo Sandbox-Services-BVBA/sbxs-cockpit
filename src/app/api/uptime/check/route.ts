@@ -1,3 +1,4 @@
+import { canAccess } from "@/lib/session";
 import { NextRequest } from "next/server";
 import { runUptimeChecks } from "@/lib/uptime";
 import { processAlertNotifications } from "@/lib/alerts";
@@ -13,6 +14,8 @@ export async function POST(request: NextRequest) {
   return Response.json({ ok: true, checked: results.length, results });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   return Response.json({ error: "Use authenticated POST" }, { status: 405 });
 }

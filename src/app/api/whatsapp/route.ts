@@ -1,3 +1,5 @@
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { canAccess } from "@/lib/session";
 import { config } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +24,8 @@ function disabled() {
 // GET /api/whatsapp?room_id=…  -> message log for one chat (&limit=N)
 // GET /api/whatsapp?feed=1     -> merged log across all followed chats
 export async function GET(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   if (!KEY) return disabled();
   const url = new URL(request.url);
   const roomId = url.searchParams.get("room_id");
@@ -43,6 +47,8 @@ export async function GET(request: Request) {
 
 // Body: { room_id, name?, enabled } — follow / unfollow a conversation.
 export async function POST(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   if (!KEY) return disabled();
   const payload = await request.json();
   if (!payload?.room_id) return Response.json({ error: "room_id required" }, { status: 400 });

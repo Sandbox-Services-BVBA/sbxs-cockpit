@@ -32,9 +32,8 @@ export const config = {
   whatsappBridgeUrl: (process.env.WHATSAPP_BRIDGE_URL || "http://100.96.197.107:3091").replace(/\/$/, ""),
   whatsappBridgeKey: process.env.WHATSAPP_BRIDGE_KEY || "",
 
-  // Dashboard write session: a password Bob types once per device to unlock
-  // layout saves. Reads stay open (Tailscale-fronted, wallboard unattended),
-  // only writes are gated. Empty password => no session can ever be issued.
+  // Dashboard session: the password unlocks all pages and data, including
+  // the wall and kitchen displays. Empty password => browser access locked.
   // sessionSecret signs the cookie; when empty it is derived from the password
   // and apiKey so no extra config is needed. Never log either value.
   password: process.env.COCKPIT_PASSWORD || "",

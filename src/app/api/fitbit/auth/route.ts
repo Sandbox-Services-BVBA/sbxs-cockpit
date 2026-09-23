@@ -1,7 +1,11 @@
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { canAccess } from "@/lib/session";
 import { generateAuthUrl } from "@/lib/fitbit";
 import { cookies } from "next/headers";
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   const { url, codeVerifier } = generateAuthUrl();
 
   // Store code verifier in a cookie for the callback

@@ -1,3 +1,5 @@
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { canAccess } from "@/lib/session";
 import { config } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +16,9 @@ export const dynamic = "force-dynamic";
 const BASE = config.energyBridgeUrl;
 const KEY = config.energyBridgeKey;
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   if (!KEY) return Response.json({ error: "energy monitor not configured" }, { status: 503 });
   try {
     const res = await fetch(`${BASE}/api/well`, {
@@ -28,6 +32,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   if (!KEY) return Response.json({ error: "energy monitor not configured" }, { status: 503 });
   try {
     const body = await request.text();

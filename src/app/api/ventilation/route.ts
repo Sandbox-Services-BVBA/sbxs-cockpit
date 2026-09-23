@@ -1,3 +1,5 @@
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { canAccess } from "@/lib/session";
 import { config } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +15,8 @@ const BASE = config.ventilationBridgeUrl;
 const KEY = config.ventilationBridgeKey;
 
 export async function GET(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   if (!KEY) return Response.json({ error: "ventilation monitor not configured" }, { status: 503 });
   const sp = new URL(request.url).searchParams;
   let path = "/api/live";
@@ -33,6 +37,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   if (!KEY) return Response.json({ error: "ventilation monitor not configured" }, { status: 503 });
   let body: unknown = {};
   try {

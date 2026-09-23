@@ -2,8 +2,10 @@
 
 import type { ReactNode } from "react";
 import type { ModuleDensity } from "@/lib/layout/types";
-import { homeModuleApplies } from "@/lib/layout/home-modules";
-import { homeModeNow, useHomeConsole } from "@/components/dashboard/home/home-console-provider";
+import {
+  HomeModuleProvider,
+  useHomeConsole,
+} from "@/components/dashboard/home/home-console-provider";
 import { HouseFlow } from "@/components/energy/sections/house-flow";
 import { HouseScene } from "@/components/energy/sections/house-scene";
 import { EnergySection } from "@/components/energy/sections/energy-section";
@@ -23,8 +25,8 @@ export interface HomeRenderContext {
 /**
  * The house visual answers a different question per mode: live is the scene
  * with rooms, flows and unit controls; a period is the flow summary with
- * totals. Both keep their props because the kitchen display reuses HouseFlow
- * outside the console, so this is where the context becomes props.
+ * totals. This is where the tile-local context becomes explicit props for the
+ * two established visuals.
  */
 function HouseVisual() {
   const { isLive, live, range, tick, liveMs } = useHomeConsole();
@@ -71,31 +73,18 @@ function FeedGate({ children }: { children: ReactNode }) {
 }
 
 /**
- * True for a Home module that does not apply to the current timeframe. The
- * canvas falls back to the shared renderer when `homeModuleNode` says null,
- * and Office (`home-control`) is in the shared map too, so the canvas has to
- * ask this first or a period would still show the live-only controls.
- */
-export function homeModuleHidden(id: string): boolean {
-  return !homeModuleApplies(id, homeModeNow());
-}
-
-/**
  * Home's renderers live apart from the shared map because they read the Home
- * console's context rather than the /api/dashboard payload. Returns null for
- * anything that is not a Home module, and null for a Home module that does
- * not apply to the current timeframe: gas and water only mean something over
- * a period, the controls only live. The canvas never needs to know that; it
- * just skips a null. It does have to be rendered under `useHomeMode()` so a
- * switch makes it ask again, which is what CockpitPage arranges.
+ * feed and, for analytical widgets, a tile-local timeframe. Returns null only
+ * for ids that are not Home modules; changing a range never removes a tile.
  */
 export function homeModuleNode(id: string, ctx: HomeRenderContext): ReactNode {
   void ctx; // no Home module has a density choice yet
-  if (homeModuleHidden(id)) return null;
   const gated = (node: ReactNode) => (
-    <HomeTile>
-      <FeedGate>{node}</FeedGate>
-    </HomeTile>
+    <HomeModuleProvider moduleId={id}>
+      <HomeTile>
+        <FeedGate>{node}</FeedGate>
+      </HomeTile>
+    </HomeModuleProvider>
   );
   switch (id) {
     case "home.house": return gated(<HouseVisual />);

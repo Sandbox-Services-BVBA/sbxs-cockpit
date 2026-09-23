@@ -16,7 +16,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LocateFixed } from "lucide-react";
 import { useDashboardData } from "@/hooks/use-dashboard-data";
-import { useHomeMode } from "@/components/dashboard/home/home-console-provider";
 import { getDashboardHealth } from "@/lib/dashboard-health";
 import { useLayout, useResolvedView } from "@/lib/layout/client";
 import { MODULE_BY_ID } from "@/lib/layout/catalog";
@@ -28,7 +27,6 @@ import {
   planeCols,
   rectsOverlap,
 } from "@/lib/layout/grid";
-import { homeModuleApplies } from "@/lib/layout/home-modules";
 import type { ModuleDensity, ResolvedGroup, ResolvedModule, TileRect } from "@/lib/layout/types";
 import {
   AddTray,
@@ -89,14 +87,9 @@ export function CanvasView() {
   // Never saved: a selection is a thing you are doing, not a thing you have.
   const [selected, setSelected] = useState<string[]>([]);
 
-  // What is actually on screen: enabled, minus the Home tiles that do not
-  // apply to the current timeframe. Subscribing to the mode is what makes a
-  // live or period switch recompute it.
-  const mode = useHomeMode();
-  const visible = useMemo(
-    () => resolved.modules.filter((entry) => homeModuleApplies(entry.moduleId, mode)),
-    [resolved.modules, mode]
-  );
+  // Timeframes never alter canvas membership. A widget changes its contents
+  // in place, so neighbouring rectangles remain exactly where Bob put them.
+  const visible = resolved.modules;
 
   const commit = useCallback(
     (promise: Promise<boolean>, note: string, anchor?: string) => {

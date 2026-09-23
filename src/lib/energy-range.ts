@@ -1,6 +1,6 @@
-// Global timeframe model for the Energy page. One Range drives every section so
-// all charts show the same window. Built from a (mode, offset) pair: mode picks
-// the granularity, offset steps backward/forward by one unit (0 = current).
+// Shared range maths for the independent Home widgets. A Range is built from
+// a (mode, offset) pair: mode picks the granularity, offset steps backward or
+// forward by one unit (0 = current).
 //
 // Energy bars (kWh) are derived by integrating the power-history samples into
 // calendar buckets — this works back ~6 weeks (as far as power logging goes),

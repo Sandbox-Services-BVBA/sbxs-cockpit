@@ -1,7 +1,18 @@
 "use client";
 
-import { Ellipsis, GripVertical, Lock, Maximize2, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Ellipsis,
+  GripVertical,
+  Lock,
+  Maximize2,
+  Settings2,
+  X,
+} from "lucide-react";
 import type { KeyboardEvent, PointerEvent } from "react";
+import { useHomeTimeframeControl } from "@/components/dashboard/home/home-console-provider";
+import { TF_OPTIONS, type TFMode } from "@/lib/energy-range";
 import type { ModuleDensity, ResolvedModule } from "@/lib/layout/types";
 import {
   DropdownMenu,
@@ -69,6 +80,7 @@ export function TileChrome({
   const title = definition.title;
   const hasDensity = definition.allowedDensities.length > 1;
   const required = definition.required === true;
+  const timeframe = useHomeTimeframeControl(resolved.moduleId);
 
   // Clicking the grip selects the tile, but neither a click handler nor a
   // pointerup handler on the grip ever fires: the drag layer takes pointer
@@ -119,9 +131,47 @@ export function TileChrome({
       <div className="canvas-tile__actions">
         <DropdownMenu>
           <DropdownMenuTrigger ref={menuRef} className="canvas-tile__btn" aria-label={`${title} options`}>
-            <Ellipsis aria-hidden="true" />
+            {timeframe ? <Settings2 aria-hidden="true" /> : <Ellipsis aria-hidden="true" />}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="canvas-menu">
+            {timeframe && (
+              <>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Periode</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={timeframe.mode}
+                    onValueChange={(value) => timeframe.changeMode(value as TFMode)}
+                  >
+                    {TF_OPTIONS.filter((option) => timeframe.config.modes.includes(option.value)).map((option) => (
+                      <DropdownMenuRadioItem key={option.value} value={option.value} closeOnClick>
+                        {option.label}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuGroup>
+                {timeframe.mode !== "live" && (
+                  <div className="canvas-menu__period-browser" aria-label="Browse periods">
+                    <button
+                      type="button"
+                      onClick={() => timeframe.step(-1)}
+                      aria-label="Vorige periode"
+                    >
+                      <ChevronLeft aria-hidden="true" />
+                    </button>
+                    <span>{timeframe.range.label}</span>
+                    <button
+                      type="button"
+                      onClick={() => timeframe.step(1)}
+                      disabled={timeframe.range.canNext}
+                      aria-label="Volgende periode"
+                    >
+                      <ChevronRight aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
+                <DropdownMenuSeparator />
+              </>
+            )}
             {hasDensity && (
               <>
                 {/* Base UI requires a group label to sit inside a group. */}

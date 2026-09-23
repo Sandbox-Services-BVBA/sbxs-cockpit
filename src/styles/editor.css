@@ -159,9 +159,6 @@ button.editor-link {
   margin-bottom: 12px;
 }
 
-/* On the canvas the plane fills everything below the timeframe strip, so a
-   notice cannot sit above it in the flow. It floats instead: rare, brief,
-   and never worth giving up a permanent band of board for. */
 /* A notice sits above the board rather than floating over it. Floating kept
    the board a few pixels taller and covered whatever was underneath, which
    on this page is the alert queue: the one tile a warning must never hide.
@@ -301,9 +298,8 @@ button.editor-link {
 
    The canvas is the only view that is a viewport rather than a document: the
    board is bigger than the window in both directions and is scrolled inside
-   a box that fills whatever the header and the timeframe strip leave. That
-   is done with flex rather than a calc() against the header height, so the
-   strip can change height without the board silently overflowing.        */
+   the box below the header. Flex keeps transient notices in that same height
+   calculation without hard-coded viewport maths.                         */
 
 .app-shell[data-domain="canvas"] {
   height: 100svh;
@@ -1055,6 +1051,51 @@ button.editor-link {
   border-color: var(--line);
   background: var(--background);
   color: var(--ink);
+}
+
+.canvas-menu__period-browser {
+  display: grid;
+  grid-template-columns: 28px minmax(118px, 1fr) 28px;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 6px 7px;
+  padding: 5px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+}
+
+.canvas-menu__period-browser button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--ink-muted);
+}
+
+.canvas-menu__period-browser button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--ink);
+}
+
+.canvas-menu__period-browser button:disabled {
+  opacity: 0.28;
+}
+
+.canvas-menu__period-browser svg {
+  width: 14px;
+  height: 14px;
+}
+
+.canvas-menu__period-browser span {
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* --- Password prompt ------------------------------------------------------ */

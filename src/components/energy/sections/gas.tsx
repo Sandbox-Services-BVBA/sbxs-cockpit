@@ -70,8 +70,8 @@ function GasTooltip({
   );
 }
 
-// Gas follows the global timeframe like every other period chart. The endpoint
-// only speaks trailing `days`, so we over-fetch and clip to the selected range.
+// The endpoint only speaks trailing `days`, so this widget over-fetches and
+// clips to its own selected range.
 export function Gas() {
   const { range } = useHomeConsole();
   const days = daysToCover(range);

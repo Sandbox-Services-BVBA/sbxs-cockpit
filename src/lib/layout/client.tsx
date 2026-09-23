@@ -91,9 +91,8 @@ interface LayoutContextValue {
   /**
    * Move a module one visible neighbour up or down. Hidden modules sit in
    * the same order array, so a plain index shift could swap with one and
-   * show no change; this skips them. `among` is the ids actually on screen
-   * when the view mounts fewer than the resolver enables (Home tiles that
-   * do not apply to the current timeframe); it defaults to every enabled id.
+   * show no change; this skips them. `among` is the ids actually on screen;
+   * it defaults to every enabled id.
    */
   moveModule: (viewId: SurfaceId, moduleId: string, delta: number, among?: string[]) => Promise<boolean>;
   /** Place a module directly before another visible one, or last when null. */
@@ -804,4 +803,3 @@ export function useResolvedView(viewId: SurfaceId): ResolvedView {
   const { profile } = useLayout();
   return useMemo(() => resolveView(viewId, profile), [viewId, profile]);
 }
-

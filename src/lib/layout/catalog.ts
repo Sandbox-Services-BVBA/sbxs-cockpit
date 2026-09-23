@@ -322,8 +322,8 @@ const CORE_MODULES: ModuleDefinition[] = [
   }),
 ];
 
-// Home's definitions live in their own file: the Home console owns a shared
-// timeframe and live feed, so its modules are context modules, not cards.
+// Home's definitions live in their own file. They share one live feed while
+// analytical modules keep independent timeframes inside their own tiles.
 export const MODULE_CATALOG: ModuleDefinition[] = [...CORE_MODULES, ...HOME_MODULES];
 
 export const MODULE_BY_ID: Record<string, ModuleDefinition> = Object.fromEntries(

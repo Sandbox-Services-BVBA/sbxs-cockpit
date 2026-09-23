@@ -2,6 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
+import { useHomeConsole } from "@/components/dashboard/home/home-console-provider";
+import { homeTimeframeConfig } from "@/lib/layout/home-modules";
 
 // Shared building blocks for the Home console. Same panel language as the rest
 // of the cockpit (see .cockpit-panel), but laid out roomy and HomeWizard-like
@@ -22,25 +24,40 @@ export function Section({
   children: React.ReactNode;
   className?: string;
 }) {
+  const homeConsole = useHomeConsole();
+  const timeframe = homeTimeframeConfig(homeConsole.moduleId);
+
   return (
     // The same contract WidgetTile has: fill the height the tile was
     // dragged to, keep the header put, and scroll the body. Scrolling the
     // whole card instead would drag its rounded corners under the clip.
     <section
       id={id}
-      className={cn("cockpit-panel @container flex h-full min-h-0 flex-col overflow-hidden scroll-mt-28", className)}
+      className={cn("cockpit-panel home-section @container flex h-full min-h-0 flex-col overflow-hidden scroll-mt-28", className)}
     >
       <header
         data-canvas-drag-handle
-        className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-border/65 px-4 py-2.5"
+        className="home-section__header"
       >
-        <h2 className="flex items-center gap-2 text-tiny font-bold uppercase tracking-[0.16em] text-muted-foreground">
-          {Icon && <Icon className="h-4 w-4" />}
-          {title}
-        </h2>
-        {right && <div className="flex items-center gap-2 text-tiny text-muted-foreground">{right}</div>}
+        <div className="home-section__identity">
+          {Icon && (
+            <span className="home-section__icon" aria-hidden="true">
+              <Icon />
+            </span>
+          )}
+          <div>
+            <p className="eyebrow">Ons huis</p>
+            <h2 className="serif">{title}</h2>
+          </div>
+        </div>
+        {(timeframe || right) && (
+          <div className="home-section__meta">
+            {timeframe && <span className="home-section__period">{homeConsole.range.label}</span>}
+            {right}
+          </div>
+        )}
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-3.5">{children}</div>
+      <div className="home-section__body">{children}</div>
     </section>
   );
 }
@@ -67,14 +84,14 @@ export function Metric({
 }) {
   return (
     <div
-      className={cn("flex flex-col justify-between rounded-xl border border-border/80 bg-background/40 px-3 py-3", className)}
+      className={cn("home-metric flex flex-col justify-between rounded-xl border border-border/80 bg-background/40 px-3 py-3", className)}
       style={hero && color ? { boxShadow: `inset 0 0 0 2px ${color}` } : undefined}
     >
-      <div className="flex items-center gap-1.5 text-tiny font-bold uppercase tracking-widest text-muted-foreground">
+      <div className="home-metric__label">
         {Icon && <Icon className="h-4 w-4" style={{ color }} />}
         {label}
       </div>
-      <div className={cn("mt-2 font-bold tabular-nums leading-none", hero ? "text-4xl" : "text-3xl")} style={{ color }}>
+      <div className={cn("home-metric__value mt-2 tabular-nums leading-none", hero ? "text-4xl" : "text-3xl")} style={{ color }}>
         {value}
         {unit && <span className="ml-1 text-base font-semibold text-muted-foreground">{unit}</span>}
       </div>

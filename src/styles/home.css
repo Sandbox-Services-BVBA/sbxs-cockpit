@@ -1,1 +1,136 @@
-/* home styles. Imported from app/globals.css. */
+/* House widgets borrow my-home's quieter content hierarchy while keeping the
+   Cockpit tile contract: the card fills its rectangle and only its body
+   scrolls. */
+
+.home-section {
+  --home-accent: var(--amber);
+}
+
+.home-section__header {
+  display: flex;
+  min-height: 58px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  background:
+    radial-gradient(circle at 0 0, color-mix(in srgb, var(--home-accent) 8%, transparent), transparent 42%),
+    color-mix(in srgb, var(--card) 96%, transparent);
+}
+
+.home-section__identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.home-section__icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--home-accent) 38%, var(--line));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--home-accent) 9%, transparent);
+  color: var(--home-accent);
+}
+
+.home-section__icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.home-section__identity .eyebrow {
+  margin: 0 0 3px;
+  color: color-mix(in srgb, var(--home-accent) 80%, var(--ink-quiet));
+}
+
+.home-section__identity h2 {
+  overflow: hidden;
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1rem, 0.93rem + 0.25vw, 1.25rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-section__meta {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-muted);
+  font-size: var(--text-tiny);
+}
+
+.home-section__period {
+  max-width: 132px;
+  overflow: hidden;
+  padding: 4px 8px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background) 58%, transparent);
+  color: var(--ink-quiet);
+  font-family: var(--mono);
+  font-size: var(--text-micro);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.home-section__body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 14px 16px 16px;
+}
+
+.home-metric {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(130deg, color-mix(in srgb, var(--card) 84%, transparent), transparent),
+    color-mix(in srgb, var(--background) 55%, transparent);
+}
+
+.home-metric::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  border-radius: 3px;
+  background: currentColor;
+  content: "";
+  opacity: 0.72;
+}
+
+.home-metric__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-quiet);
+  font-family: var(--mono);
+  font-size: var(--text-micro);
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.home-metric__label svg {
+  width: 15px;
+  height: 15px;
+}
+
+.home-metric__value {
+  font-family: var(--serif);
+  font-weight: 560;
+  letter-spacing: -0.035em;
+}

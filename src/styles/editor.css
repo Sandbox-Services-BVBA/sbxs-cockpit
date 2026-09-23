@@ -337,6 +337,9 @@ button.editor-link {
 }
 
 .canvas-plane {
+  --canvas-zoom: 1;
+  --canvas-scaled-width: var(--canvas-world-width);
+  --canvas-scaled-height: var(--canvas-world-height);
   position: absolute;
   inset: 0;
   overflow: auto;
@@ -359,10 +362,16 @@ button.editor-link {
   /* Laid out at the zoomed size so the scrollbars know how far the board
      reaches; the plane inside it is scaled from this same corner. */
   position: relative;
+  width: var(--canvas-scaled-width);
+  height: var(--canvas-scaled-height);
 }
 
 .canvas-plane__inner {
   position: relative;
+  width: var(--canvas-world-width);
+  height: var(--canvas-world-height);
+  transform: scale(var(--canvas-zoom));
+  transform-origin: 0 0;
 }
 
 /* The board itself: the grid, and the thing you grab to move around. */

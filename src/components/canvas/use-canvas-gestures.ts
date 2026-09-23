@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type RefObject } from "react";
-import { anchoredZoomScroll, type ScrollPoint } from "./canvas-zoom";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import {
+  anchoredZoomScroll,
+  wheelDeltaPixels,
+  WHEEL_ZOOM_SETTLE_MS,
+  zoomAfterWheel,
+} from "./canvas-zoom";
 
 // Every gesture that belongs to the plane rather than to a tile: drag the
 // bare board to move around it, pinch or scroll to zoom the whole thing.
@@ -32,7 +37,10 @@ export interface CanvasGestures {
  * `scroller` is the element that scrolls; the plane inside it is expected to
  * be scaled from its top-left corner.
  */
-export function useCanvasGestures(scroller: RefObject<HTMLDivElement | null>): CanvasGestures {
+export function useCanvasGestures(
+  scroller: RefObject<HTMLDivElement | null>,
+  world: { width: number; height: number }
+): CanvasGestures {
   const [zoom, setZoom] = useState(1);
   const [panning, setPanning] = useState(false);
   // The listeners below are attached once and never see a re-render, so
@@ -40,9 +48,55 @@ export function useCanvasGestures(scroller: RefObject<HTMLDivElement | null>): C
   // captured in a closure. Re-attaching them per render would tear down a
   // pan halfway through it.
   const zoomRef = useRef(1);
-  const pendingScroll = useRef<ScrollPoint | null>(null);
-  const scrollFrame = useRef<number | null>(null);
+  const targetZoomRef = useRef(1);
+  const zoomFrame = useRef<number | null>(null);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const anchorRef = useRef<{ x: number; y: number } | null>(null);
   const zoomAtRef = useRef<((next: number, clientX?: number, clientY?: number) => void) | null>(null);
+
+  /**
+   * Change transform, scroll extent and anchored scroll in one browser frame.
+   * React only receives the settled zoom, so a 120 Hz trackpad does not ask
+   * the complete widget grid to reconcile 120 times per second.
+   */
+  function applyPendingZoom() {
+    zoomFrame.current = null;
+    const el = scroller.current;
+    const anchor = anchorRef.current;
+    if (!el || !anchor) return;
+
+    const from = zoomRef.current;
+    const to = targetZoomRef.current;
+    if (to === from) return;
+    const scroll = anchoredZoomScroll(
+      { left: el.scrollLeft, top: el.scrollTop },
+      anchor,
+      from,
+      to
+    );
+
+    // These variables own the camera. React does not declare them, so an
+    // unrelated dashboard refresh cannot overwrite a gesture mid-frame.
+    el.style.setProperty("--canvas-zoom", String(to));
+    el.style.setProperty("--canvas-scaled-width", `${world.width * to}px`);
+    el.style.setProperty("--canvas-scaled-height", `${world.height * to}px`);
+    el.scrollTo(scroll);
+    zoomRef.current = to;
+  }
+
+  function commitZoom(delay = WHEEL_ZOOM_SETTLE_MS) {
+    if (settleTimer.current !== null) clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(() => {
+      settleTimer.current = null;
+      setZoom(zoomRef.current);
+    }, delay);
+  }
+
+  function scheduleZoomFrame() {
+    if (zoomFrame.current === null) {
+      zoomFrame.current = requestAnimationFrame(applyPendingZoom);
+    }
+  }
 
   /**
    * Zoom towards a point in client coordinates, or the centre of the view
@@ -53,38 +107,28 @@ export function useCanvasGestures(scroller: RefObject<HTMLDivElement | null>): C
   function zoomAt(next: number, clientX?: number, clientY?: number) {
     const el = scroller.current;
     if (!el) return;
-    const from = zoomRef.current;
     const to = clampZoom(next);
-    if (to === from) return;
+    if (to === targetZoomRef.current) return;
 
     const box = el.getBoundingClientRect();
-    const pointerX = (clientX ?? box.left + box.width / 2) - box.left;
-    const pointerY = (clientY ?? box.top + box.height / 2) - box.top;
-    // Several wheel events commonly arrive before React paints. Continue
-    // from the scroll position the previous event requested, rather than
-    // from the stale DOM position, or the anchor drifts during a fast zoom.
-    pendingScroll.current = anchoredZoomScroll(
-      pendingScroll.current ?? { left: el.scrollLeft, top: el.scrollTop },
-      { x: pointerX, y: pointerY },
-      from,
-      to
-    );
-
-    zoomRef.current = to;
-    setZoom(to);
-
-    // Coalesce a burst of wheel events. React commits the final scale before
-    // this frame, and the single scroll uses the final chained anchor.
-    if (scrollFrame.current === null) {
-      scrollFrame.current = requestAnimationFrame(() => {
-        const current = scroller.current;
-        const target = pendingScroll.current;
-        if (current && target) current.scrollTo(target);
-        pendingScroll.current = null;
-        scrollFrame.current = null;
-      });
-    }
+    anchorRef.current = {
+      x: (clientX ?? box.left + box.width / 2) - box.left,
+      y: (clientY ?? box.top + box.height / 2) - box.top,
+    };
+    targetZoomRef.current = to;
+    scheduleZoomFrame();
+    commitZoom();
   }
+
+  // Establish the three camera variables before the first paint. Afterwards
+  // they are mutated together by `applyPendingZoom` and never by React.
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    el.style.setProperty("--canvas-zoom", "1");
+    el.style.setProperty("--canvas-scaled-width", `${world.width}px`);
+    el.style.setProperty("--canvas-scaled-height", `${world.height}px`);
+  }, [scroller, world.height, world.width]);
 
   // Declared before the listener effect, so it has run by the time the
   // listeners exist.
@@ -166,6 +210,7 @@ export function useCanvasGestures(scroller: RefObject<HTMLDivElement | null>): C
       if (pointers.size === 0) {
         pan = null;
         setPanning(false);
+        commitZoom(0);
       }
     };
 
@@ -174,13 +219,17 @@ export function useCanvasGestures(scroller: RefObject<HTMLDivElement | null>): C
       // trackpad gesture is free to be zoom. Horizontal-only trackpad input
       // uses its horizontal delta rather than becoming a dead gesture.
       event.preventDefault();
-      const rawDelta = event.deltaY || event.deltaX;
-      const pixels = event.deltaMode === WheelEvent.DOM_DELTA_LINE
-        ? rawDelta * 16
-        : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
-          ? rawDelta * el.clientHeight
-          : rawDelta;
-      zoomAtRef.current?.(zoomRef.current * Math.exp(-pixels / 600), event.clientX, event.clientY);
+      const pixels = wheelDeltaPixels(
+        event.deltaX,
+        event.deltaY,
+        event.deltaMode,
+        el.clientHeight
+      );
+      zoomAtRef.current?.(
+        zoomAfterWheel(targetZoomRef.current, pixels, event.ctrlKey || event.metaKey),
+        event.clientX,
+        event.clientY
+      );
     };
 
     el.addEventListener("pointerdown", onPointerDown);
@@ -201,7 +250,8 @@ export function useCanvasGestures(scroller: RefObject<HTMLDivElement | null>): C
 
   useEffect(
     () => () => {
-      if (scrollFrame.current !== null) cancelAnimationFrame(scrollFrame.current);
+      if (zoomFrame.current !== null) cancelAnimationFrame(zoomFrame.current);
+      if (settleTimer.current !== null) clearTimeout(settleTimer.current);
     },
     []
   );

@@ -99,7 +99,6 @@ function toRects(layout: Layout, origin: { x: number; y: number }): Record<strin
 export function CanvasGrid({ tiles, onRects, renderTile, overlay, resyncKey, onNavigate }: CanvasGridProps) {
   const scroller = useRef<HTMLDivElement | null>(null);
   const centred = useRef(false);
-  const { zoom, panning, resetZoom } = useCanvasGestures(scroller);
   // Fixed for the life of this mount. The saved board is translated into a
   // huge rendered world, centred once, while its persisted coordinates stay
   // compact and backwards compatible.
@@ -110,6 +109,7 @@ export function CanvasGrid({ tiles, onRects, renderTile, overlay, resyncKey, onN
   );
   const width = planeWidth(CANVAS_MAX_COLS);
   const height = planeHeight(CANVAS_MAX_ROWS);
+  const { zoom, panning, resetZoom } = useCanvasGestures(scroller, { width, height });
 
   const commit = useCallback(
     (layout: Layout) => void onRects(toRects(layout, origin)),
@@ -148,26 +148,26 @@ export function CanvasGrid({ tiles, onRects, renderTile, overlay, resyncKey, onN
         className="canvas-plane"
         data-canvas-plane
         data-panning={panning || undefined}
+        style={
+          {
+            "--canvas-world-width": `${width}px`,
+            "--canvas-world-height": `${height}px`,
+          } as CSSProperties
+        }
       >
         {/* The world keeps the same dimensions at every zoom. Only this
             scaled sizer changes, so zooming never grows or shrinks the grid
             around the viewport and never forces the camera sideways. */}
-        <div
-          className="canvas-plane__sizer"
-          style={{ width: width * zoom, height: height * zoom }}
-        >
+        <div className="canvas-plane__sizer">
           <div
             className="canvas-plane__inner"
             style={
               {
                 width,
                 height,
-                transform: zoom === 1 ? undefined : `scale(${zoom})`,
-                transformOrigin: "0 0",
                 "--canvas-col-pitch": `${CANVAS_COL_PITCH}px`,
                 "--canvas-row-pitch": `${CANVAS_ROW_PITCH}px`,
                 "--canvas-gap": `${CANVAS_GAP}px`,
-                "--canvas-zoom": zoom,
                 "--canvas-origin-x": `${origin.x * CANVAS_COL_PITCH}px`,
                 "--canvas-origin-y": `${origin.y * CANVAS_ROW_PITCH}px`,
               } as CSSProperties

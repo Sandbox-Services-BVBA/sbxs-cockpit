@@ -80,14 +80,11 @@
   /* The PWA runs full-bleed under the iPhone clock and home indicator. Fixed
      and full-width elements clear those strips through these tokens, never a
      raw env() call, so a test can simulate a notched device by redefining
-     them. --header-total is the header plus the status strip above it: use it
-     for any offset or remaining-height maths. */
+     them. */
   --spacing-safe-top: var(--safe-top);
   --spacing-safe-right: var(--safe-right);
   --spacing-safe-bottom: var(--safe-bottom);
   --spacing-safe-left: var(--safe-left);
-  --spacing-header: var(--header-height);
-  --spacing-header-total: var(--header-total);
 
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
@@ -139,8 +136,6 @@
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
-  --header-height: 68px;
-  --header-total: calc(var(--header-height) + var(--safe-top));
   /* The gutter .app-main reserves. Anything that needs to bleed to the window
      edge inside it (a sticky sub-bar, a full-width strip) reads it back
      through .bleed-x rather than hard-coding a negative margin. */
@@ -351,10 +346,8 @@
 }
 
 /* --- Application shell ----------------------------------------------------
-   One column: a sticky header and the page under it. There is no rail and no
-   bottom bar because there is nothing to navigate to. Nothing in here is
-   allowed to widen the document: the column is min-width:0 and the main
-   region hides its own horizontal overflow. */
+   One full-height content plane with a few independent floating actions.
+   There is no permanent header, rail or bottom bar. */
 
 .app-shell {
   display: flex;
@@ -364,174 +357,15 @@
   flex-direction: column;
 }
 
-/* The header. The status strip is stacked on top of the content height rather
-   than carved out of it, so a notch never squeezes the clock. */
-.app-header {
-  position: sticky;
-  top: 0;
-  z-index: 40;
+.app-floating-controls {
+  position: fixed;
+  z-index: 50;
+  top: calc(12px + var(--safe-top));
+  right: max(12px, var(--safe-right));
   display: flex;
-  height: var(--header-total);
-  align-items: center;
-  gap: 12px;
-  padding:
-    var(--safe-top)
-    max(14px, var(--safe-right))
-    0
-    max(14px, var(--safe-left));
-  border-bottom: 1px solid var(--line-soft);
-  background: color-mix(in srgb, var(--background) 88%, transparent);
-  -webkit-backdrop-filter: blur(16px) saturate(1.06);
-  backdrop-filter: blur(16px) saturate(1.06);
-}
-
-.app-header__mark {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  place-items: center;
-  border-radius: 10px;
-  background: var(--sbxs-coral);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.app-header__title {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.app-header__eyebrow {
-  color: var(--domain-accent);
-}
-
-.app-title {
-  overflow: hidden;
-  font-size: clamp(1.25rem, 1.1rem + 0.6vw, 1.6rem);
-  line-height: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.app-header__status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-
-/* Portal target for whatever the page adds to the header (the canvas's add
-   button and save state). Empty on the wall and the drill-downs. */
-.app-header__actions {
-  display: contents;
-}
-
-/* Raised when Attention has active signals but its tile is not on the
-   canvas. Defined here, not with the editor, because it is shell chrome. */
-.app-alert-pill {
-  display: inline-flex;
-  min-height: 34px;
-  align-items: center;
-  gap: 5px;
-  padding: 0 10px;
-  border: 1px solid color-mix(in srgb, var(--rose) 42%, transparent);
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--rose) 12%, transparent);
-  color: var(--rose);
-  font-family: var(--mono);
-  font-size: 0.6875rem;
-  font-weight: 700;
-}
-
-.app-clock {
-  min-width: 96px;
-  text-align: right;
-}
-
-.app-clock strong {
-  display: block;
-  font-family: var(--serif);
-  font-size: 1.1rem;
-  font-weight: 500;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.app-clock span {
-  display: block;
-  margin-top: 5px;
-  color: var(--ink-quiet);
-  font-family: var(--mono);
-  font-size: 0.5625rem;
-  line-height: 1;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-/* The truthful badge. It names the age of the newest agent signal, never the
-   age of the last repaint. */
-.feed-badge {
-  display: flex;
-  min-height: 34px;
   align-items: center;
   gap: 7px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--ink) 3%, transparent);
-  color: var(--ink-muted);
-  font-family: var(--mono);
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.feed-badge i {
-  width: 7px;
-  height: 7px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 9px color-mix(in srgb, var(--green) 62%, transparent);
-}
-
-.feed-badge b {
-  color: var(--ink-quiet);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.feed-badge--stale {
-  border-color: color-mix(in srgb, var(--amber) 42%, transparent);
-  background: color-mix(in srgb, var(--amber) 12%, transparent);
-  color: var(--amber);
-}
-
-.feed-badge--stale i {
-  background: var(--amber);
-  box-shadow: 0 0 9px color-mix(in srgb, var(--amber) 58%, transparent);
-}
-
-.feed-badge--offline {
-  border-color: color-mix(in srgb, var(--rose) 42%, transparent);
-  background: color-mix(in srgb, var(--rose) 12%, transparent);
-  color: var(--rose);
-}
-
-.feed-badge--offline i {
-  background: var(--rose);
-  box-shadow: 0 0 9px color-mix(in srgb, var(--rose) 52%, transparent);
-}
-
-.feed-badge--connecting i {
-  background: var(--ink-quiet);
-  box-shadow: none;
+  pointer-events: none;
 }
 
 .app-icon-button {
@@ -544,6 +378,10 @@
   border-radius: 11px;
   background: color-mix(in srgb, var(--card) 70%, transparent);
   color: var(--ink-muted);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
   transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
 }
 
@@ -581,32 +419,10 @@
   :root {
     --main-pad: 22px;
   }
-
-  .app-header {
-    gap: 16px;
-    padding-right: var(--main-pad-right);
-    padding-left: var(--main-pad-left);
-  }
-}
-
-@media (max-width: 639px) {
-  .app-clock {
-    display: none;
-  }
-
-  .feed-badge {
-    padding: 0 8px;
-    gap: 6px;
-  }
-
-  .feed-badge__label {
-    display: none;
-  }
 }
 
 @media (min-width: 1024px) {
   :root {
-    --header-height: 76px;
     --main-pad: 26px;
   }
 

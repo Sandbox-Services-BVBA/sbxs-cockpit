@@ -2,7 +2,7 @@
 // module lives on the canvas at `/`, and the only other surface is the
 // wallboard, an unattended shared display that is reached by URL, not by a
 // menu. This file names those two surfaces plus the drill-down tools that
-// keep a route of their own, so the shell can title the page and route back.
+// keep a route of their own, so the shell can offer a compact route back.
 //
 // The old domain ids (house, alerts, infra, ...) survive as ViewIds because
 // the catalog still tags every module with the domain that owns it, and the
@@ -85,7 +85,7 @@ export interface PageMeta {
   /** The surface whose layout applies. Drill-downs belong to the canvas. */
   view: ViewMeta;
   title: string;
-  /** True on a drill-down route, where the header offers a way back to `/`. */
+  /** True on a drill-down route, where the floating controls offer a way back to `/`. */
   drillDown: boolean;
 }
 

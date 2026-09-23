@@ -1,3 +1,5 @@
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { canAccess } from "@/lib/session";
 import { config } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +13,9 @@ export const dynamic = "force-dynamic";
 const BASE = config.homeBridgeUrl;
 const KEY = config.homeBridgeKey;
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   if (!KEY) return Response.json({ error: "home bridge not configured" }, { status: 503 });
   try {
     const res = await fetch(`${BASE}/api/airco`, {
@@ -25,6 +29,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   if (!KEY) return Response.json({ error: "home bridge not configured" }, { status: 503 });
   let body: unknown = {};
   try {

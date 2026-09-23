@@ -13,6 +13,7 @@ import { pageForPath } from "@/lib/views";
 import { cn } from "@/lib/utils";
 import { FileModal } from "@/components/dashboard/widgets/file-explorer-widget";
 import { CurrentTime } from "./current-time";
+import { LogoutButton } from "@/components/auth/logout-button";
 
 const THEME_ORDER = ["system", "light", "dark"] as const;
 
@@ -116,6 +117,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} aria-hidden="true" />
           </button>
           <ThemeButton />
+          <LogoutButton />
         </div>
       </header>
 

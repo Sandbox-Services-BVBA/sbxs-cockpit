@@ -1,3 +1,5 @@
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { canAccess } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 const OFFICE_URL = "https://office.sbxs.io";
@@ -16,6 +18,8 @@ const periodLimits: Record<string, number> = {
 const cache: Record<string, { data: unknown; expires: number }> = {};
 
 export async function GET(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   const url = new URL(request.url);
   const period = url.searchParams.get("period") || "1m";
   const limit = periodLimits[period] || 120;

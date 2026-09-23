@@ -1,3 +1,4 @@
+import { canAccess } from "@/lib/session";
 import { NextRequest } from "next/server";
 import { syncWeightDelta, isConnected } from "@/lib/fitbit";
 import { isMachineAuthorized, unauthorizedResponse } from "@/lib/api-auth";
@@ -18,6 +19,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   return Response.json({ error: "Use authenticated POST" }, { status: 405 });
 }

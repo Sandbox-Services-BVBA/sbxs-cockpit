@@ -1,3 +1,5 @@
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { canAccess } from "@/lib/session";
 import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -6,6 +8,8 @@ export const dynamic = "force-dynamic";
 // latest one. No auth — dashboard is Tailscale-only, same as the ventilation
 // and home-control routes.
 export async function POST(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   const db = getDb();
 
   db.exec(`

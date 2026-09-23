@@ -1,3 +1,5 @@
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { canAccess } from "@/lib/session";
 import { config } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +11,9 @@ export const dynamic = "force-dynamic";
 const BASE = config.ventilationBridgeUrl;
 const KEY = config.ventilationBridgeKey;
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   if (!KEY) return Response.json({ error: "ventilation monitor not configured" }, { status: 503 });
   try {
     const res = await fetch(`${BASE}/api/automation`, { headers: { Authorization: `Bearer ${KEY}` }, cache: "no-store" });
@@ -20,6 +24,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   if (!KEY) return Response.json({ error: "ventilation monitor not configured" }, { status: 503 });
   let body: unknown = {};
   try {

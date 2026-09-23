@@ -1,3 +1,4 @@
+import { canAccess } from "@/lib/session";
 import { NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
 import { isMachineAuthorized, unauthorizedResponse } from "@/lib/api-auth";
@@ -44,6 +45,8 @@ export async function POST(request: NextRequest) {
 // Dashboard widget polls this for the live feed.
 // Pass ?since=<id> to fetch only newer rows (incremental, no flashing).
 export async function GET(request: NextRequest) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   const db = getDb();
   const url = new URL(request.url);
   const since = Number(url.searchParams.get("since")) || 0;

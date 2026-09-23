@@ -1,3 +1,5 @@
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { canAccess } from "@/lib/session";
 import { config } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +15,9 @@ function authHeaders() {
   return { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   if (!KEY) return Response.json({ error: "home bridge not configured" }, { status: 503 });
   try {
     const res = await fetch(`${BASE}/api/state`, { headers: authHeaders(), cache: "no-store" });
@@ -26,6 +30,8 @@ export async function GET() {
 
 // Body: { action: "scene"|"light"|"switch"|"proxmox-rgb", ...payload }
 export async function POST(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   if (!KEY) return Response.json({ error: "home bridge not configured" }, { status: 503 });
   const { action, ...payload } = await request.json();
   const routes: Record<string, string> = {

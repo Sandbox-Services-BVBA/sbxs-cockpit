@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Barlow, JetBrains_Mono, Newsreader } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SessionGuard } from "@/components/auth/session-guard";
 import "./globals.css";
 
 const barlow = Barlow({
@@ -71,7 +72,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <TooltipProvider>{children}</TooltipProvider>
+          <TooltipProvider><SessionGuard>{children}</SessionGuard></TooltipProvider>
         </ThemeProvider>
       </body>
     </html>

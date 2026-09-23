@@ -1,10 +1,8 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { isMachineAuthorized } from "@/lib/api-auth";
 
-// Signed-cookie session that gates dashboard WRITES. Reads stay open: the
-// cockpit is Tailscale-fronted and the wallboard runs unattended on a shared
-// display, so a read gate would break it. What this protects is Bob's saved
-// layout, which no anonymous visitor may rewrite.
+// Signed-cookie session for every dashboard page and data endpoint, including
+// the wall and kitchen displays. The collector still uses its bearer key.
 //
 // The cookie is `<expiresAtMs>.<base64url hmac-sha256(expiresAtMs, secret)>`.
 // No state on the server, no dependency, nothing to expire other than time.
@@ -28,10 +26,10 @@ export function isAuthConfigured(): boolean {
 // password therefore also invalidates every issued cookie, which is what you
 // want after a leak.
 function signingSecret(): string | null {
-  const explicit = process.env.COCKPIT_SESSION_SECRET;
-  if (explicit) return explicit;
   const password = configuredPassword();
   if (!password) return null;
+  const explicit = process.env.COCKPIT_SESSION_SECRET;
+  if (explicit) return explicit;
   return createHash("sha256")
     .update(`cockpit-session:${password}:${process.env.COCKPIT_API_KEY || ""}`)
     .digest("hex");
@@ -102,7 +100,9 @@ export function hasValidSession(request: Request): boolean {
   return safeEqual(signature, sign(expiresAt, secret));
 }
 
-/** A write is allowed for a logged-in browser or for the collector's bearer key. */
-export function canWrite(request: Request): boolean {
+/** API access is allowed for a logged-in browser or the collector's bearer key. */
+export function canAccess(request: Request): boolean {
   return hasValidSession(request) || isMachineAuthorized(request);
 }
+
+export const canWrite = canAccess;

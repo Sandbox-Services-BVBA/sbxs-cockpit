@@ -2,17 +2,17 @@ import { recordLayoutAudit } from "@/lib/audit";
 import { readProfile, resetProfile, writeProfile } from "@/lib/layout/store";
 import { MAX_PROFILE_BYTES, validateProfile } from "@/lib/layout/validate";
 import type { LayoutProfile } from "@/lib/layout/types";
-import { canWrite, hasValidSession } from "@/lib/session";
+import { canAccess, canWrite, hasValidSession } from "@/lib/session";
 import { unauthorizedResponse } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // The saved layout profile.
-//   GET    /api/layout  -> { profile, revision }   public read
+//   GET    /api/layout  -> { profile, revision }   session or bearer key
 //   PUT    /api/layout  <- { profile, expectedRevision }   session or bearer key
 //   DELETE /api/layout  -> back to code defaults   session or bearer key
-// Reads are open because the dashboard itself is; only writes are gated.
+// Every operation requires the dashboard session or collector bearer key.
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -31,7 +31,9 @@ function summarize(profile: LayoutProfile): string {
   return `views=${views.length} ordered=${ordered} modules=${modules}`;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   return profileResponse(readProfile());
 }
 

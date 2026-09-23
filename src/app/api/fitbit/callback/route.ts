@@ -1,8 +1,12 @@
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { canAccess } from "@/lib/session";
 import { NextRequest } from "next/server";
 import { exchangeCode, backfillWeight } from "@/lib/fitbit";
 import { cookies } from "next/headers";
 
 export async function GET(request: NextRequest) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   const code = request.nextUrl.searchParams.get("code");
   if (!code) {
     return new Response("Missing code parameter", { status: 400 });

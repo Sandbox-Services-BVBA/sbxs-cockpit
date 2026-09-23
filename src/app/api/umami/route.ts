@@ -1,3 +1,5 @@
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { canAccess } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 const UMAMI_URL = process.env.UMAMI_URL || "https://analytics.sbxs.io";
@@ -67,7 +69,9 @@ async function fetchSiteData(websiteId: string, token: string) {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   if (!UMAMI_PASSWORD) {
     return Response.json({ plaqstudio: null, bookyourbox: null });
   }

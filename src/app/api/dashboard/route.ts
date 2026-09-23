@@ -1,3 +1,5 @@
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { canAccess } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import type {
   Alert,
@@ -15,7 +17,9 @@ import type {
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!canAccess(request)) return unauthorizedResponse();
+
   const db = getDb();
 
   // One coherent agent snapshot. Selecting the latest row per name leaves

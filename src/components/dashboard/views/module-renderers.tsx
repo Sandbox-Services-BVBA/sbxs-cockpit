@@ -28,6 +28,7 @@ import { AgentsWidget } from "../widgets/agents-widget";
 import { AiUsageWidget } from "../widgets/ai-usage-widget";
 import { FileTreeWidget } from "../widgets/file-explorer-widget";
 import { HomeControlWidget } from "../widgets/home-control-widget";
+import { ActivityWidget } from "../widgets/activity-widget";
 import { GpuWidget } from "../widgets/gpu-widget";
 import { ThermalsWidget } from "../widgets/thermals-widget";
 import { InfraSummary } from "../infra/infra-summary";
@@ -97,6 +98,7 @@ export function moduleNode(id: string, { data, agentStale, density, layout }: Mo
     case "projects": return <ProjectsWidget projects={data!.projects} />;
     case "file-explorer": return <FileTreeWidget layout={layout} />;
     case "home-control": return <HomeControlWidget />;
+    case "activity": return <ActivityWidget density={density} />;
     case "weight": return <WeightWidget />;
     case "btc": return <BtcWidget />;
     default: return null;

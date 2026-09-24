@@ -193,6 +193,15 @@ const CORE_MODULES: ModuleDefinition[] = [
     listy: true,
     selfFetch: true,
   }),
+  define("activity", {
+    title: "Activity",
+    ownerView: "infra",
+    alsoIn: WALL,
+    defaultWidth: "standard",
+    allowedWidths: ["standard", "wide", "full"],
+    listy: true,
+    selfFetch: true,
+  }),
 
   // Finance
   define("unbilled", {

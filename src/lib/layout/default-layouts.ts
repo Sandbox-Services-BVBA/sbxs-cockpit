@@ -44,6 +44,7 @@ export const DEFAULT_LAYOUTS: Record<SurfaceId, ModulePlacement[]> = {
     { moduleId: "gpu" },
     { moduleId: "thermals" },
     { moduleId: "services" },
+    { moduleId: "activity" },
     { moduleId: "backups" },
     { moduleId: "crons" },
     { moduleId: "connections" },
